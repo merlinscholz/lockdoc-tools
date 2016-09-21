@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
 	allocOFile << "id" << DELIMITER << "type" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
 	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
 	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "type" << endl;
-	locksHeldOFile << "lock_id" << DELIMITER << "start" << DELIMITER << "access_id" << endl;
+	locksHeldOFile << "lock_id" << DELIMITER << "access_id" << DELIMITER << "start" << endl;
 	
 	// Start reading the inputfile
 	for (;getline(infile,inputLine); ss.clear(), lineElems.clear(), lineCounter++) {
@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
 							// Create an entry for each held lock
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
 								if (itLock->second.held == 1) {
-									locksHeldOFile << dec << itLock->second.key << DELIMITER  << itLock->second.start << DELIMITER  << i << endl;
+									locksHeldOFile << dec << itLock->second.key << DELIMITER  << i << DELIMITER  << itLock->second.start << endl;
 								}
 							}
 							break;
