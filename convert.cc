@@ -199,33 +199,49 @@ int main(int argc, char *argv[]) {
 			
 			// Parse each element
 			ts = std::stoull(lineElems.at(0));
-			action = lineElems.at(1).at(0);
-			typeStr = lineElems.at(2);
-			if (lineElems.at(3).compare("NULL") != 0) {
-				ptr = std::stoull(lineElems.at(3),NULL,10);
-			} else {
-				ptr = 0;
+			if (lineElems.size() != 12) {
+				cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected 12." << endl;
+				return EXIT_FAILURE;
 			}
-			if (lineElems.at(4).compare("NULL") != 0) {
-				size = std::stoull(lineElems.at(4));
+			try {
+				action = lineElems.at(1).at(0);
+				typeStr = lineElems.at(2);		
+				if (lineElems.at(3).compare("NULL") != 0) {
+					ptr = std::stoull(lineElems.at(3),NULL,16);
+				} else {
+					ptr = 0;
+				}
+				if (lineElems.at(4).compare("NULL") != 0) {
+					size = std::stoull(lineElems.at(4));
+				} else {
+					size = 0;
+				}
+				file = lineElems.at(5);
+				if (lineElems.at(6).compare("NULL") != 0) {
+					line = std::stoull(lineElems.at(6));
+				} else {
+					line = 42;
+				}
+				fn = lineElems.at(7);
+				lockfn = lineElems.at(8);
+				if (lineElems.at(9).compare("NULL") != 0) {
+					address = std::stoull(lineElems.at(9),NULL,16);
+				} else {
+					address = 0x4711;
+				}
+				if (lineElems.at(10).compare("NULL") != 0) {
+					instrPtr = std::stoull(lineElems.at(10),NULL,16);
+				} else {
+					instrPtr = 0x1337;
+				}
+				if (lineElems.at(11).compare("NULL") != 0) {
+					stackPtr = std::stoull(lineElems.at(11),NULL,16);
+				} else {
+					stackPtr = 0xc0ffee;
+				}
+			} catch (exception &e) {
+				cerr << "Exception occured (ts="<< ts << "): " << e.what() << endl;
 			}
-			file = lineElems.at(5);
-			if (lineElems.at(6).compare("NULL") != 0) {
-				line = std::stoull(lineElems.at(6));
-			}
-			fn = lineElems.at(7);
-			lockfn = lineElems.at(8);
-			if (lineElems.at(9).compare("NULL") != 0) {
-				address = std::stoull(lineElems.at(9),NULL,10);
-			}
-#if 0
-			if (lineElems.at(10).compare("NULL") != 0) {
-				instrPtr = std::stoull(lineElems.at(10),NULL,10);
-			}
-			if (lineElems.at(11).compare("NULL") != 0) {
-				stackPtr = std::stoull(lineElems.at(11),NULL,10);
-			}
-#endif
 				
 			switch(action) {
 					case 'a':
