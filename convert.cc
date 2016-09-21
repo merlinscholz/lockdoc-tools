@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	// Add the header. Hallo, Horst. :)
 	allocOFile << "id" << DELIMITER << "type" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
-	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << endl;
+	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
 	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "type" << endl;
 	locksHeldOFile << "lock_id" << DELIMITER << "start" << DELIMITER << "access_id" << endl;
 	
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							i = curAccessKey++;
-							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << action << DELIMITER << dec << size << DELIMITER << showbase << hex << address << noshowbase << endl;							
+							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << action << DELIMITER << dec << size << DELIMITER << showbase << hex << address << DELIMITER << stackPtr << DELIMITER << instrPtr << noshowbase << endl;	
 							// Create an entry for each held lock
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
 								if (itLock->second.held == 1) {
