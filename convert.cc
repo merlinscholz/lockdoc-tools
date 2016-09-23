@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							tempAlloc = itAlloc->second;
-							allocOFile << tempAlloc.id << DELIMITER << typeStr << DELIMITER << hex << showbase << ptr << noshowbase << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << endl;
+							allocOFile << tempAlloc.id << DELIMITER << typeStr << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << endl;
 							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 								if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
 							if (!retLock.second) {
 								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 							}
-							locksOFile << dec << tempLock.key << DELIMITER << tempLock.ptr << DELIMITER << tempLock.typeStr << endl;
+							locksOFile << dec << tempLock.key << DELIMITER << tempLock.typeStr << DELIMITER << tempLock.ptr << endl;
 							break;
 
 					case 'w':
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							i = curAccessKey++;
-							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << action << DELIMITER << dec << size << DELIMITER << showbase << hex << address << DELIMITER << stackPtr << DELIMITER << instrPtr << noshowbase << endl;	
+							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << action << DELIMITER << dec << size << DELIMITER << address << DELIMITER << stackPtr << DELIMITER << instrPtr << endl;	
 							// Create an entry for each held lock
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
 								if (itLock->second.held == 1) {
@@ -387,7 +387,7 @@ int main(int argc, char *argv[]) {
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		tempAlloc = itAlloc->second;
-		allocOFile << tempAlloc.id << DELIMITER << types[tempAlloc.idx].typeStr << DELIMITER << hex << showbase << itAlloc->first << noshowbase << DELIMITER;
+		allocOFile << tempAlloc.id << DELIMITER << types[tempAlloc.idx].typeStr << DELIMITER << itAlloc->first << DELIMITER;
 		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "NULL" << endl;
 	}
 	
