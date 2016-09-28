@@ -308,6 +308,7 @@ int main(int argc, char *argv[]) {
 								for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 									if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
 										i = 1;
+										break;
 									}
 								}
 								if (!i) {
