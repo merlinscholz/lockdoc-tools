@@ -1,0 +1,46 @@
+CREATE TABLE `accesses` (
+  `id` bigint(20) NOT NULL,															-- an unique id identifying a particular access
+  `alloc_id` bigint(20) DEFAULT NULL,												-- references the memory area which is accessed by this event
+  `type` enum('r','w') DEFAULT NULL,												-- Defines the event type, read vs. write access
+  `size` bigint(20) DEFAULT NULL,													-- How many bytes were written?
+  `address` bigint(20) DEFAULT NULL,												-- The start address of this access
+  `stackptr` bigint(20) DEFAULT NULL,												-- stack pointer
+  `instrptr` bigint(20) DEFAULT NULL,												-- current instruction pointer when the access happened
+  PRIMARY KEY (`id`),
+  KEY `fk_alloc_id` (`alloc_id`),
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+
+CREATE TABLE `locks` (
+  `id` bigint(20) NOT NULL,															-- identifies a particular lock
+  `variable` varchar(255) DEFAULT NULL,												-- the variable which was used to acquire the lock, e.g. &pferd->lock
+  `ptr` bigint(20) DEFAULT NULL,													-- the address of the lock variable
+  `embedded_in` int(12) DEFAULT NULL,												-- A number greater or equal 0 references an entry in the datatypes table where that lock was embedded in
+  `type` varchar(255) DEFAULT NULL,													-- describes the lock type
+  PRIMARY KEY (`id`),
+  KEY `embedded_in` (`embedded_in`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+
+CREATE TABLE `allocations` (
+  `id` bigint(20) NOT NULL,  														-- identifies a certain allocation
+  `type` bigint(20) DEFAULT NULL,													-- describes the data type of an allocation. References table datatypes
+  `ptr` bigint(20) DEFAULT NULL,													-- the start address of an allocation
+  `size` bigint(20) DEFAULT NULL,													--size of the memory area
+  `start` bigint(20) DEFAULT NULL,													-- Start of lifetime
+  `end` bigint(20) DEFAULT NULL,													-- End of life
+  PRIMARY KEY (`id`),
+  KEY `type` (`type`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 
+
+CREATE TABLE `locks_held` (															-- Normally, there are several entries for one memory access. That means those locks were held during the access.
+  `lock_id` bigint(20) NOT NULL,													-- References a lock which was held during the access
+  `access_id` bigint(20) NOT NULL,													-- References the access
+  `start` bigint(20) DEFAULT NULL,													-- The timestamp when the lock was acquired
+  PRIMARY KEY (`lock_id`,`access_id`),
+  KEY `fk_access_id` (`access_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+
+CREATE TABLE `data_types` (
+  `id` bigint(20) NOT NULL,															-- An unique id identifying a data type
+  `name` varchar(255) NOT NULL,														-- A humand-readable id of a datat type
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
