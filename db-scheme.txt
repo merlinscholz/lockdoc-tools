@@ -7,7 +7,7 @@ CREATE TABLE `accesses` (
   `stackptr` bigint(20) DEFAULT NULL,												-- stack pointer
   `instrptr` bigint(20) DEFAULT NULL,												-- current instruction pointer when the access happened
   PRIMARY KEY (`id`),
-  KEY `fk_alloc_id` (`alloc_id`),
+  KEY `fk_alloc_id` (`alloc_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 
 CREATE TABLE `locks` (
@@ -21,15 +21,14 @@ CREATE TABLE `locks` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 
 CREATE TABLE `allocations` (
-  `id` bigint(20) NOT NULL,  														-- identifies a certain allocation
+  `id` bigint(20) NOT NULL,															-- identifies a certain allocation
   `type` bigint(20) DEFAULT NULL,													-- describes the data type of an allocation. References table datatypes
   `ptr` bigint(20) DEFAULT NULL,													-- the start address of an allocation
-  `size` bigint(20) DEFAULT NULL,													--size of the memory area
+  `size` bigint(20) DEFAULT NULL,													-- size of the memory area
   `start` bigint(20) DEFAULT NULL,													-- Start of lifetime
   `end` bigint(20) DEFAULT NULL,													-- End of life
-  PRIMARY KEY (`id`),
-  KEY `type` (`type`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
 
 CREATE TABLE `locks_held` (															-- Normally, there are several entries for one memory access. That means those locks were held during the access.
   `lock_id` bigint(20) NOT NULL,													-- References a lock which was held during the access
