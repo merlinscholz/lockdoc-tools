@@ -1,0 +1,33 @@
+SELECT *
+FROM locks_held AS lh
+LEFT JOIN accesses AS as ON as.id=lh.access_id
+LEFT JOIN allocations AS a ON a.id=as.alloc_id
+LEFT JOIN locks AS l ON l.id=lh.lock_id
+LEFT JOIN data_types AS dt ON dt.id=a.type
+WHERE as.id IS NULL OR a.id IS NULL OR l.id IS NULL OR dt.id IS NULL;
+
+SELECT l.ptr, lh.access_id, l.type, count(lh.access_id) AS num
+FROM locks_held AS lh
+INNER JOIN locks AS l ON l.id=lh.lock_id
+INNER JOIN accesses AS ac ON ac.id=lh.access_id
+INNER JOIN allocations AS a ON a.id=ac.alloc_id
+WHERE ac.type='r' AND a.type='task_struct'
+GROUP BY lh.lock_id,lh.access_id
+ORDER BY lh.lock_id,lh.access_id,num,ptr
+
+
+SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS datatype, GROUP_CONCAT(lh.lock_id SEPARATOR '+') AS locks, GROUP_CONCAT(l.type SEPARATOR '+') AS lock_types, ac.address - a.ptr AS offset, ac.size
+FROM accesses AS ac
+INNER JOIN allocations AS a ON a.id=ac.alloc_id
+INNER JOIN locks_held AS lh ON lh.access_id=ac.id
+INNER JOIN locks AS l ON l.id=lh.lock_id
+GROUP BY ac.id
+-- LIMIT 0,10
+
+SELECT ac.alloc_id,ac.type,a.type AS datatype, lh.lock_id AS locks, l.type AS locktypes, ac.address - a.ptr AS offset, ac.size
+FROM accesses AS ac
+INNER JOIN allocations AS a ON a.id=ac.alloc_id
+INNER JOIN locks_held AS lh ON lh.access_id=ac.id
+INNER JOIN locks AS l ON l.id=lh.lock_id
+ORDER BY ac.id
+-- LIMIT 0,10
