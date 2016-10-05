@@ -30,6 +30,7 @@
 #define MAX_OBSERVED_TYPES 3
 #define DELIMITER ';'
 #define NEED_BSS_DATA
+#define MAX_COLUMNS 13
 //#define VERBOSE
 #define PRINT_KONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
 
@@ -206,8 +207,8 @@ int main(int argc, char *argv[]) {
 			
 			// Parse each element
 			ts = std::stoull(lineElems.at(0));
-			if (lineElems.size() != 12) {
-				cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected 12." << endl;
+			if (lineElems.size() != MAX_COLUMNS) {
+				cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
 				return EXIT_FAILURE;
 			}
 			try {
