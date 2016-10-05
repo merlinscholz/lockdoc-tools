@@ -412,7 +412,7 @@ int main(int argc, char *argv[]) {
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		tempAlloc = itAlloc->second;
-		allocOFile << tempAlloc.id << DELIMITER << types[tempAlloc.idx].typeStr << DELIMITER << itAlloc->first << DELIMITER;
+		allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << itAlloc->first << DELIMITER;
 		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "NULL" << endl;
 	}
 	
