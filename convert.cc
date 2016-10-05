@@ -56,6 +56,8 @@ struct Lock {
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
 	string lastLockFn;											// Lock function used the last time
+	int datatype_idx;										// An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
+	string lockType;
 };
 
 /**
@@ -106,7 +108,7 @@ static void printUsageAndExit(const char *elf) {
 
 int main(int argc, char *argv[]) {
 	stringstream ss;
-	string inputLine, token, typeStr, file, fn, lockfn;
+	string inputLine, token, typeStr, file, fn, lockfn, lockType;
 	vector<string> lineElems;
 	Allocation tempAlloc;
 	Lock tempLock;
@@ -184,7 +186,7 @@ int main(int argc, char *argv[]) {
 	datatypesOFile << "id" << DELIMITER << "name" << endl;
 	allocOFile << "id" << DELIMITER << "type_id" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
 	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
-	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "type" << endl;
+	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "var" << DELIMITER << "embedded" << DELIMITER << "locktype" << endl;
 	locksHeldOFile << "lock_id" << DELIMITER << "access_id" << DELIMITER << "start" << endl;
 
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
@@ -232,21 +234,23 @@ int main(int argc, char *argv[]) {
 				}
 				fn = lineElems.at(7);
 				lockfn = lineElems.at(8);
-				if (lineElems.at(9).compare("NULL") != 0) {
-					address = std::stoull(lineElems.at(9),NULL,16);
+				lockType = lineElems.at(9);
+				if (lineElems.at(10).compare("NULL") != 0) {
+					address = std::stoull(lineElems.at(10),NULL,16);
 				} else {
 					address = 0x4711;
 				}
-				if (lineElems.at(10).compare("NULL") != 0) {
-					instrPtr = std::stoull(lineElems.at(10),NULL,16);
+				if (lineElems.at(11).compare("NULL") != 0) {
+					instrPtr = std::stoull(lineElems.at(11),NULL,16);
 				} else {
 					instrPtr = 0x1337;
 				}
-				if (lineElems.at(11).compare("NULL") != 0) {
-					stackPtr = std::stoull(lineElems.at(11),NULL,16);
+				if (lineElems.at(12).compare("NULL") != 0) {
+					stackPtr = std::stoull(lineElems.at(12),NULL,16);
 				} else {
 					stackPtr = 0xc0ffee;
 				}
+				
 			} catch (exception &e) {
 				cerr << "Exception occured (ts="<< ts << "): " << e.what() << endl;
 			}
@@ -310,16 +314,17 @@ int main(int argc, char *argv[]) {
 #ifdef VERBOSE
 								cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
 #endif
-								
+								// -1 indicates an static lock
+								i = -1;
 							} else {
 								// A lock which probably resides in one of the observed allocations. If not, we don't care!
-								i = 0; // Use variable i as an indicator if an allocation has been found
+								i = -1; // Use variable i as an indicator if an allocation has been found
 								for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 									if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
-										i = 1;
+										i = itAlloc->second.idx;
 									}
 								}
-								if (!i) {
+								if (i < 0) {
 #ifdef VERBOSE
 									cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_KONTEXT << endl;
 #endif
@@ -366,12 +371,22 @@ int main(int argc, char *argv[]) {
 							tempLock.lastFile = file;
 							tempLock.lastFn = fn;
 							tempLock.lastLockFn = lockfn;
+							tempLock.datatype_idx = i;
+							tempLock.lockType = lockType;
 							// Insert lock into map, and write entry to file
 							retLock = lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,tempLock));
 							if (!retLock.second) {
 								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 							}
-							locksOFile << dec << tempLock.key << DELIMITER << tempLock.typeStr << DELIMITER << tempLock.ptr << endl;
+							locksOFile << dec << tempLock.key << DELIMITER << tempLock.typeStr << DELIMITER << tempLock.ptr << DELIMITER;
+							if (tempLock.datatype_idx == -1) {
+								locksOFile << "NULL";
+							} else {
+								// datatype_idx is an index into to datatypes array. Since the idx should be an id for the database, it is incremented by one.
+								// Thus, index 0 will be 1 and so on.
+								locksOFile <<  tempLock.datatype_idx + 1;
+							}
+							locksOFile << DELIMITER << tempLock.lockType << endl;
 							break;
 
 					case 'w':
