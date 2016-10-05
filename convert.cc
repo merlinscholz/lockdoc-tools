@@ -174,16 +174,23 @@ int main(int argc, char *argv[]) {
 	}
 	
 	// Create the outputfiles. One for each table.
+	ofstream datatypesOFile("data_types.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream allocOFile("allocations.csv",std::ofstream::out | std::ofstream::trunc);	
 	ofstream accessOFile("accesses.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	// Add the header. Hallo, Horst. :)
-	allocOFile << "id" << DELIMITER << "type" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
+	datatypesOFile << "id" << DELIMITER << "name" << endl;
+	allocOFile << "id" << DELIMITER << "type_id" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
 	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
 	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "type" << endl;
 	locksHeldOFile << "lock_id" << DELIMITER << "access_id" << DELIMITER << "start" << endl;
-	
+
+	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+		// The unique id for each datatype will be its index + 1
+		datatypesOFile << i + 1 << DELIMITER << types[i].typeStr << endl;
+	}
+
 	// Start reading the inputfile
 	for (;getline(infile,inputLine); ss.clear(), lineElems.clear(), lineCounter++) {
 			// Skip the header
@@ -277,7 +284,8 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							tempAlloc = itAlloc->second;
-							allocOFile << tempAlloc.id << DELIMITER << typeStr << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << endl;
+							// An allocations datatype is 
+							allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << endl;
 							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 								if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
@@ -392,6 +400,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	infile.close();
+	datatypesOFile.close();
 	allocOFile.close();
 	accessOFile.close();
 	locksOFile.close();
