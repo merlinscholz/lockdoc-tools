@@ -41,7 +41,7 @@ if ($outfile === false) {
 	die("Cannot open " . $outfile_name . "\n");
 }
 
-$line = "ac_id" . $delimiter . "alloc_id" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "locktypes" . $delimiter . "offset" . $delimiter . "size\n";
+$line = "ac_id" . $delimiter . "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in" . $delimiter . "offset" . $delimiter . "size\n";
 fwrite($outfile,$line);
 $i = 0;
 $k = 0;
@@ -50,6 +50,7 @@ $row = mysqli_fetch_assoc($result);
 while ($row) {
 	$ac_id = $row['ac_id'];
 	$alloc_id = $row['alloc_id'];
+	$type = $row['type'];
 	$data_type = $row['data_type'];
 	$offset = $row['offset'];
 	$size = $row['size'];
@@ -65,7 +66,7 @@ while ($row) {
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
 
-	$line = $ac_id . $delimiter . $alloc_id . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . $offset . $delimiter . $size . "\n";
+	$line = $ac_id . $delimiter . $alloc_id . $delimiter . $type . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . $delimiter . $offset . $delimiter . $size . "\n";
 	$k++;
 	fwrite($outfile,$line);
 }
