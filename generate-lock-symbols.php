@@ -11,7 +11,13 @@ if (count($argv) < 2) {
         die(usage($argv[0])."\n");
 }
 
-$outfile_name = $argv[1];
+if (count($argv) > 2 && $argv[1] == '-d') {
+	$debug = 1;
+	$outfile_name = $argv[2];
+} else {
+	$debug = 0;
+	$outfile_name = $argv[1];
+}
 
 
 $db_link = mysqli_connect($GLOBALS['db_server'],$GLOBALS['db_user'],$GLOBALS['db_passwd']) OR die(mysqli_error());
@@ -41,7 +47,13 @@ if ($outfile === false) {
 	die("Cannot open " . $outfile_name . "\n");
 }
 
-$line = "ac_id" . $delimiter . "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in" . $delimiter . "offset" . $delimiter . "size\n";
+if ($debug) {
+	$line = "ac_id" . $delimiter;
+} else {
+	$line = "";
+}
+
+$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in" . $delimiter . "offset" . $delimiter . "size\n";
 fwrite($outfile,$line);
 $i = 0;
 $k = 0;
@@ -66,7 +78,12 @@ while ($row) {
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
 
-	$line = $ac_id . $delimiter . $alloc_id . $delimiter . $type . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . $delimiter . $offset . $delimiter . $size . "\n";
+	if ($debug) {
+		$line = $ac_id . $delimiter;
+	} else {
+		$line = "";
+	}
+	$line .= $alloc_id . $delimiter . $type . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . $delimiter . $offset . $delimiter . $size . "\n";
 	$k++;
 	fwrite($outfile,$line);
 }
