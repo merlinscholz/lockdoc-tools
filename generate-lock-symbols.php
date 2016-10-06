@@ -51,6 +51,8 @@ while ($row) {
 	$ac_id = $row['ac_id'];
 	$alloc_id = $row['alloc_id'];
 	$data_type = $row['data_type'];
+	$offset = $row['offset'];
+	$size = $row['size'];
 	$locks = array();
 	$lock_types = array();
 	$embedded_in = array();
@@ -63,7 +65,7 @@ while ($row) {
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
 
-	$line = $ac_id . $delimiter . $alloc_id . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . "\n";
+	$line = $ac_id . $delimiter . $alloc_id . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter . implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in) . $offset . $delimiter . $size . "\n";
 	$k++;
 	fwrite($outfile,$line);
 }
