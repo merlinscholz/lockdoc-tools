@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
 
 					case 'v':
 					case 'p':
-							if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart) || (typeStr.compare("static") && ptr == 0x42)) {
+							if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
 								// static lock which resides either in the bss segment or in the data segment
 								// or global static lock aka rcu lock
 #ifdef VERBOSE
