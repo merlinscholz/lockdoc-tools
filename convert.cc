@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
 							}
 							locksOFile << dec << tempLock.key << DELIMITER << tempLock.typeStr << DELIMITER << tempLock.ptr << DELIMITER;
 							if (tempLock.datatype_idx == -1) {
-								locksOFile << "NULL";
+								locksOFile << "-1";
 							} else {
 								// datatype_idx is an index into to datatypes array. Since the idx should be an id for the database, it is incremented by one.
 								// Thus, index 0 will be 1 and so on.
@@ -413,7 +413,7 @@ int main(int argc, char *argv[]) {
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		tempAlloc = itAlloc->second;
 		allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << itAlloc->first << DELIMITER;
-		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "NULL" << endl;
+		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "-1" << endl;
 	}
 	
 	infile.close();
