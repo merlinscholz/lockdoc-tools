@@ -43,3 +43,14 @@ CREATE TABLE `data_types` (
   `name` varchar(255) NOT NULL,														-- A humand-readable id of a datat type
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
+
+CREATE TABLE `lock_symbols` (
+  `alloc_id` bigint(20) NOT NULL,
+  `type` enum('r','w') DEFAULT NULL,
+  `data_type` bigint(20) DEFAULT NULL,
+  `locks` varchar(255) DEFAULT NULL,
+  `lock_types` varchar(255) DEFAULT NULL,
+  `embedded_in` varchar(255) DEFAULT NULL,
+  `offset` bigint(20) DEFAULT NULL,
+  `size` bigint(20) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
