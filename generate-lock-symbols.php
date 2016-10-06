@@ -26,14 +26,14 @@ $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
 	  INNER JOIN locks AS l ON l.id=lh.lock_id
 	  ORDER BY ac.id
 	  -- LIMIT 0,100";
-$start = microtime();
+$start = time();
 $result = mysqli_query($db_link,$query,MYSQLI_USE_RESULT);
 if ($result === false) {
 	echo "query failed\n".mysqli_error($db_link)."\n";
 	die();
 }
-$end = microtime();
-echo "Query took " . ($end - $start) / 1000000 . " seconds\n";
+$end = time();
+echo "Query took " . ($end - $start) . " seconds\n";
 
 $outfile = fopen($outfile_name,"w+");
 if ($outfile === false) {
@@ -53,12 +53,12 @@ while ($row) {
 	$data_type = $row['data_type'];
 	$locks = array();
 	$lock_types = array();
-	$emebedded_in = array();
+	$embedded_in = array();
 
 	do {
 		$locks[] = $row['locks'];
 		$lock_types[] = $row['lock_types'];
-		$emebedded_in[] = $row['embedded_in'];
+		$embedded_in[] = $row['embedded_in'];
 		$row = mysqli_fetch_assoc($result);
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
