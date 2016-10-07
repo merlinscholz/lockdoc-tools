@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
 	// Add the header. Hallo, Horst. :)
 	datatypesOFile << "id" << DELIMITER << "name" << endl;
 	allocOFile << "id" << DELIMITER << "type_id" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
-	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
+	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "ts" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
 	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "var" << DELIMITER << "embedded" << DELIMITER << "locktype" << endl;
 	locksHeldOFile << "lock_id" << DELIMITER << "access_id" << DELIMITER << "start" << endl;
 
@@ -398,7 +398,7 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							i = curAccessKey++;
-							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << action << DELIMITER << dec << size << DELIMITER << address << DELIMITER << stackPtr << DELIMITER << instrPtr << endl;	
+							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << ts << DELIMITER << action << DELIMITER << dec << size << DELIMITER << address << DELIMITER << stackPtr << DELIMITER << instrPtr << endl;	
 							// Create an entry for each held lock
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
 								if (itLock->second.held == 1) {
