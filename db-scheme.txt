@@ -1,6 +1,7 @@
 CREATE TABLE `accesses` (
   `id` bigint(20) NOT NULL,															-- an unique id identifying a particular access
   `alloc_id` bigint(20) DEFAULT NULL,												-- references the memory area which is accessed by this event
+  `ts` bigint(20) DEFAULT NULL,
   `type` enum('r','w') DEFAULT NULL,												-- Defines the event type, read vs. write access
   `size` bigint(20) DEFAULT NULL,													-- How many bytes were written?
   `address` bigint(20) DEFAULT NULL,												-- The start address of this access
@@ -45,6 +46,7 @@ CREATE TABLE `data_types` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 
 CREATE TABLE `lock_symbols` (
+  `ac_id` bigint(20) DEFAULT NULL,
   `alloc_id` bigint(20) NOT NULL,
   `type` enum('r','w') DEFAULT NULL,
   `data_type` bigint(20) DEFAULT NULL,
