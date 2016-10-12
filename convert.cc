@@ -321,7 +321,7 @@ int main(int argc, char *argv[]) {
 								i = -1; // Use variable i as an indicator if an allocation has been found
 								for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 									if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
-										i = itAlloc->second.idx;
+										i = itAlloc->second.id;
 										break;
 									}
 								}
