@@ -24,12 +24,13 @@ $db_link = mysqli_connect($GLOBALS['db_server'],$GLOBALS['db_user'],$GLOBALS['db
 mysqli_select_db($db_link,$GLOBALS['db_name']) OR die(mysqli_error());
 
 $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
-		 lh.lock_id AS locks, l.type AS lock_types, l.embedded_in AS embedded_in,
+		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in,
 		 ac.address - a.ptr AS offset, ac.size
 	  FROM accesses AS ac
 	  INNER JOIN allocations AS a ON a.id=ac.alloc_id
 	  INNER JOIN locks_held AS lh ON lh.access_id=ac.id
 	  INNER JOIN locks AS l ON l.id=lh.lock_id
+	  LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 	  ORDER BY ac.id
 	  -- LIMIT 0,100";
 $start = time();
@@ -73,7 +74,11 @@ while ($row) {
 	do {
 		$locks[] = $row['locks'];
 		$lock_types[] = $row['lock_types'];
-		$embedded_in[] = $row['embedded_in'];
+		if (is_null($row['embedded_in'])) {
+			$embedded_in[] = "null";
+		} else {
+			$embedded_in[] = $row['embedded_in'];
+		}
 		$row = mysqli_fetch_assoc($result);
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
