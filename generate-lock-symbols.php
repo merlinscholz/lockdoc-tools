@@ -7,32 +7,40 @@ $db_server = '129.217.43.116';
 $delimiter = ';';
 $delimiter_locks = '+';
 
-if (count($argv) < 2) {
-        die(usage($argv[0])."\n");
+$options = getopt("dlf:");
+if ($options == FALSE ||
+    !array_key_exists('f',$options) ||
+    strlen(trim($options['f'])) == 0) {
+	die(usage($argv[0])."\n");
 }
 
-if (count($argv) > 2 && $argv[1] == '-d') {
-	$debug = 1;
-	$outfile_name = $argv[2];
-} else {
-	$debug = 0;
-	$outfile_name = $argv[1];
-}
-
+$debug = array_key_exists('d',$options);
+$lazy = array_key_exists('l',$options);
+$outfile_name = $options['f'];
 
 $db_link = mysqli_connect($GLOBALS['db_server'],$GLOBALS['db_user'],$GLOBALS['db_passwd']) OR die(mysqli_error());
 mysqli_select_db($db_link,$GLOBALS['db_name']) OR die(mysqli_error());
+
+if ($lazy) {
+	$join_type = "LEFT";
+} else {
+	$join_type = "INNER";
+}
 
 $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
 		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in,
 		 ac.address - a.ptr AS offset, ac.size
 	  FROM accesses AS ac
-	  INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	  INNER JOIN locks_held AS lh ON lh.access_id=ac.id
-	  INNER JOIN locks AS l ON l.id=lh.lock_id
+	  $join_type JOIN allocations AS a ON a.id=ac.alloc_id
+	  $join_type JOIN locks_held AS lh ON lh.access_id=ac.id
+	  $join_type JOIN locks AS l ON l.id=lh.lock_id
 	  LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
+	  WHERE a.ptr=4118814080
 	  ORDER BY ac.id
 	  -- LIMIT 0,100";
+if ($debug) {
+	echo "Executing query:\n". $query ."\n";
+}
 $start = time();
 $result = mysqli_query($db_link,$query,MYSQLI_USE_RESULT);
 if ($result === false) {
@@ -72,8 +80,16 @@ while ($row) {
 	$embedded_in = array();
 
 	do {
-		$locks[] = $row['locks'];
-		$lock_types[] = $row['lock_types'];
+		if (is_null($row['locks'])) {
+			$locks[] = "null";
+		} else {
+			$locks[] = $row['locks'];
+		}
+		if (is_null($row['lock_types'])) {
+			$lock_types[] = "null";
+		} else {
+			$lock_types[] = $row['lock_types'];
+		}
 		if (is_null($row['embedded_in'])) {
 			$embedded_in[] = "null";
 		} else {
@@ -99,6 +115,8 @@ fclose($outfile);
 mysqli_close($db_link);
 
 function usage($name) {
-	echo "$name <output file>\n";
+	echo "$name [-d] [-l] -f <output file>\n";
+	echo "-d		Add a few more columns for debugging purpose\n";
+	echo "-l		Use a left join instead of an inner. This will add memory accesses that do not have any lock held.\n";
 }
 ?>
