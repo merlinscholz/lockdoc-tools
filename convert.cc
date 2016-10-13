@@ -345,17 +345,29 @@ int main(int argc, char *argv[]) {
 									itLock->second.lastFile = file;
 									itLock->second.lastFn = fn;
 									itLock->second.lastLockFn = lockfn;
-									// Has it already been acquired?
-									if (itLock->second.held != 0) {
-										cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already held!" << PRINT_KONTEXT << endl;
+									if (ptr == 0x42) {
+										itLock->second.held++;
+									} else {
+										// Has it already been acquired?
+										if (itLock->second.held != 0) {
+											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already held!" << PRINT_KONTEXT << endl;
+										}
+										itLock->second.held = 1;
 									}
-									itLock->second.held = 1;
 								} else if (action == 'v') {
-									// Has it already been released?
-									if (itLock->second.held != 1) {
-										cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_KONTEXT << endl;
+									if (ptr == 0x42) {
+										if (itLock->second.held == 0) {
+											cerr << "RCU lock has already been released." << PRINT_KONTEXT << endl;
+										} else {
+											itLock->second.held--;
+										}
+									} else {
+										// Has it already been released?
+										if (itLock->second.held != 1) {
+											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_KONTEXT << endl;
+										}
+										itLock->second.held = 0;
 									}
-									itLock->second.held = 0;
 								}
 								// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 								continue;
