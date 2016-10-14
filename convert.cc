@@ -31,6 +31,7 @@
 #define DELIMITER ';'
 #define NEED_BSS_DATA
 #define MAX_COLUMNS 13
+#define LOOK_BEHIND_WINDOW 2
 //#define VERBOSE
 #define PRINT_KONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
 
@@ -65,7 +66,6 @@ struct Lock {
  */
 struct DataType {
 	string typeStr;												// Unique to describe a certain datatype, e.g. task_struct
-	map<unsigned long long,int> histogram[TYPES_END];			// Count which lock has been held for each type of memory access. (--> enum AccessTypes)
 };
 
 /**
@@ -79,6 +79,19 @@ struct Allocation {
 	int idx;													// An index into the types array, which desibes the datatype of this allocation
 };
 
+
+struct MemAccess {
+	unsigned long long id;
+	unsigned long long ts;
+	unsigned long long alloc_id;
+	char action;
+	int size;
+	unsigned long long address;
+	unsigned long long stackPtr;
+	unsigned long long instrPtr;
+};
+
+
 /**
  * Contains all known locks. The ptr of a lock is used as an index.
  */
@@ -91,6 +104,8 @@ static map<unsigned long long,Allocation> activeAllocs;
  * An array of all observed datatypes . For now, we observe three datatypes.
  */
 static DataType types[MAX_OBSERVED_TYPES];
+
+static vector<MemAccess> lastMemAccesses;
 
 //
 static unsigned long long curLockKey = 1;
@@ -106,17 +121,73 @@ static void printUsageAndExit(const char *elf) {
 	exit(EXIT_FAILURE);
 }
 
+static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<int,Lock> *pLockPrimKey) {
+	map<int,Lock>::iterator itLock;
+	vector<MemAccess>::iterator itAccess;
+	MemAccess tempAccess;
+	MemAccess window[LOOK_BEHIND_WINDOW];
+	int size;
+
+	// Since we want to build up a history of the n last memory accesses, we do nothing if a r or w event is imminent.
+	if (pAction == 'r' || pAction == 'w') {
+		return;
+	}
+
+	if ((pAction == 'p' || pAction == 'v') && pMemAccesses->size() > 0 && pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
+		size = pMemAccesses->size();
+		// Have a look at the two last events
+		window[0] = pMemAccesses->at(size - 2);
+		window[1] = pMemAccesses->at(size - 1);
+		// If they have the same timestamp, access the same address, access the same amount of memory, and one is a read and the other event is a write,
+		// they'll propably belong to the upcoming acquire or release events.
+		// To increase the certainty that both events belong to the lock operation, the read/write address is compared to the address of the lock.
+		// As long as the Linux Kernel developer do *not* change the layout of spinlockt_t, this step will work.
+		// That means they have to be discarded. Otherwise, the dataset will be polluted, and the following steps might produce wrong results.
+		if (window[0].ts == window[1].ts &&
+		    window[0].action == 'r' &&
+		    window[1].action == 'w' &&
+		    window[0].address == window[1].address &&
+		    window[0].address == pAddress &&
+		    window[0].size == window[1].size) {
+#ifdef VERBOSE
+			cout << "Discarding event r+w " << dec << window[0].ts << " reading and writing " << window[0].size  << " bytes at address " << showbase << hex << window[0].address << noshowbase << endl;
+#endif
+			// Remove the two last memory accesses from the list, because they belong to the upcoming acquire or release on a spinlock.
+			// We do *bot* want them to be in our dataset.
+			pMemAccesses->pop_back();
+			pMemAccesses->pop_back();
+		}
+	}
+
+	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++) {
+		tempAccess = *itAccess;
+		*pMemAccessOFile << dec << tempAccess.id << DELIMITER << tempAccess.alloc_id << DELIMITER << tempAccess.ts;
+		*pMemAccessOFile << DELIMITER << tempAccess.action << DELIMITER << dec << tempAccess.size;
+		*pMemAccessOFile << DELIMITER << tempAccess.address << DELIMITER << tempAccess.stackPtr << DELIMITER << tempAccess.instrPtr << "\n";	
+		// Create an entry for each lock being held
+		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
+			if (itLock->second.held == 1) {
+				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER  << tempAccess.id << DELIMITER  << itLock->second.start << "\n";
+			}
+		}
+	}
+	pMemAccessOFile->flush();
+	pLocksHeldOFile->flush();
+	pMemAccesses->clear();
+}
+
 int main(int argc, char *argv[]) {
 	stringstream ss;
 	string inputLine, token, typeStr, file, fn, lockfn, lockType;
 	vector<string> lineElems;
 	Allocation tempAlloc;
+	MemAccess tempAccess;
 	Lock tempLock;
 	pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc;
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	pair<map<int,Lock>::iterator,bool> retLock;
 	map<int,Lock>::iterator itLock, itTemp;
-	unsigned long long ts, ptr, size = 0, line = 0, address, stackPtr, instrPtr;
+	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee;
 #ifdef NEED_BSS_DATA
 	unsigned long long bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
 #endif
@@ -243,24 +314,19 @@ int main(int argc, char *argv[]) {
 				lockType = lineElems.at(9);
 				if (lineElems.at(10).compare("NULL") != 0) {
 					address = std::stoull(lineElems.at(10),NULL,16);
-				} else {
-					address = 0x4711;
 				}
 				if (lineElems.at(11).compare("NULL") != 0) {
 					instrPtr = std::stoull(lineElems.at(11),NULL,16);
-				} else {
-					instrPtr = 0x1337;
 				}
 				if (lineElems.at(12).compare("NULL") != 0) {
 					stackPtr = std::stoull(lineElems.at(12),NULL,16);
-				} else {
-					stackPtr = 0xc0ffee;
 				}
 				
 			} catch (exception &e) {
 				cerr << "Exception occured (ts="<< ts << "): " << e.what() << endl;
 			}
-				
+
+			writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
 			switch(action) {
 					case 'a':
 							if (activeAllocs.find(ptr) != activeAllocs.end()) {
@@ -415,14 +481,15 @@ int main(int argc, char *argv[]) {
 								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 								continue;
 							}
-							i = curAccessKey++;
-							accessOFile << dec << i << DELIMITER << itAlloc->second.id << DELIMITER << ts << DELIMITER << action << DELIMITER << dec << size << DELIMITER << address << DELIMITER << stackPtr << DELIMITER << instrPtr << endl;	
-							// Create an entry for each held lock
-							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
-								if (itLock->second.held == 1) {
-									locksHeldOFile << dec << itLock->second.key << DELIMITER  << i << DELIMITER  << itLock->second.start << endl;
-								}
-							}
+							tempAccess.id = curAccessKey++;
+							tempAccess.ts = ts;
+							tempAccess.alloc_id = itAlloc->second.id;
+							tempAccess.action = action;
+							tempAccess.size = size;
+							tempAccess.address = address;
+							tempAccess.stackPtr = stackPtr;
+							tempAccess.instrPtr = instrPtr;
+							lastMemAccesses.push_back(tempAccess);
 							break;
 			}
 	}
