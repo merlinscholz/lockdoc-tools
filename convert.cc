@@ -442,5 +442,7 @@ int main(int argc, char *argv[]) {
 	locksOFile.close();
 	locksHeldOFile.close();
 	
+	cerr << "Finished." << endl;
+
 	return EXIT_SUCCESS;
 }
