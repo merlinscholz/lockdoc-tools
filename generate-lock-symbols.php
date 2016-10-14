@@ -35,7 +35,6 @@ $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
 	  $join_type JOIN locks_held AS lh ON lh.access_id=ac.id
 	  $join_type JOIN locks AS l ON l.id=lh.lock_id
 	  LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-	  WHERE a.ptr=4118814080
 	  ORDER BY ac.id
 	  -- LIMIT 0,100";
 if ($debug) {
