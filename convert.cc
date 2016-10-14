@@ -200,6 +200,12 @@ int main(int argc, char *argv[]) {
 			if (lineCounter == 0) {
 				continue;
 			}
+			if (lineCounter % 100 == 0) {
+				allocOFile.flush();
+				accessOFile.flush();
+				locksOFile.flush();
+				locksHeldOFile.flush();
+			}
 
 			ss << inputLine;
 			// Tokenize each line by DELIMITER, and store each element in a vector
@@ -290,7 +296,7 @@ int main(int argc, char *argv[]) {
 							}
 							tempAlloc = itAlloc->second;
 							// An allocations datatype is 
-							allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << endl;
+							allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << "\n";
 							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 								if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
@@ -399,7 +405,7 @@ int main(int argc, char *argv[]) {
 								// Thus, index 0 will be 1 and so on.
 								locksOFile <<  tempLock.datatype_idx + 1;
 							}
-							locksOFile << DELIMITER << tempLock.lockType << endl;
+							locksOFile << DELIMITER << tempLock.lockType << "\n";
 							break;
 
 					case 'w':
@@ -425,8 +431,9 @@ int main(int argc, char *argv[]) {
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		tempAlloc = itAlloc->second;
 		allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << itAlloc->first << DELIMITER;
-		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "-1" << endl;
+		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "-1" << "\n";
 	}
+	allocOFile.flush();
 	
 	infile.close();
 	datatypesOFile.close();
