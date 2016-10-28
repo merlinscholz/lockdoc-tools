@@ -44,3 +44,22 @@ WHERE a.ptr=Y
 -- GROUP BY alloc_id,locks,type,offset
 ORDER BY num DESC, offset ASC
 -- LIMIT 0,10;
+
+-- Count the number of memory accesses without any lock beeing held
+SELECT COUNT(*)
+FROM accesses As ac
+LEFT JOIN locks_held AS lh ON lh.access_id=ac.id
+INNER JOIN allocations AS a ON a.id=ac.alloc_id
+WHERE lh.start IS NULL -- AND a.ptr=4118814080;
+
+-- Count the number of memory accesses with at least one lock beeing held
+SELECT COUNT(*)
+FROM
+(
+	SELECT ac.id
+	FROM accesses As ac
+	LEFT JOIN locks_held AS lh ON lh.access_id=ac.id
+	INNER JOIN allocations AS a ON a.id=ac.alloc_id
+	WHERE lh.start IS NOT NULL -- AND a.ptr=4118814080
+	GROUP BY ac.id
+) AS foo
