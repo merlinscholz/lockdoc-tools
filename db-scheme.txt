@@ -56,3 +56,11 @@ CREATE TABLE `lock_symbols` (
   `offset` bigint(20) DEFAULT NULL,
   `size` bigint(20) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
+
+CREATE TABLE `structs_layout` (
+  `type_id` bigint(20) DEFAULT NULL,
+  `type` varchar(255) DEFAULT NULL,
+  `member` varchar(255) DEFAULT NULL,
+  `offset` bigint(20) DEFAULT NULL,
+  `size` bigint(20) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8

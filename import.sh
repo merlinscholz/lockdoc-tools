@@ -11,7 +11,7 @@ DB_PASSWD='howaih1S'
 DB_SERVER='129.217.43.116'
 DELIMITER=';'
 
-TABLES=("data_types" "allocations" "accesses" "locks" "locks_held")
+TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout")
 
 MYSQL="mysql --host=${DB_SERVER} --user=${DB_USER} --password=${DB_PASSWD} -v ${DB}"
 MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 --host=${DB_SERVER} --user=${DB_USER} --password=${DB_PASSWD} -v ${DB}"

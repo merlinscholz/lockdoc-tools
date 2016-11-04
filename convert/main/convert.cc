@@ -6,6 +6,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <bfd.h>
+#include "dwarves_api.h"
+#include "config.h"
 
 /**
  * Author: Alexander Lochmann 2016
@@ -17,23 +20,6 @@
  * OUTPUT: TODO
  */
 
-
-/*
- * bss start: nm /media/playground/kernel/linux-4.3/vmlinux | grep __bss_start | cut -f1 -d' '
- * bss size: size /media/playground/kernel/linux-4.3/vmlinux | tail -n 1| tr '\t' ',' | cut -f3 -d,
- * data start: nm /media/playground/kernel/linux-4.3/vmlinux | grep __data_start | cut -f1 -d' '
- * data size: size /media/playground/kernel/linux-4.3/vmlinux | tail -n 1| tr '\t' ',' | cut -f2 -d,
- * 
- * both bss and data: size -A /path/to/vmlinux
- */
-
-#define MAX_OBSERVED_TYPES 3
-#define DELIMITER ';'
-#define NEED_BSS_DATA
-#define MAX_COLUMNS 13
-#define LOOK_BEHIND_WINDOW 2
-//#define VERBOSE
-#define PRINT_KONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
 
 using namespace std;
 
@@ -57,8 +43,8 @@ struct Lock {
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
 	string lastLockFn;											// Lock function used the last time
-	int datatype_idx;										// An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
-	string lockType;
+	int datatype_idx;										    // An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
+	string lockType;											// Describes the lock type
 };
 
 /**
@@ -66,6 +52,8 @@ struct Lock {
  */
 struct DataType {
 	string typeStr;												// Unique to describe a certain datatype, e.g. task_struct
+	bool foundInDw;												// True if the struct has been found in the dwarf information. False otherwise.
+	unsigned long long id;										// An unique id for a particular datatype
 };
 
 /**
@@ -79,16 +67,18 @@ struct Allocation {
 	int idx;													// An index into the types array, which desibes the datatype of this allocation
 };
 
-
+/**
+ * Represents a memory access
+ */
 struct MemAccess {
-	unsigned long long id;
-	unsigned long long ts;
-	unsigned long long alloc_id;
-	char action;
-	int size;
-	unsigned long long address;
-	unsigned long long stackPtr;
-	unsigned long long instrPtr;
+	unsigned long long id;										// Unique of a certain memory access
+	unsigned long long ts;										// Timestamp
+	unsigned long long alloc_id;								// Id of the memory allocation which has been accessed
+	char action;												// Access type: r or w
+	int size;													// Size of memory access
+	unsigned long long address;									// Accessed address
+	unsigned long long stackPtr;								// Stack pointer
+	unsigned long long instrPtr;								// Instruction pointer
 };
 
 
@@ -104,19 +94,39 @@ static map<unsigned long long,Allocation> activeAllocs;
  * An array of all observed datatypes . For now, we observe three datatypes.
  */
 static DataType types[MAX_OBSERVED_TYPES];
-
+/**
+ * The list of the LOOK_BEHIND_WINDOW last memory accesses. 
+ */
 static vector<MemAccess> lastMemAccesses;
+/**
+ * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
+ */
+static unsigned long long bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
+/**
+ * Used to pass context information to the dwarves callback.
+ * Have a look at convert_cus_iterator().
+ */
+struct CusIterArgs {
+	DataType *types;
+	FILE *fp;
+};
 
-//
+/**
+ * The next id for a new lock.
+ */
 static unsigned long long curLockKey = 1;
+/**
+ * The next id for a new allocation.
+ */
 static unsigned long long curAllocKey = 1;
+/**
+ * The next id for a new memory access.
+ */
 static unsigned long long curAccessKey = 1;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf;
-#ifdef NEED_BSS_DATA
-	cerr << " -b <bss_start>:<bss_size> -d <data_start>:<data_size>";
-#endif
+	cerr << " -k <path/to/vmlinux";
 	cerr << " inputfile" << endl;
 	exit(EXIT_FAILURE);
 }
@@ -161,19 +171,145 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 
 	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++) {
 		tempAccess = *itAccess;
-		*pMemAccessOFile << dec << tempAccess.id << DELIMITER << tempAccess.alloc_id << DELIMITER << tempAccess.ts;
-		*pMemAccessOFile << DELIMITER << tempAccess.action << DELIMITER << dec << tempAccess.size;
-		*pMemAccessOFile << DELIMITER << tempAccess.address << DELIMITER << tempAccess.stackPtr << DELIMITER << tempAccess.instrPtr << "\n";	
+		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id << DELIMITER_CHAR << tempAccess.ts;
+		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
+		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr << "\n";	
 		// Create an entry for each lock being held
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
 			if (itLock->second.held == 1) {
-				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER  << tempAccess.id << DELIMITER  << itLock->second.start << "\n";
+				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR  << itLock->second.start << "\n";
 			}
 		}
 	}
 	pMemAccessOFile->flush();
 	pLocksHeldOFile->flush();
 	pMemAccesses->clear();
+}
+
+static int convert_cus_iterator(struct cu *cu, void *cookie) {
+	uint16_t class_id;
+	int i;
+	struct tag *ret;
+	CusIterArgs *cusIterArgs = (CusIterArgs*)cookie;
+	
+	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+		// Skip known datatypes
+		if (cusIterArgs->types[i].foundInDw) {
+			continue;
+		}
+		// Do this compilation unit contain information of at datatype at index i?
+		ret = cu__find_struct_by_name(cu, cusIterArgs->types[i].typeStr.c_str(),1,&class_id);
+		if (ret == NULL) {
+			continue;
+		}
+
+		// Is it really a class or a struct?
+		if (ret->tag == DW_TAG_class_type ||
+			ret->tag == DW_TAG_interface_type ||
+			ret->tag == DW_TAG_structure_type) {
+			class__fprintf(ret, cu, cusIterArgs->fp, cusIterArgs->types[i].id);
+			cusIterArgs->types[i].foundInDw = 1;
+		}
+	}
+
+	// If at least the information about one datatype is still missing, continue iterating through the cus.
+	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+		if (cusIterArgs->types[i].foundInDw == 0) {
+			return 0;
+		}
+	}	
+
+	// No need to proceed with the remaining compilation untis. Stop iteration.
+	return 1;
+}
+
+static int readSections(const char *filename) {
+	asection *bsSection, *dataSection;
+	bfd *kernelBfd;
+	
+	bfd_init();
+	
+	kernelBfd = bfd_openr(filename,"elf32-i386");
+	if (kernelBfd == NULL) {
+		bfd_perror("open vmlinux");
+		bfd_close(kernelBfd);
+		return -1;
+	}
+	// This check is not only a sanity check. Moreover, it is necessary
+	// to allow looking up of sections.
+	if (!bfd_check_format (kernelBfd, bfd_object)) {
+		cerr << "bfd: unknown format" << endl;
+		bfd_close(kernelBfd);
+		return -1;
+	}
+	
+	bsSection = bfd_get_section_by_name(kernelBfd,".bss");
+	if (bsSection == NULL) {
+		bfd_perror("Cannot find section '.bss'");
+		bfd_close(kernelBfd);
+		return -1;
+	}
+	bssStart = bfd_section_vma(kernelBfd, bsSection);
+	bssSize = bfd_section_size(kernelBfd, bsSection);
+	cout << bfd_section_name(kernelBFD,bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
+	
+	dataSection = bfd_get_section_by_name(kernelBfd,".data");
+	if (bsSection == NULL) {
+		bfd_perror("Cannot find section '.bss'");
+		bfd_close(kernelBfd);
+		return -1;
+	}
+	dataStart = bfd_section_vma(kernelBfd, dataSection);
+	dataSize = bfd_section_size(kernelBfd,dataSection);
+	cout << bfd_section_name(kernelBFD,dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
+
+	bfd_close(kernelBfd);
+	
+	return 0;
+}
+
+static int extractStructDefs(const char *filename) {
+	CusIterArgs cusIterArgs;
+	struct conf_load confLoad;
+	FILE *structsLayoutOFile;
+	
+	dwarves__init(0);
+	struct cus *cus = cus__new();
+	if (cus == NULL) {
+		cerr << "Insufficient memory" << endl;
+		return -1;
+	}
+
+	memset(&confLoad,0,sizeof(confLoad));
+	// Load the dwarf information of every compilation unit
+	if (cus__load_file(cus, &confLoad, filename) != 0) {
+		cerr << "No debug information found in " << filename << endl;
+		return -1;
+	}
+	
+	memset(&cusIterArgs,0,sizeof(cusIterArgs));
+	
+	// Open the output file and add the header
+	structsLayoutOFile = fopen("structs_layout.csv","w+");
+	if (structsLayoutOFile == NULL) {
+		perror("fopen structs_layout.csv");
+		cus__delete(cus);
+		dwarves__exit();
+		return -1;
+	}
+	fprintf(structsLayoutOFile,"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
+	
+	// Pass the context information to the callback: types array and the outputfile
+	cusIterArgs.types = (DataType*)&types;
+	cusIterArgs.fp = structsLayoutOFile;
+	// Iterate through every compilation unit, and look for information about the datatypes of interest
+	cus__for_each_cu(cus, convert_cus_iterator,&cusIterArgs,NULL);
+
+	fclose(structsLayoutOFile);
+	cus__delete(cus);
+	dwarves__exit();
+
+	return 0;	
 }
 
 int main(int argc, char *argv[]) {
@@ -188,60 +324,49 @@ int main(int argc, char *argv[]) {
 	pair<map<int,Lock>::iterator,bool> retLock;
 	map<int,Lock>::iterator itLock, itTemp;
 	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee;
-#ifdef NEED_BSS_DATA
-	unsigned long long bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
-#endif
 	int lineCounter = 0, i;
-	char action, param;
+	char action, param, *vmlinuxName = NULL;
 	
 	if (argc < 2) {
 		cerr << "Need at least an input file!" << endl;
 		return EXIT_FAILURE;
 	}
 
-#ifdef NEED_BSS_DATA
-	while ((param = getopt(argc,argv,"b:d:")) != -1) {
-		switch (param) {
-			case 'b':
-				token.clear();
-				token.append(optarg);
-				if (token.find(":") == string::npos) {
-					printUsageAndExit(argv[0]);
-				}
-				bssStart = std::stoull(token.substr(0,token.find(":")),NULL,10);
-				bssSize = std::stoull(token.substr(token.find(":") + 1),NULL,10);
-				break;
-		
-			case 'd':
-				token.clear();
-				token.append(optarg);
-				if (token.find(":") == string::npos) {
-					printUsageAndExit(argv[0]);
-				}
-				dataStart = std::stoull(token.substr(0,token.find(":")),NULL,10);
-				dataSize = std::stoull(token.substr(token.find(":") + 1),NULL,10);				
+	while ((param = getopt(argc,argv,"k:")) != -1) {
+		switch (param) {				
+			case 'k':
+				vmlinuxName = optarg;
 				break;
 		}
+	}
+	if (vmlinuxName == NULL || optind == argc) {
+		printUsageAndExit(argv[0]);
+	}	
+
+	types[0].typeStr = "task_struct";
+	types[0].foundInDw = 0;
+	types[0].id = 1;
+	types[1].typeStr = "inode";
+	types[1].foundInDw = 0;
+	types[1].id = 2;
+	types[2].typeStr = "super_block";
+	types[2].foundInDw = 0;
+	types[2].id = 3;
+
+	if (readSections(vmlinuxName)) {
+		return EXIT_FAILURE;
+	}
+
+	if (extractStructDefs(vmlinuxName)) {
+		return EXIT_FAILURE;
 	}
 	
 	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
 		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
 		printUsageAndExit(argv[0]);
 	}
-	if (optind == argc) {
-		printUsageAndExit(argv[0]);
-	}
-#endif	
-	
-	types[0].typeStr = "task_struct";
-	types[1].typeStr = "inode";
-	types[2].typeStr = "super_block";
-	
-#ifdef NEED_BSS_DATA
+
 	ifstream infile(argv[optind]);
-#else
-	ifstream infile(argv[0]);
-#endif
 	if (!infile.is_open()) {
 		cerr << "Cannot open file: " << argv[1] << endl;
 		return EXIT_FAILURE;
@@ -254,15 +379,15 @@ int main(int argc, char *argv[]) {
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	// Add the header. Hallo, Horst. :)
-	datatypesOFile << "id" << DELIMITER << "name" << endl;
-	allocOFile << "id" << DELIMITER << "type_id" << DELIMITER << "ptr" << DELIMITER << "size" << DELIMITER << "start" << DELIMITER << "end" << endl;
-	accessOFile << "id" << DELIMITER << "alloc_id" << DELIMITER << "ts" << DELIMITER << "type" << DELIMITER << "address" << DELIMITER << "stackptr" << DELIMITER << "instrptr" << endl;
-	locksOFile << "id" << DELIMITER << "ptr" << DELIMITER << "var" << DELIMITER << "embedded" << DELIMITER << "locktype" << endl;
-	locksHeldOFile << "lock_id" << DELIMITER << "access_id" << DELIMITER << "start" << endl;
+	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
+	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
+	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR << "stackptr" << DELIMITER_CHAR << "instrptr" << endl;
+	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR << "embedded" << DELIMITER_CHAR << "locktype" << endl;
+	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << endl;
 
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
-		datatypesOFile << i + 1 << DELIMITER << types[i].typeStr << endl;
+		datatypesOFile << types[i].id << DELIMITER_CHAR << types[i].typeStr << endl;
 	}
 
 	// Start reading the inputfile
@@ -279,8 +404,8 @@ int main(int argc, char *argv[]) {
 			}
 
 			ss << inputLine;
-			// Tokenize each line by DELIMITER, and store each element in a vector
-			while (getline(ss,token,DELIMITER)) {
+			// Tokenize each line by DELIMITER_CHAR, and store each element in a vector
+			while (getline(ss,token,DELIMITER_CHAR)) {
 				lineElems.push_back(token);
 			}
 			
@@ -362,7 +487,7 @@ int main(int argc, char *argv[]) {
 							}
 							tempAlloc = itAlloc->second;
 							// An allocations datatype is 
-							allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << ptr << DELIMITER << dec << size << DELIMITER << dec << tempAlloc.start << DELIMITER << ts << "\n";
+							allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
 							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 								if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
@@ -463,15 +588,13 @@ int main(int argc, char *argv[]) {
 							if (!retLock.second) {
 								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 							}
-							locksOFile << dec << tempLock.key << DELIMITER << tempLock.typeStr << DELIMITER << tempLock.ptr << DELIMITER;
+							locksOFile << dec << tempLock.key << DELIMITER_CHAR << tempLock.typeStr << DELIMITER_CHAR << tempLock.ptr << DELIMITER_CHAR;
 							if (tempLock.datatype_idx == -1) {
 								locksOFile << "-1";
 							} else {
-								// datatype_idx is an index into to datatypes array. Since the idx should be an id for the database, it is incremented by one.
-								// Thus, index 0 will be 1 and so on.
-								locksOFile <<  tempLock.datatype_idx + 1;
+								locksOFile <<  tempLock.datatype_idx;
 							}
-							locksOFile << DELIMITER << tempLock.lockType << "\n";
+							locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
 							break;
 
 					case 'w':
@@ -497,8 +620,8 @@ int main(int argc, char *argv[]) {
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		tempAlloc = itAlloc->second;
-		allocOFile << tempAlloc.id << DELIMITER << tempAlloc.idx + 1 << DELIMITER << itAlloc->first << DELIMITER;
-		allocOFile << dec << tempAlloc.size << DELIMITER << dec << tempAlloc.start << DELIMITER << "-1" << "\n";
+		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
+		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "-1" << "\n";
 	}
 	allocOFile.flush();
 	
