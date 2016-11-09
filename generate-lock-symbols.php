@@ -29,10 +29,10 @@ if ($lazy) {
 
 $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
 		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in,
-		 ac.address - a.ptr AS offset, ac.size, sl.member
+		 ac.address - a.ptr AS offset, ac.size, sl.member, sl.offset AS member_offset
 	  FROM accesses AS ac
 	  INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	  LEFT JOIN structs_layout AS sl ON ld.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+	  LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 	  $join_type JOIN locks_held AS lh ON lh.access_id=ac.id
 	  $join_type JOIN locks AS l ON l.id=lh.lock_id
 	  LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
@@ -62,7 +62,7 @@ if ($debug) {
 	$line = "";
 }
 
-$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in" . $delimiter . "offset" . $delimiter . "size\n";
+$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in" . $delimiter . "offset" . $delimiter . "size" . "member" . $delimiter . "member_offset\n";
 fwrite($outfile,$line);
 $i = 0;
 $k = 0;
