@@ -62,5 +62,6 @@ CREATE TABLE `lock_symbols` (
   `lock_types` varchar(255) DEFAULT NULL,
   `embedded_in` varchar(255) DEFAULT NULL,
   `offset` bigint(20) DEFAULT NULL,
-  `size` bigint(20) DEFAULT NULL
+  `size` bigint(20) DEFAULT NULL,
+  `member` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
