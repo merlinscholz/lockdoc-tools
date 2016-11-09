@@ -33,16 +33,16 @@ ORDER BY ac.id
 
 -- Get a distribution of locks held during a memory access for a certain type or instance
 SELECT ls.alloc_id,ac.ts,dt.name,a.ptr,ls.type,locks,offset, count(lock_types) as num
-FROM lock_symbols As ls
+FROM lock_symbols AS ls
 INNER JOIN allocations AS a ON a.id=ls.alloc_id
 INNER JOIN accesses AS ac ON ac.id=ls.ac_id
 INNER JOIN data_types AS dt ON dt.id=a.type
 -- WHERE a.type=X
-WHERE a.ptr=Y
+WHERE a.id=Y
 -- GROUP BY alloc_id,locks
  GROUP BY alloc_id,locks,type
--- GROUP BY alloc_id,locks,type,offset
-ORDER BY num DESC, offset ASC
+-- GROUP BY alloc_id,locks,type,member
+ORDER BY num DESC, member ASC
 -- LIMIT 0,10;
 
 -- Count the number of memory accesses without any lock beeing held
