@@ -10,25 +10,15 @@ WHERE as.id IS NULL OR a.id IS NULL OR l.id IS NULL OR dt.id IS NULL;
 -- Generates the same output as generate-lock-symbols.php
 SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS datatype,
 	   GROUP_CONCAT(lh.lock_id SEPARATOR '+') AS locks, GROUP_CONCAT(l.type SEPARATOR '+') AS lock_types,
-	   GROUP_CONCAT(IFNULL(a2.type,"null") SEPARATOR '+') AS embedded_in, ac.address - a.ptr AS offset, ac.size
+	   GROUP_CONCAT(IFNULL(a2.type,"null") SEPARATOR '+') AS embedded_in_type, ac.address - a.ptr AS offset, ac.size, sl.member,
+       GROUP_CONCAT(IF(l.embedded_in = a.id,'1','0') SEPARATOR '+') AS embedded_in_same
 FROM accesses AS ac
+LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
 INNER JOIN locks_held AS lh ON lh.access_id=ac.id
 INNER JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 GROUP BY ac.id
--- LIMIT 0,10
-
--- Is used as input for generate-lock-symbols.php
-SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
-	 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in,
-	 ac.address - a.ptr AS offset, ac.size
-FROM accesses AS ac
-INNER JOIN allocations AS a ON a.id=ac.alloc_id
-INNER JOIN locks_held AS lh ON lh.access_id=ac.id
-INNER JOIN locks AS l ON l.id=lh.lock_id
-LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-ORDER BY ac.id
 -- LIMIT 0,10
 
 -- Get a distribution of locks held during a memory access for a certain type or instance
@@ -50,7 +40,7 @@ SELECT COUNT(*)
 FROM accesses As ac
 LEFT JOIN locks_held AS lh ON lh.access_id=ac.id
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
-WHERE lh.start IS NULL -- AND a.ptr=4118814080;
+WHERE lh.start IS NULL -- AND a.id=2;
 
 -- Count the number of memory accesses with at least one lock beeing held
 SELECT COUNT(*)

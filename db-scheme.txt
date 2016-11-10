@@ -60,7 +60,8 @@ CREATE TABLE `lock_symbols` (
   `data_type` bigint(20) DEFAULT NULL,
   `locks` varchar(255) DEFAULT NULL,
   `lock_types` varchar(255) DEFAULT NULL,
-  `embedded_in` varchar(255) DEFAULT NULL,
+  `embedded_in_type` varchar(255) DEFAULT NULL,
+  `embedded_in_same` varchar(255) DEFAULT NULL,
   `offset` bigint(20) DEFAULT NULL,
   `size` bigint(20) DEFAULT NULL,
   `member` varchar(255) DEFAULT NULL
