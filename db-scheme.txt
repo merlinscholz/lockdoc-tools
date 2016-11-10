@@ -36,7 +36,7 @@ CREATE TABLE `locks_held` (															-- Normally, there are several entries
   `access_id` bigint(20) NOT NULL,													-- References the access
   `start` bigint(20) DEFAULT NULL,													-- The timestamp when the lock was acquired
   `lastFile` varchar(255) DEFAULT NULL,
-  `lastLine` varchar(255) DEFAULT NULL,
+  `lastLine` bigint(20) DEFAULT NULL,
   `lastFn` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`lock_id`,`access_id`),
   KEY `fk_access_id` (`access_id`)
