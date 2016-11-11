@@ -1022,6 +1022,18 @@ const char *function__name(struct function *func, const struct cu *cu)
 	return s(cu, func->name);
 }
 
+const char *cus__get_function_at_addr(const struct cus *cus,uint64_t addr) 
+{
+	struct cu *cu;
+
+	struct function *func = cus__find_function_at_addr(cus, addr, &cu);
+	if (func) {
+		return function__name(func, cu);
+	} else {
+		return "unknown";
+	}
+}
+
 static void parameter__delete(struct parameter *parm, struct cu *cu)
 {
 	obstack_free(&cu->obstack, parm);

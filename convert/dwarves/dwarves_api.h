@@ -213,6 +213,8 @@ void class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long l
 struct tag *cu__find_struct_by_name(const struct cu *cu, const char *name,
 				    const int include_decls, uint16_t *id);
 
+const char *cus__get_function_at_addr(const struct cus *cus,uint64_t addr);
+
 int dwarves__init(uint16_t user_cacheline_size);
 void dwarves__exit(void);
 

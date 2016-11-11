@@ -124,6 +124,8 @@ static unsigned long long curAllocKey = 1;
  */
 static unsigned long long curAccessKey = 1;
 
+static struct cus *cus;
+
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf;
 	cerr << " -k <path/to/vmlinux";
@@ -133,6 +135,7 @@ static void printUsageAndExit(const char *elf) {
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<int,Lock> *pLockPrimKey) {
 	map<int,Lock>::iterator itLock;
+	Lock tempLock;
 	vector<MemAccess>::iterator itAccess;
 	MemAccess tempAccess;
 	MemAccess window[LOOK_BEHIND_WINDOW];
@@ -173,11 +176,15 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		tempAccess = *itAccess;
 		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
-		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr << "\n";	
+		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
+		*pMemAccessOFile << DELIMITER_CHAR << cus__get_function_at_addr(cus,tempAccess.instrPtr) << "\n";	
 		// Create an entry for each lock being held
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
-			if (itLock->second.held == 1) {
-				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR  << itLock->second.start << "\n";
+			tempLock = itLock->second;
+			if (tempLock.held == 1) {
+				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id;
+				*pLocksHeldOFile << DELIMITER_CHAR  << tempLock.start << DELIMITER_CHAR << tempLock.lastFile << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << "\n";
 			}
 		}
 	}
@@ -268,19 +275,13 @@ static int readSections(const char *filename) {
 	return 0;
 }
 
-static int extractStructDefs(const char *filename) {
+static int extractStructDefs(struct cus *cus, const char *filename) {
 	CusIterArgs cusIterArgs;
 	struct conf_load confLoad;
-	FILE *structsLayoutOFile;
-	
-	dwarves__init(0);
-	struct cus *cus = cus__new();
-	if (cus == NULL) {
-		cerr << "Insufficient memory" << endl;
-		return -1;
-	}
+	FILE *structsLayoutOFile;	
 
 	memset(&confLoad,0,sizeof(confLoad));
+	confLoad.get_addr_info = true;
 	// Load the dwarf information of every compilation unit
 	if (cus__load_file(cus, &confLoad, filename) != 0) {
 		cerr << "No debug information found in " << filename << endl;
@@ -306,9 +307,7 @@ static int extractStructDefs(const char *filename) {
 	cus__for_each_cu(cus, convert_cus_iterator,&cusIterArgs,NULL);
 
 	fclose(structsLayoutOFile);
-	cus__delete(cus);
-	dwarves__exit();
-
+	
 	return 0;	
 }
 
@@ -357,10 +356,17 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	if (extractStructDefs(vmlinuxName)) {
+	dwarves__init(0);
+	cus = cus__new();
+	if (cus == NULL) {
+		cerr << "Insufficient memory" << endl;
+		return -1;
+	}
+
+	if (extractStructDefs(cus,vmlinuxName)) {
 		return EXIT_FAILURE;
 	}
-	
+
 	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
 		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
 		printUsageAndExit(argv[0]);
@@ -381,9 +387,9 @@ int main(int argc, char *argv[]) {
 	// Add the header. Hallo, Horst. :)
 	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
 	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
-	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR << "stackptr" << DELIMITER_CHAR << "instrptr" << endl;
+	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
 	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR << "embedded" << DELIMITER_CHAR << "locktype" << endl;
-	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << endl;
+	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << endl;
 
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
@@ -631,7 +637,10 @@ int main(int argc, char *argv[]) {
 	accessOFile.close();
 	locksOFile.close();
 	locksHeldOFile.close();
-	
+
+	cus__delete(cus);
+	dwarves__exit();
+
 	cerr << "Finished." << endl;
 
 	return EXIT_SUCCESS;
