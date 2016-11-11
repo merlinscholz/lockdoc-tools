@@ -7,6 +7,7 @@ CREATE TABLE `accesses` (
   `address` bigint(20) DEFAULT NULL,												-- The start address of this access
   `stackptr` bigint(20) DEFAULT NULL,												-- stack pointer
   `instrptr` bigint(20) DEFAULT NULL,												-- current instruction pointer when the access happened
+  `fn` varchar(255) DEFAULT NULL,													-- The function name (aka resolved instruction pointer)
   PRIMARY KEY (`id`),
   KEY `fk_alloc_id` (`alloc_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
@@ -67,5 +68,6 @@ CREATE TABLE `lock_symbols` (
   `embedded_in_same` varchar(255) DEFAULT NULL,
   `offset` bigint(20) DEFAULT NULL,
   `size` bigint(20) DEFAULT NULL,
-  `member` varchar(255) DEFAULT NULL
+  `member` varchar(255) DEFAULT NULL,
+  `pos` varchar(400) DEFAULT NULL,
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
