@@ -22,18 +22,21 @@ GROUP BY ac.id
 -- LIMIT 0,10
 
 -- Get a distribution of locks held during a memory access for a certain type or instance
-SELECT ls.alloc_id,ac.ts,dt.name,a.ptr,ls.type,locks,offset, count(lock_types) as num
+-- SELECT ls.alloc_id,ac.ts,dt.name,a.ptr,ls.type,locks,offset, embedded_in_type, embedded_in_same, count(*) as num,member,member_offset
+SELECT ls.type, locks, embedded_in_type, embedded_in_same, count(*) as num, member
 FROM lock_symbols AS ls
 INNER JOIN allocations AS a ON a.id=ls.alloc_id
 INNER JOIN accesses AS ac ON ac.id=ls.ac_id
 INNER JOIN data_types AS dt ON dt.id=a.type
 -- WHERE a.type=X
-WHERE a.id=Y
+WHERE a.id=2
 -- GROUP BY alloc_id,locks
- GROUP BY alloc_id,locks,type
+-- GROUP BY alloc_id,locks,type
 -- GROUP BY alloc_id,locks,type,member
-ORDER BY num DESC, member ASC
+ GROUP BY ls.alloc_id, ls.type, ls.locks, ls.member
+ORDER BY member ASC, num DESC
 -- LIMIT 0,10;
+
 
 -- Count the number of memory accesses without any lock beeing held
 SELECT COUNT(*)
@@ -53,3 +56,36 @@ FROM
 	WHERE lh.start IS NOT NULL -- AND a.ptr=4118814080
 	GROUP BY ac.id
 ) AS foo
+
+SELECT  ac_type,
+        locks,
+        lock_types,
+        embedded_in_type,
+        embedded_in_same,
+        member,
+        COUNT(*) AS num
+FROM
+(
+        SELECT  ac.id AS ac_id,
+                ac.alloc_id,
+                ac.type AS ac_type,
+                -- a.type AS datatype,
+                -- IFNULL(lh.lock_id,"null") AS lock_id,
+                -- IFNULL(l.type,"null") AS lock_type,
+                -- IFNULL(a2.type,"null") AS embedded_in_type,
+                GROUP_CONCAT(IFNULL(lh.lock_id,"null") SEPARATOR '+') AS locks,
+                GROUP_CONCAT(IFNULL(l.type,"null") SEPARATOR '+') AS lock_types,
+                GROUP_CONCAT(IFNULL(a2.type,"null") SEPARATOR '+') AS embedded_in_type,
+                GROUP_CONCAT(IF(l.embedded_in = a.id,'1','0') SEPARATOR '+') AS embedded_in_same,
+                -- ac.address - a.ptr AS offset, ac.size,
+                sl.member
+        FROM accesses AS ac
+        INNER JOIN allocations AS a ON a.id=ac.alloc_id
+        LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+        LEFT JOIN locks_held AS lh ON lh.access_id=ac.id
+        LEFT JOIN locks AS l ON l.id=lh.lock_id
+        LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
+        WHERE a.id=2 AND (l.embedded_in = a.id OR l.type = 'rcu') AND sl.member = 'i_flags'
+        GROUP BY ac.id
+) t
+GROUP BY alloc_id, locks, member
