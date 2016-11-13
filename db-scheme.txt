@@ -36,9 +36,10 @@ CREATE TABLE `locks_held` (															-- Normally, there are several entries
   `lock_id` bigint(20) NOT NULL,													-- References a lock which was held during the access
   `access_id` bigint(20) NOT NULL,													-- References the access
   `start` bigint(20) DEFAULT NULL,													-- The timestamp when the lock was acquired
-  `lastFile` varchar(255) DEFAULT NULL,
-  `lastLine` bigint(20) DEFAULT NULL,
-  `lastFn` varchar(255) DEFAULT NULL,
+  `lastFile` varchar(255) DEFAULT NULL,												-- Last file
+  `lastLine` bigint(20) DEFAULT NULL,												-- Last line 
+  `lastFn` varchar(255) DEFAULT NULL,												-- Last function where the lock has been acquired from
+  `lastPreemptCount` bigint(20) DEFAULT NULL,										-- Value of preemptcount() after the lock has been acquired
   PRIMARY KEY (`lock_id`,`access_id`),
   KEY `fk_access_id` (`access_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
