@@ -43,6 +43,7 @@ struct Lock {
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
 	string lastLockFn;											// Lock function used the last time
+	int lastPreemptCount;											// Value of preemptcount() after the lock has been acquired
 	int datatype_idx;										    // An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
 	string lockType;											// Describes the lock type
 };
@@ -184,7 +185,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 			if (tempLock.held == 1) {
 				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id;
 				*pLocksHeldOFile << DELIMITER_CHAR  << tempLock.start << DELIMITER_CHAR << tempLock.lastFile << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << "\n";
+				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << DELIMITER_CHAR << tempLock.lastPreemptCount << "\n";
 			}
 		}
 	}
@@ -322,7 +323,7 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	pair<map<int,Lock>::iterator,bool> retLock;
 	map<int,Lock>::iterator itLock, itTemp;
-	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee;
+	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0, i;
 	char action, param, *vmlinuxName = NULL;
 	
@@ -389,7 +390,7 @@ int main(int argc, char *argv[]) {
 	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
 	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR << "embedded" << DELIMITER_CHAR << "locktype" << endl;
-	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << endl;
+	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR << "lastPreemptCount" << endl;
 
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
@@ -444,13 +445,16 @@ int main(int argc, char *argv[]) {
 				lockfn = lineElems.at(8);
 				lockType = lineElems.at(9);
 				if (lineElems.at(10).compare("NULL") != 0) {
-					address = std::stoull(lineElems.at(10),NULL,16);
+					preemptCount = std::stoull(lineElems.at(10),NULL,16);
 				}
 				if (lineElems.at(11).compare("NULL") != 0) {
-					instrPtr = std::stoull(lineElems.at(11),NULL,16);
+					address = std::stoull(lineElems.at(11),NULL,16);
 				}
 				if (lineElems.at(12).compare("NULL") != 0) {
-					stackPtr = std::stoull(lineElems.at(12),NULL,16);
+					instrPtr = std::stoull(lineElems.at(12),NULL,16);
+				}
+				if (lineElems.at(13).compare("NULL") != 0) {
+					stackPtr = std::stoull(lineElems.at(13),NULL,16);
 				}
 				
 			} catch (exception &e) {
@@ -548,6 +552,7 @@ int main(int argc, char *argv[]) {
 									itLock->second.lastFile = file;
 									itLock->second.lastFn = fn;
 									itLock->second.lastLockFn = lockfn;
+									itLock->second.lastPreemptCount = preemptCount;
 									if (ptr == 0x42) {
 										itLock->second.held++;
 									} else {
