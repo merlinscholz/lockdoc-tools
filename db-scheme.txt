@@ -71,4 +71,5 @@ CREATE TABLE `lock_symbols` (
   `size` bigint(20) DEFAULT NULL,
   `member` varchar(255) DEFAULT NULL,
   `pos` varchar(400) DEFAULT NULL,
+  `preemptcount` varchar(255) DEFAULT NULL,
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
