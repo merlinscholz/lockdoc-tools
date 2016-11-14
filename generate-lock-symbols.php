@@ -31,7 +31,8 @@ $query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
 		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in_type,
 		 IF(l.embedded_in = a.id,'1','0') AS embedded_in_same,
 		 ac.address - a.ptr AS offset, ac.size, sl.member, sl.offset AS member_offset,
-		 IF(lh.lastFile IS NULL,NULL,CONCAT_WS(':',lh.lastFile,lh.lastLine,lh.lastFn)) AS pos
+		 IF(lh.lastFile IS NULL,NULL,CONCAT_WS(':',lh.lastFile,lh.lastLine,lh.lastFn)) AS pos,
+		 HEX(lh.lastPreemptCount) AS  lastPreemptCount
 	  FROM accesses AS ac
 	  INNER JOIN allocations AS a ON a.id=ac.alloc_id
 	  LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
@@ -64,7 +65,7 @@ if ($debug) {
 	$line = "";
 }
 
-$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_type" .$delimiter . "embedded_in_same" . $delimiter . "offset" . $delimiter . "size" . $delimiter . "member" . $delimiter . "member_offset" . $delimiter ."pos\n";
+$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_type" .$delimiter . "embedded_in_same" . $delimiter . "offset" . $delimiter . "size" . $delimiter . "member" . $delimiter . "member_offset" . $delimiter ."pos" . $delimiter ."preemptcount\n";
 fwrite($outfile,$line);
 $i = 0;
 $k = 0;
@@ -84,6 +85,7 @@ while ($row) {
 	$embedded_in_type = array();
 	$embedded_in_same = array();
 	$pos = array();
+	$preemptcount = array();
 
 	do {
 		if (is_null($row['locks'])) {
@@ -111,6 +113,11 @@ while ($row) {
 		} else {
 			$pos[] = $row['pos'];
 		}
+		if (is_null($row['lastPreemptCount'])) {
+			$preemptcount[] = "null";
+		} else {
+			$preemptcount[] = $row['lastPreemptCount'];
+		}
 		$row = mysqli_fetch_assoc($result);
 		$i++;
 	} while ($row && $ac_id == $row['ac_id']);
@@ -123,7 +130,8 @@ while ($row) {
 	$line .= $alloc_id . $delimiter . $type . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter;
 	$line .= implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in_type) . $delimiter;
 	$line .= implode($delimiter_locks,$embedded_in_same) . $delimiter. $offset . $delimiter;
-	$line .= $size . $delimiter . $member . $delimiter . $member_offset . $delimiter . implode($delimiter_locks,$pos) . "\n";
+	$line .= $size . $delimiter . $member . $delimiter . $member_offset . $delimiter . implode($delimiter_locks,$pos);
+	$line .= $delimiter . implode($delimiter_locks,$preemptcount) . "\n";
 	$k++;
 	fwrite($outfile,$line);
 }
