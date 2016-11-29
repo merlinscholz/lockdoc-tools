@@ -40,6 +40,7 @@ CREATE TABLE `locks_held` (															-- Normally, there are several entries
   `lastLine` bigint(20) DEFAULT NULL,												-- Last line 
   `lastFn` varchar(255) DEFAULT NULL,												-- Last function where the lock has been acquired from
   `lastPreemptCount` bigint(20) DEFAULT NULL,										-- Value of preemptcount() after the lock has been acquired
+  `lastLockFn` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`lock_id`,`access_id`),
   KEY `fk_access_id` (`access_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
@@ -71,4 +72,6 @@ CREATE TABLE `lock_symbols` (
   `size` bigint(20) DEFAULT NULL,
   `member` varchar(255) DEFAULT NULL,
   `pos` varchar(400) DEFAULT NULL,
+  `preemptcount` varchar(255) DEFAULT NULL,
+  `ac_fn` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
