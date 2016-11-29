@@ -27,7 +27,7 @@ if ($lazy) {
 	$join_type = "INNER";
 }
 
-$query = "SELECT ac.id AS ac_id, ac.alloc_id,ac.type,a.type AS data_type,
+$query = "SELECT ac.id AS ac_id, ac.fn AS ac_fn, ac.alloc_id,ac.type,a.type AS data_type,
 		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in_type,
 		 IF(l.embedded_in = a.id,'1','0') AS embedded_in_same,
 		 ac.address - a.ptr AS offset, ac.size, sl.member, sl.offset AS member_offset,
@@ -65,7 +65,7 @@ if ($debug) {
 	$line = "";
 }
 
-$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_type" .$delimiter . "embedded_in_same" . $delimiter . "offset" . $delimiter . "size" . $delimiter . "member" . $delimiter . "member_offset" . $delimiter ."pos" . $delimiter ."preemptcount\n";
+$line .= "alloc_id" . $delimiter . "type" . $delimiter . "data_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_type" .$delimiter . "embedded_in_same" . $delimiter . "offset" . $delimiter . "size" . $delimiter . "member" . $delimiter . "member_offset" . $delimiter . "ac_fn" . $delimiter ."pos" . $delimiter ."preemptcount\n";
 fwrite($outfile,$line);
 $i = 0;
 $k = 0;
@@ -79,6 +79,7 @@ while ($row) {
 	$offset = $row['offset'];
 	$size = $row['size'];
 	$member = $row['member'];
+	$fn = $row['ac_fn'];
 	$member_offset = $row['member_offset'];
 	$locks = array();
 	$lock_types = array();
@@ -130,7 +131,8 @@ while ($row) {
 	$line .= $alloc_id . $delimiter . $type . $delimiter . $data_type . $delimiter . implode($delimiter_locks,$locks) . $delimiter;
 	$line .= implode($delimiter_locks,$lock_types) . $delimiter . implode($delimiter_locks,$embedded_in_type) . $delimiter;
 	$line .= implode($delimiter_locks,$embedded_in_same) . $delimiter. $offset . $delimiter;
-	$line .= $size . $delimiter . $member . $delimiter . $member_offset . $delimiter . implode($delimiter_locks,$pos);
+	$line .= $size . $delimiter . $member . $delimiter . $member_offset . $delimiter;
+	$line .= $fn . $delimiter . implode($delimiter_locks,$pos);
 	$line .= $delimiter . implode($delimiter_locks,$preemptcount) . "\n";
 	$k++;
 	fwrite($outfile,$line);

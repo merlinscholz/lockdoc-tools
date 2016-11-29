@@ -183,9 +183,10 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
 			tempLock = itLock->second;
 			if (tempLock.held == 1) {
-				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id;
-				*pLocksHeldOFile << DELIMITER_CHAR  << tempLock.start << DELIMITER_CHAR << tempLock.lastFile << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << DELIMITER_CHAR << tempLock.lastPreemptCount << "\n";
+				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLock.start << DELIMITER_CHAR << tempLock.lastFile << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLock.lastPreemptCount << DELIMITER_CHAR << tempLock.lastLockFn << "\n";
 			}
 		}
 	}
@@ -387,10 +388,20 @@ int main(int argc, char *argv[]) {
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	// Add the header. Hallo, Horst. :)
 	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
-	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
-	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
-	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR << "embedded" << DELIMITER_CHAR << "locktype" << endl;
-	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR << "lastPreemptCount" << endl;
+
+	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
+	allocOFile << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
+
+	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR;
+	accessOFile << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
+	accessOFile << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
+
+	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR;
+	locksOFile << "embedded" << DELIMITER_CHAR << "locktype" << endl;
+
+	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR;
+	locksHeldOFile << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR;
+	locksHeldOFile << "lastPreemptCount" << DELIMITER_CHAR << "lastLockFn" << endl;
 
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
