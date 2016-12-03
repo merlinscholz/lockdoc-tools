@@ -322,6 +322,7 @@ int main(int argc, char *argv[]) {
 								for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 									if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
 										i = itAlloc->second.idx;
+										break;
 									}
 								}
 								if (i < 0) {
@@ -356,7 +357,7 @@ int main(int argc, char *argv[]) {
 									}
 									itLock->second.held = 0;
 								}
-								// Since the lock alreadys exists, and the metainformation has been updated, no further actions are required
+								// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 								continue;
 							} else if (action == 'v') {
 								cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
