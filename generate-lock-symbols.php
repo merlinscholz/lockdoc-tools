@@ -27,20 +27,27 @@ if ($lazy) {
 	$join_type = "INNER";
 }
 
-$query = "SELECT ac.id AS ac_id, ac.fn AS ac_fn, ac.alloc_id,ac.type,a.type AS data_type,
-		 lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in_type,
-		 IF(l.embedded_in = a.id,'1','0') AS embedded_in_same,
-		 ac.address - a.ptr AS offset, ac.size, sl.member, sl.offset AS member_offset,
-		 IF(lh.lastFile IS NULL,NULL,CONCAT_WS(':',lh.lastFile,lh.lastLine,lh.lastFn)) AS pos,
-		 HEX(lh.lastPreemptCount) AS  lastPreemptCount
-	  FROM accesses AS ac
-	  INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	  LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
-	  $join_type JOIN locks_held AS lh ON lh.access_id=ac.id
-	  $join_type JOIN locks AS l ON l.id=lh.lock_id
-	  LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-	  ORDER BY ac.id
-	  -- LIMIT 0,100";
+$query = "
+SELECT
+	ac_id, ac_fn, alloc_id,ac_type, data_type, offset, ac_size, member, member_offset,
+	lh.lock_id AS locks, l.type AS lock_types, a2.type AS embedded_in_type,
+	IF(l.embedded_in = a_id,'1','0') AS embedded_in_same,
+	IF(lh.lastFile IS NULL,NULL,CONCAT_WS(':',lh.lastFile,lh.lastLine,lh.lastFn)) AS pos,
+	HEX(lh.lastPreemptCount) AS  lastPreemptCount
+FROM
+(
+	SELECT	a.id AS a_id, ac.id AS ac_id, ac.fn AS ac_fn, ac.alloc_id,ac.type AS ac_type,a.type AS data_type,
+		ac.address - a.ptr AS offset, ac.size AS ac_size, sl.member, sl.offset AS member_offset
+	FROM accesses AS ac
+	INNER JOIN allocations AS a ON a.id=ac.alloc_id
+	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+	GROUP BY ac.id
+) t
+$join_type JOIN locks_held AS lh ON lh.access_id=ac_id
+$join_type JOIN locks AS l ON l.id=lh.lock_id
+LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
+ORDER BY ac_id";
+
 if ($debug) {
 	echo "Executing query:\n". $query ."\n";
 }
@@ -74,10 +81,10 @@ $row = mysqli_fetch_assoc($result);
 while ($row) {
 	$ac_id = $row['ac_id'];
 	$alloc_id = $row['alloc_id'];
-	$type = $row['type'];
+	$type = $row['ac_type'];
 	$data_type = $row['data_type'];
 	$offset = $row['offset'];
-	$size = $row['size'];
+	$size = $row['ac_size'];
 	$member = $row['member'];
 	$fn = $row['ac_fn'];
 	$member_offset = $row['member_offset'];
