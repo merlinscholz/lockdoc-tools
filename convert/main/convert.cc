@@ -7,8 +7,12 @@
 #include <string>
 #include <vector>
 #include <bfd.h>
+#include <stack>
 #include "dwarves_api.h"
 #include "config.h"
+
+
+#define IS_MULTILVL_LOCK(x)	((x).ptr == 0x42)
 
 /**
  * Author: Alexander Lochmann 2016
@@ -30,6 +34,17 @@ enum AccessTypes {
 	TYPES_END
 };
 
+
+struct LockPos {
+	unsigned long long start;									// Timestamp when the lock has been acquired
+	int lastLine;												// Position within the file where the lock has been acquired for the last time
+	string lastFile;											// Last file from where the lock has been acquired
+	string lastFn;												// Last caller
+	string lastLockFn;											// Lock function used the last time
+	int lastPreemptCount;											// Value of preemptcount() after the lock has been acquired
+
+};
+
 /**
  * Describes an instance of a lock
  */
@@ -38,14 +53,9 @@ struct Lock {
 	int held;													// Indicates wether the lock is held or not
 	unsigned long long key;										// A unique id which describes a particular lock within our dataset
 	string typeStr;												// Describes the argument provided to the lock function
-	unsigned long long start;									// Timestamp when the lock has been acquired
-	int lastLine;												// Position within the file where the lock has been acquired for the last time
-	string lastFile;											// Last file from where the lock has been acquired
-	string lastFn;												// Last caller
-	string lastLockFn;											// Lock function used the last time
-	int lastPreemptCount;											// Value of preemptcount() after the lock has been acquired
 	int datatype_idx;										    // An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
 	string lockType;											// Describes the lock type
+	stack<LockPos> lastNPos;
 };
 
 /**
@@ -137,6 +147,7 @@ static void printUsageAndExit(const char *elf) {
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<int,Lock> *pLockPrimKey) {
 	map<int,Lock>::iterator itLock;
 	Lock tempLock;
+	LockPos tempLockPos;
 	vector<MemAccess>::iterator itAccess;
 	MemAccess tempAccess;
 	MemAccess window[LOOK_BEHIND_WINDOW];
@@ -182,11 +193,12 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		// Create an entry for each lock being held
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
 			tempLock = itLock->second;
-			if (tempLock.held == 1) {
+			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
+				tempLockPos = itLock->second.lastNPos.top();
 				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLock.start << DELIMITER_CHAR << tempLock.lastFile << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLock.lastLine << DELIMITER_CHAR << tempLock.lastFn << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLock.lastPreemptCount << DELIMITER_CHAR << tempLock.lastLockFn << "\n";
+				*pLocksHeldOFile << tempLockPos.start << DELIMITER_CHAR << tempLockPos.lastFile << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
+				*pLocksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
 			}
 		}
 	}
@@ -320,6 +332,7 @@ int main(int argc, char *argv[]) {
 	Allocation tempAlloc;
 	MemAccess tempAccess;
 	Lock tempLock;
+	LockPos tempLockPos;
 	pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc;
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	pair<map<int,Lock>::iterator,bool> retLock;
@@ -558,12 +571,12 @@ int main(int argc, char *argv[]) {
 									cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
 #endif
 									itLock->second.typeStr = typeStr;
-									itLock->second.start = ts;
-									itLock->second.lastLine = line;
-									itLock->second.lastFile = file;
-									itLock->second.lastFn = fn;
-									itLock->second.lastLockFn = lockfn;
-									itLock->second.lastPreemptCount = preemptCount;
+									tempLockPos.start = ts;
+									tempLockPos.lastLine = line;
+									tempLockPos.lastFile = file;
+									tempLockPos.lastFn = fn;
+									tempLockPos.lastLockFn = lockfn;
+									tempLockPos.lastPreemptCount = preemptCount;
 									if (ptr == 0x42) {
 										itLock->second.held++;
 									} else {
@@ -573,6 +586,7 @@ int main(int argc, char *argv[]) {
 										}
 										itLock->second.held = 1;
 									}
+									itLock->second.lastNPos.push(tempLockPos);
 								} else if (action == 'v') {
 									if (ptr == 0x42) {
 										if (itLock->second.held == 0) {
@@ -587,6 +601,7 @@ int main(int argc, char *argv[]) {
 										}
 										itLock->second.held = 0;
 									}
+									itLock->second.lastNPos.pop();
 								}
 								// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 								continue;
@@ -597,14 +612,17 @@ int main(int argc, char *argv[]) {
 							tempLock.ptr = ptr;
 							tempLock.held = 1;
 							tempLock.key = curLockKey++;
-							tempLock.typeStr = typeStr;
-							tempLock.start = ts;
-							tempLock.lastLine = line;
-							tempLock.lastFile = file;
-							tempLock.lastFn = fn;
-							tempLock.lastLockFn = lockfn;
 							tempLock.datatype_idx = i;
 							tempLock.lockType = lockType;
+							tempLock.typeStr = typeStr;
+							tempLockPos.start = ts;
+							tempLockPos.lastLine = line;
+							tempLockPos.lastFile = file;
+							tempLockPos.lastFn = fn;
+							tempLockPos.lastLockFn = lockfn;
+							tempLockPos.lastPreemptCount = preemptCount;
+							new (&tempLock.lastNPos) stack<LockPos>();
+							tempLock.lastNPos.push(tempLockPos);
 							// Insert lock into map, and write entry to file
 							retLock = lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,tempLock));
 							if (!retLock.second) {
