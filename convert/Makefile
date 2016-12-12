@@ -44,9 +44,9 @@ INCLUDE_PATHS+= -I$(MAIN_DIR)
 #***************************** COMMANDS AND FLAGS *****************************
 # COMPILER AND LINKER FLAGS
 CC:=gcc
-C_FLAGS := -Wall -Werror -c -g $(INCLUDE_PATHS)
+C_FLAGS := -O3 -Wall -Werror -c -g $(INCLUDE_PATHS)
 CXX:=g++
-CXX_FLAGS:= -Wall -Werror -c -g -std=c++11 $(INCLUDE_PATHS)
+CXX_FLAGS:= -O3 -Wall -Werror -c -g -std=c++11 $(INCLUDE_PATHS)
 LD:=gcc
 LD_FLAGS :=
 LD_LIBS := -ldw -lelf -lz -lbfd
