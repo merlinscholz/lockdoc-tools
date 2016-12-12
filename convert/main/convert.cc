@@ -254,7 +254,6 @@ static int readSections(const char *filename) {
 	kernelBfd = bfd_openr(filename,"elf32-i386");
 	if (kernelBfd == NULL) {
 		bfd_perror("open vmlinux");
-		bfd_close(kernelBfd);
 		return -1;
 	}
 	// This check is not only a sanity check. Moreover, it is necessary
