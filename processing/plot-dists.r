@@ -11,9 +11,9 @@ spec = matrix(c(
 opt = getopt(spec);
 
 if (is.null(opt$inputfile)) {
-  inputfile = "dists.txt"
+  inputfname = "dists.txt"
 } else {
-  inputfile = opt$inputfile
+  inputfname = opt$inputfile
 }
 
 if (is.null(opt$member)) {
@@ -22,7 +22,12 @@ if (is.null(opt$member)) {
   memberFilter = opt$member
 }
 
-cat(sprintf("Reading %s ...\n",inputfile))
+if (inputfname == "-") {
+  inputfname = "stdin"
+}
+inputfile <- file(inputfname);
+open(inputfile)
+cat(sprintf("Reading %s ...\n",inputfname))
 data <- read.csv(inputfile,header=T,sep=";")
 ac_types <- c("r","w")
 members <- unlist(data$member)

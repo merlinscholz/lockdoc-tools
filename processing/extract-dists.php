@@ -1,13 +1,23 @@
 #!/usr/bin/php
 <?php
-$db_conf_file='/fs/scratch/al/coccinelle/tools/my.cnf';
+$db_conf_file='~/.my.cnf';
 $delimiter = ";";
+$default_db = "lockdebugging";
+$default_port = 3306;
 
-$options = getopt("d:f:m:a:i:");
+$options = getopt("d:f:m:a:i:c:l:");
 if ($options == FALSE ||
     !array_key_exists('f',$options) || strlen(trim($options['f'])) == 0 ||
     !array_key_exists('d',$options) || strlen(trim($options['d'])) == 0) {
 	die(usage($argv[0])."\n");
+}
+
+if (array_key_exists('l',$options)) {
+	$db_conf_file = $options['l'];
+}
+$db_conf = parse_ini_file($db_conf_file,true);
+if (!$db_conf) {
+	die("Cannot read db conf file: " . $db_conf_file . "\n");
 }
 
 if (array_key_exists('m',$options)) {
@@ -34,15 +44,31 @@ if (array_key_exists('i',$options)) {
 	$instance_filter = null;
 }
 
-$outfile_name = $options['f'];
-$datatype = $options['d']; 
+if (array_key_exists('p',$options)) {
+	$db_conf['client']['port'] = $options['p'];
+} else if (isset($db_conf['client']['port'])) {
+	fwrite(STDERR,"Using port specified in configfile.\n");
+} else {
+	fwrite(STDERR,"Using default port: " . $default_port . "\n");
+	$db_conf['client']['port'] = $default_port;
+}
 
+if (array_key_exists('w',$options)) {
+	$db_conf['client']['database'] = $options['w'];
+} else if (isset($db_conf['client']['database'])) {
+	fwrite(STDERR,"Using database specified in configfile.\n");
+} else {
+	fwrite(STDERR,"Using default database: " . $default_db . "\n");
+	$db_conf['client']['database'] = $default_db;
+}
+
+$outfile_name = $options['f'];
+$datatype = $options['d'];
 
 $sql = new mysqli;
 $sql->init();
 //$sql->options(MYSQLI_READ_DEFAULT_FILE,$db_conf_file);
 //$sql->options(MYSQLI_READ_DEFAULT_GROUP,'client');
-$db_conf = parse_ini_file($db_conf_file,true);
 $contexts = array("unknown" => "lh.start IS NULL",						// 
 		  "hardirq" => "lh.start IS NOT NULL AND lh.lastPreemptCount & 0xf0000",
 		  "softirq" => "lh.start IS NOT NULL AND lh.lastPreemptCount & 0x0ff00",
@@ -96,8 +122,12 @@ FROM
 GROUP BY ac_type, lock_types, sl_member
 ORDER BY num DESC;";
 
+if (!isset($db_conf['client']['database'])) {
+	$db_conf['client']['database'] = $default_db;
+}
 
-$sql->real_connect($db_conf['client']['host'],$db_conf['client']['user'],$db_conf['client']['password'],$db_conf['client']['database']);
+fwrite(STDERR,"Connecting to \"" . $db_conf['client']['user'] . "@" . $db_conf['client']['host'] . ":" . $db_conf['client']['port'] . "\". Using db \"" . $db_conf['client']['database'] . "\".\n");
+$sql->real_connect($db_conf['client']['host'],$db_conf['client']['user'],$db_conf['client']['password'],$db_conf['client']['database'],$db_conf['client']['port']);
 if ($sql->connect_errno) {
 	die($sql->connect_error . "\n");
 }
@@ -166,15 +196,18 @@ foreach ($ac_types AS $ac_type) {
 		$dist_query .= sprintf($dist_query_raw, $id, $member_clause, $ac_type, $instance_clause, $value) . "\n";
 	}
 }
-
-$outfile = fopen($outfile_name,"w+");
+fwrite(STDERR,$dist_query."\n");
+if (strcmp($outfile_name ,"--") == 0) {
+	$outfile = STDOUT;
+} else {
+	$outfile = fopen($outfile_name,"w+");
+}
 if ($outfile === false) {
 	$sql->close();
 	die("Cannot open " . $outfile_name . "\n");
 }
 $line = "ac_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_same" . $delimiter . "member" . $delimiter . "context" . $delimiter . "num\n";
-fwrite($outfile,$line);
-//echo $dist_query;
+//fwrite($outfile,$line);
 
 if ($sql->multi_query($dist_query)) {
 	do {
@@ -187,18 +220,18 @@ if ($sql->multi_query($dist_query)) {
 			}
 			$result->free_result();
 		}
-		if ($sql->more_results() && strcmp($outfile_name,"/dev/stdou") == 0) {
-			printf("-----------------\n");
+		if ($sql->more_results() && strcmp($outfile_name,"/dev/stdout") == 0) {
+			fwrite(STDERR,"-----------------\n");
 		}
 	} while ($sql->next_result());
 } else {
-	echo "Cannot retrieve lock information: " . $sql->error . "\n";
+	fwrite(STDERR,"Cannot retrieve lock information: " . $sql->error . "\n");
 }
 
 $sql->close();
 fclose($outfile);
 
 function usage($name) {
-	echo "$name -d <datatype> -f <output file>\n";
+	echo "$name [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n";
 }
 ?>
