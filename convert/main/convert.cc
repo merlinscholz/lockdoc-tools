@@ -96,7 +96,7 @@ struct MemAccess {
 /**
  * Contains all known locks. The ptr of a lock is used as an index.
  */
-static map<int,Lock> lockPrimKey;
+static map<unsigned long long,Lock> lockPrimKey;
 /**
  * Contains all active allocations. The ptr to the memory area is used as an index.
  */
