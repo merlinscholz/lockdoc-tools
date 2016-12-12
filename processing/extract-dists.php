@@ -109,7 +109,10 @@ FROM
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 		WHERE 
-			%s AND ac.type ='%s' AND %s
+			a.type = %d AND
+			%s AND
+			ac.type ='%s' AND
+			%s
 		GROUP BY ac.id
 	) s
 	LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
@@ -179,7 +182,7 @@ foreach ($ac_types AS $ac_type) {
 	if (!is_null($ac_type_filter) && strcmp($ac_type,$ac_type_filter) != 0) {
 		continue;
 	}
-	foreach ($contexts AS $id => $value) {
+	foreach ($contexts AS $key => $value) {
 		if (!is_null($context_filter) && strcmp($value,$context_filter) != 0) {
 			continue;
 		}
@@ -193,7 +196,7 @@ foreach ($ac_types AS $ac_type) {
 		} else {
 			$instance_clause = sprintf("a.id = %d",$sql->real_escape_string($instance_filter));
 		}
-		$dist_query .= sprintf($dist_query_raw, $id, $member_clause, $ac_type, $instance_clause, $value) . "\n";
+		$dist_query .= sprintf($dist_query_raw, $key, $datatype_id, $member_clause, $ac_type, $instance_clause, $value) . "\n";
 	}
 }
 fwrite(STDERR,$dist_query."\n");
