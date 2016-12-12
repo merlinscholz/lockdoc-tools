@@ -6,15 +6,12 @@ then
 fi
 
 DB=${1}
-DB_USER='al'
-DB_PASSWD='howaih1S'
-DB_SERVER='129.217.43.116'
 DELIMITER=';'
 
 TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout")
 
-MYSQL="mysql --host=${DB_SERVER} --user=${DB_USER} --password=${DB_PASSWD} -v ${DB}"
-MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 --host=${DB_SERVER} --user=${DB_USER} --password=${DB_PASSWD} -v ${DB}"
+MYSQL="mysql -v ${DB}"
+MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 -v ${DB}"
 
 for table in "${TABLES[@]}"
 do
