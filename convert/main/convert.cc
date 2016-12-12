@@ -144,8 +144,8 @@ static void printUsageAndExit(const char *elf) {
 	exit(EXIT_FAILURE);
 }
 
-static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<int,Lock> *pLockPrimKey) {
-	map<int,Lock>::iterator itLock;
+static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<unsigned long long,Lock> *pLockPrimKey) {
+	map<unsigned long long,Lock>::iterator itLock;
 	Lock tempLock;
 	LockPos tempLockPos;
 	vector<MemAccess>::iterator itAccess;
@@ -335,8 +335,8 @@ int main(int argc, char *argv[]) {
 	LockPos tempLockPos;
 	pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc;
 	map<unsigned long long,Allocation>::iterator itAlloc;
-	pair<map<int,Lock>::iterator,bool> retLock;
-	map<int,Lock>::iterator itLock, itTemp;
+	pair<map<unsigned long long,Lock>::iterator,bool> retLock;
+	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0, i;
 	char action, param, *vmlinuxName = NULL;
