@@ -202,8 +202,9 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 			}
 		}
 	}
-	pMemAccessOFile->flush();
-	pLocksHeldOFile->flush();
+	// Disabled flush of output files for performance reasons
+//	pMemAccessOFile->flush();
+//	pLocksHeldOFile->flush();
 	pMemAccesses->clear();
 }
 
@@ -253,7 +254,6 @@ static int readSections(const char *filename) {
 	kernelBfd = bfd_openr(filename,"elf32-i386");
 	if (kernelBfd == NULL) {
 		bfd_perror("open vmlinux");
-		bfd_close(kernelBfd);
 		return -1;
 	}
 	// This check is not only a sanity check. Moreover, it is necessary
@@ -389,7 +389,7 @@ int main(int argc, char *argv[]) {
 
 	ifstream infile(argv[optind]);
 	if (!infile.is_open()) {
-		cerr << "Cannot open file: " << argv[1] << endl;
+		cerr << "Cannot open file: " << argv[optind] << endl;
 		return EXIT_FAILURE;
 	}
 	
