@@ -210,7 +210,7 @@ if ($outfile === false) {
 	die("Cannot open " . $outfile_name . "\n");
 }
 $line = "ac_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_same" . $delimiter . "member" . $delimiter . "context" . $delimiter . "num\n";
-//fwrite($outfile,$line);
+fwrite($outfile,$line);
 
 if ($sql->multi_query($dist_query)) {
 	do {
