@@ -235,6 +235,6 @@ $sql->close();
 fclose($outfile);
 
 function usage($name) {
-	echo "$name [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n";
+	echo "$name [-l <my.cnf>] [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n";
 }
 ?>
