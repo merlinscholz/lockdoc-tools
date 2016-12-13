@@ -55,7 +55,7 @@ struct Lock {
 	string typeStr;												// Describes the argument provided to the lock function
 	int datatype_idx;										    // An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
 	string lockType;											// Describes the lock type
-	stack<LockPos> lastNPos;
+	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
 };
 
 /**
@@ -166,7 +166,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		// If they have the same timestamp, access the same address, access the same amount of memory, and one is a read and the other event is a write,
 		// they'll propably belong to the upcoming acquire or release events.
 		// To increase the certainty that both events belong to the lock operation, the read/write address is compared to the address of the lock.
-		// As long as the Linux Kernel developer do *not* change the layout of spinlockt_t, this step will work.
+		// As long as the Linux Kernel developer do *not* change the layout of spinlock_t, this step will work.
 		// That means they have to be discarded. Otherwise, the dataset will be polluted, and the following steps might produce wrong results.
 		if (window[0].ts == window[1].ts &&
 		    window[0].action == 'r' &&
@@ -178,7 +178,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 			cout << "Discarding event r+w " << dec << window[0].ts << " reading and writing " << window[0].size  << " bytes at address " << showbase << hex << window[0].address << noshowbase << endl;
 #endif
 			// Remove the two last memory accesses from the list, because they belong to the upcoming acquire or release on a spinlock.
-			// We do *bot* want them to be in our dataset.
+			// We do *not* want them to be in our dataset.
 			pMemAccesses->pop_back();
 			pMemAccesses->pop_back();
 		}
@@ -245,6 +245,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 	return 1;
 }
 
+// find .bss and .data sections
 static int readSections(const char *filename) {
 	asection *bsSection, *dataSection;
 	bfd *kernelBfd;
@@ -328,7 +329,7 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 int main(int argc, char *argv[]) {
 	stringstream ss;
 	string inputLine, token, typeStr, file, fn, lockfn, lockType;
-	vector<string> lineElems;
+	vector<string> lineElems; // input CSV columns
 	Allocation tempAlloc;
 	MemAccess tempAccess;
 	Lock tempLock;
@@ -482,7 +483,7 @@ int main(int argc, char *argv[]) {
 				}
 				
 			} catch (exception &e) {
-				cerr << "Exception occured (ts="<< ts << "): " << e.what() << endl;
+				cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
 			}
 
 			writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
@@ -582,7 +583,7 @@ int main(int argc, char *argv[]) {
 									} else {
 										// Has it already been acquired?
 										if (itLock->second.held != 0) {
-											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already held!" << PRINT_KONTEXT << endl;
+											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_KONTEXT << endl;
 										}
 										itLock->second.held = 1;
 									}
@@ -632,7 +633,7 @@ int main(int argc, char *argv[]) {
 							if (tempLock.datatype_idx == -1) {
 								locksOFile << "-1";
 							} else {
-								locksOFile <<  tempLock.datatype_idx;
+								locksOFile << tempLock.datatype_idx;
 							}
 							locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
 							break;
@@ -663,7 +664,6 @@ int main(int argc, char *argv[]) {
 		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
 		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "-1" << "\n";
 	}
-	allocOFile.flush();
 	
 	infile.close();
 	datatypesOFile.close();
