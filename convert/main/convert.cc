@@ -146,10 +146,7 @@ static void printUsageAndExit(const char *elf) {
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<unsigned long long,Lock> *pLockPrimKey) {
 	map<unsigned long long,Lock>::iterator itLock;
-	Lock tempLock;
-	LockPos tempLockPos;
 	vector<MemAccess>::iterator itAccess;
-	MemAccess tempAccess;
 	MemAccess window[LOOK_BEHIND_WINDOW];
 	int size;
 
@@ -185,16 +182,16 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	}
 
 	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++) {
-		tempAccess = *itAccess;
+		MemAccess& tempAccess = *itAccess;
 		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
 		*pMemAccessOFile << DELIMITER_CHAR << cus__get_function_at_addr(cus,tempAccess.instrPtr) << "\n";	
 		// Create an entry for each lock being held
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
-			tempLock = itLock->second;
+			Lock& tempLock = itLock->second;
 			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
-				tempLockPos = itLock->second.lastNPos.top();
+				LockPos& tempLockPos = itLock->second.lastNPos.top();
 				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR;
 				*pLocksHeldOFile << tempLockPos.start << DELIMITER_CHAR << tempLockPos.lastFile << DELIMITER_CHAR;
 				*pLocksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
@@ -330,13 +327,7 @@ int main(int argc, char *argv[]) {
 	stringstream ss;
 	string inputLine, token, typeStr, file, fn, lockfn, lockType;
 	vector<string> lineElems; // input CSV columns
-	Allocation tempAlloc;
-	MemAccess tempAccess;
-	Lock tempLock;
-	LockPos tempLockPos;
-	pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc;
 	map<unsigned long long,Allocation>::iterator itAlloc;
-	pair<map<unsigned long long,Lock>::iterator,bool> retLock;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0, i;
@@ -489,6 +480,7 @@ int main(int argc, char *argv[]) {
 			writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
 			switch(action) {
 					case 'a':
+							{
 							if (activeAllocs.find(ptr) != activeAllocs.end()) {
 								cerr << "Found active allocation at address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 								continue;
@@ -504,23 +496,26 @@ int main(int argc, char *argv[]) {
 								continue;
 							}
 							// Remember that allocation 
+							pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
+								activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,Allocation()));
+							if (!retAlloc.second) {
+								cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+							}
+							Allocation& tempAlloc = retAlloc.first->second;
 							tempAlloc.id = curAllocKey++;
 							tempAlloc.start = ts;
 							tempAlloc.idx = i;
 							tempAlloc.size = size;
-							retAlloc = activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,tempAlloc));
-							if (!retAlloc.second) {
-								cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
-							}
 							break;
-
+							}
 					case 'f':
+							{
 							itAlloc = activeAllocs.find(ptr);
 							if (itAlloc == activeAllocs.end()) {
 								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 								continue;
 							}
-							tempAlloc = itAlloc->second;
+							Allocation& tempAlloc = itAlloc->second;
 							// An allocations datatype is 
 							allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
 							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
@@ -537,9 +532,10 @@ int main(int argc, char *argv[]) {
 							
 							activeAllocs.erase(itAlloc);
 							break;
-
+							}
 					case 'v':
 					case 'p':
+							{
 							if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
 								// static lock which resides either in the bss segment or in the data segment
 								// or global static lock aka rcu lock
@@ -572,12 +568,6 @@ int main(int argc, char *argv[]) {
 									cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
 #endif
 									itLock->second.typeStr = typeStr;
-									tempLockPos.start = ts;
-									tempLockPos.lastLine = line;
-									tempLockPos.lastFile = file;
-									tempLockPos.lastFn = fn;
-									tempLockPos.lastLockFn = lockfn;
-									tempLockPos.lastPreemptCount = preemptCount;
 									if (ptr == 0x42) {
 										itLock->second.held++;
 									} else {
@@ -587,7 +577,14 @@ int main(int argc, char *argv[]) {
 										}
 										itLock->second.held = 1;
 									}
-									itLock->second.lastNPos.push(tempLockPos);
+									itLock->second.lastNPos.push(LockPos());
+									LockPos& tempLockPos = itLock->second.lastNPos.top();
+									tempLockPos.start = ts;
+									tempLockPos.lastLine = line;
+									tempLockPos.lastFile = file;
+									tempLockPos.lastFn = fn;
+									tempLockPos.lastLockFn = lockfn;
+									tempLockPos.lastPreemptCount = preemptCount;
 								} else if (action == 'v') {
 									if (ptr == 0x42) {
 										if (itLock->second.held == 0) {
@@ -610,25 +607,30 @@ int main(int argc, char *argv[]) {
 								cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 								continue;
 							}
+
+							// Insert virgin lock into map, and write entry to file
+							pair<map<unsigned long long,Lock>::iterator,bool> retLock =
+								lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,Lock()));
+							if (!retLock.second) {
+								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+							}
+							//Lock& tempLock = (*(retLock.first)).second;
+							Lock& tempLock = retLock.first->second;
 							tempLock.ptr = ptr;
 							tempLock.held = 1;
 							tempLock.key = curLockKey++;
 							tempLock.datatype_idx = i;
 							tempLock.lockType = lockType;
 							tempLock.typeStr = typeStr;
+							tempLock.lastNPos.push(LockPos());
+							LockPos& tempLockPos = tempLock.lastNPos.top();
 							tempLockPos.start = ts;
 							tempLockPos.lastLine = line;
 							tempLockPos.lastFile = file;
 							tempLockPos.lastFn = fn;
 							tempLockPos.lastLockFn = lockfn;
 							tempLockPos.lastPreemptCount = preemptCount;
-							new (&tempLock.lastNPos) stack<LockPos>();
-							tempLock.lastNPos.push(tempLockPos);
-							// Insert lock into map, and write entry to file
-							retLock = lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,tempLock));
-							if (!retLock.second) {
-								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
-							}
+
 							locksOFile << dec << tempLock.key << DELIMITER_CHAR << tempLock.typeStr << DELIMITER_CHAR << tempLock.ptr << DELIMITER_CHAR;
 							if (tempLock.datatype_idx == -1) {
 								locksOFile << "-1";
@@ -637,14 +639,18 @@ int main(int argc, char *argv[]) {
 							}
 							locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
 							break;
-
+							}
 					case 'w':
 					case 'r':
+							{
 							itAlloc = activeAllocs.find(ptr);
 							if (itAlloc == activeAllocs.end()) {
 								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
 								continue;
 							}
+
+							lastMemAccesses.push_back(MemAccess());
+							MemAccess& tempAccess = lastMemAccesses.back();
 							tempAccess.id = curAccessKey++;
 							tempAccess.ts = ts;
 							tempAccess.alloc_id = itAlloc->second.id;
@@ -653,14 +659,14 @@ int main(int argc, char *argv[]) {
 							tempAccess.address = address;
 							tempAccess.stackPtr = stackPtr;
 							tempAccess.instrPtr = instrPtr;
-							lastMemAccesses.push_back(tempAccess);
 							break;
+							}
 			}
 	}
 	// Due to the fact that we abort the expriment as soon as the benchmark has finished, some allocations may not have been freed.
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
-		tempAlloc = itAlloc->second;
+		Allocation& tempAlloc = itAlloc->second;
 		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
 		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "-1" << "\n";
 	}
