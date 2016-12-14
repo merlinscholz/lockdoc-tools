@@ -68,8 +68,7 @@ SELECT
 --	preemptCount,
 --	ac_fn,
 --	lockContext,
-	softirq,
-	hardirq,
+	context,
 	sl_member
 	,COUNT(*) AS num
 FROM
@@ -81,8 +80,12 @@ FROM
 		lh.lastLockFn AS lockFn,
 		HEX(lh.lastPreemptCount) AS preemptCount,
 		lh.lastFn AS lockContext,
-		IF(lh.lastPreemptCount & 0xff00, '1', '0') AS softirq,
-		IF(lh.lastPreemptCount & 0xf0000, '1', '0') AS hardirq
+		CASE 
+			WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
+			WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
+			WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+			ELSE 'unknown'
+		END AS context
 	FROM
 	(
 		SELECT
@@ -97,18 +100,27 @@ FROM
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 		WHERE
-				-- alloc_id=2 AND
-				AND sl_member = 'i_flags'
+				alloc_id=2 AND
+--				sl.member = 'i_flags' AND
+				ac.type ='r'
 		GROUP BY ac.id
 	) s
 	LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
 	LEFT JOIN locks AS l ON l.id=lh.lock_id
 	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 	WHERE
-		-- alloc_id=2
-		1 AND (l.embedded_in = alloc_id OR l.type = 'rcu')
-		AND sl_member = 'i_flags'
-		-- AND l.type = 'spinlock_t'
+		lh.start IS NULL
+		OR
+		(
+			lh.start IS NOT NULL AND
+			(l.embedded_in = alloc_id OR l.type = 'rcu' ) AND
+			(
+				lh.lastPreemptCount & 0xf0000 OR -- in_hardirq
+				lh.lastPreemptCount & 0x0ff00 OR -- in_softirq
+				lh.lastPreemptCount & 0xfff00 OR -- in_hardirq or in_softirq
+				(lh.lastPreemptCount & 0xfff00) = 0 -- neither soft- nor hardirq
+			)
+		)
 	GROUP BY ac_id
 ) t
 GROUP BY alloc_id, ac_type, locks, lockFn, lockContext, member, ac_fn
@@ -125,8 +137,7 @@ SELECT
 --	preemptCount,
 --	ac_fn,
 --	lockContext,
-	softirq,
-	hardirq,
+	context,
 	sl_member
 	,COUNT(*) AS num
 FROM
@@ -138,9 +149,15 @@ FROM
 		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') SEPARATOR '+') AS embedded_in_same,
 		GROUP_CONCAT(lh.lastLockFn SEPARATOR '+') AS lockFn,
 		GROUP_CONCAT(HEX(lh.lastPreemptCount) SEPARATOR '+') AS preemptCount,
-		GROUP_CONCAT(IF(lh.lastPreemptCount & 0xff00, '1', '0') SEPARATOR '+') AS softirq,
-		GROUP_CONCAT(IF(lh.lastPreemptCount & 0xf0000, '1', '0') SEPARATOR '+') AS hardirq,
-		GROUP_CONCAT(lh.lastFn SEPARATOR '+') AS lockContext
+		GROUP_CONCAT(lh.lastFn SEPARATOR '+') AS lockContext,
+		GROUP_CONCAT(DISTINCT
+			CASE 
+				WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
+				WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
+				WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+				ELSE 'unknown'
+			END
+			SEPARATOR '+') AS context
 	FROM
 	(
 		SELECT
@@ -155,16 +172,27 @@ FROM
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 		WHERE
-				-- alloc_id=2 AND
-				AND sl_member = 'i_flags'
+				alloc_id=2 AND
+--				sl.member = 'i_flags' AND
+				ac.type ='r'
 		GROUP BY ac.id
 	) s
 	LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
 	LEFT JOIN locks AS l ON l.id=lh.lock_id
 	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 	WHERE
-		1 AND (l.embedded_in = alloc_id OR l.type = 'rcu')
-		-- AND l.type = 'spinlock_t'
+		lh.start IS NULL
+		OR
+		(
+			lh.start IS NOT NULL AND
+			(l.embedded_in = alloc_id OR l.type = 'rcu' ) AND
+			(
+				lh.lastPreemptCount & 0xf0000 OR -- in_hardirq
+				lh.lastPreemptCount & 0x0ff00 OR -- in_softirq
+				lh.lastPreemptCount & 0xfff00 OR -- in_hardirq or in_softirq
+				(lh.lastPreemptCount & 0xfff00) = 0 -- neither soft- nor hardirq
+			)
+		)
 	GROUP BY ac_id
 ) t
 GROUP BY ac_type, locks,sl_member
