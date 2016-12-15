@@ -5,7 +5,7 @@ $delimiter = ";";
 $default_db = "lockdebugging";
 $default_port = 3306;
 
-$options = getopt("d:f:m:a:i:c:l:");
+$options = getopt("d:f:m:a:i:c:l:w:");
 if ($options == FALSE ||
     !array_key_exists('f',$options) || strlen(trim($options['f'])) == 0 ||
     !array_key_exists('d',$options) || strlen(trim($options['d'])) == 0) {
