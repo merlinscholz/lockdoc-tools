@@ -69,61 +69,12 @@ $sql = new mysqli;
 $sql->init();
 //$sql->options(MYSQLI_READ_DEFAULT_FILE,$db_conf_file);
 //$sql->options(MYSQLI_READ_DEFAULT_GROUP,'client');
-$contexts = array("unknown" => "lh.start IS NULL",						// 
-		  "hardirq" => "lh.start IS NOT NULL AND lh.lastPreemptCount & 0xf0000",
-		  "softirq" => "lh.start IS NOT NULL AND lh.lastPreemptCount & 0x0ff00",
-		  "hsirq"   => "lh.start IS NOT NULL AND lh.lastPreemptCount & 0xfff00",
-		  "noirq"   => "lh.start IS NOT NULL AND (lh.lastPreemptCount & 0xfff00) = 0");
-/*		  "hardirq" => "lh.start IS NOT NULL AND (l.embedded_in = alloc_id OR l.type = 'rcu') AND lh.lastPreemptCount & 0xf0000",
-		  "softirq" => "lh.start IS NOT NULL AND (l.embedded_in = alloc_id OR l.type = 'rcu') AND lh.lastPreemptCount & 0x0ff00",
-		  "hsirq"   => "lh.start IS NOT NULL AND (l.embedded_in = alloc_id OR l.type = 'rcu') AND lh.lastPreemptCount & 0xfff00",
-		  "noirq"   => "lh.start IS NOT NULL AND (l.embedded_in = alloc_id OR l.type = 'rcu') AND (lh.lastPreemptCount & 0xfff00) = 0");*/
+$contexts = array("unknown" => "lh.start IS NULL",
+		  "hardirq" => "(lh.lastPreemptCount & 0xf0000)",
+		  "softirq" => "(lh.lastPreemptCount & 0x0ff00)",
+//		  "hsirq"   => "(lh.lastPreemptCount & 0xfff00)",
+		  "noirq"   => "((lh.lastPreemptCount & 0xfff00) = 0)");
 $ac_types = array("r", "w");
-
-$dist_query_raw = "SELECT
-	ac_type,
-	locks,
-	lock_types,
-	sl_member,
-	embedded_in_same,
-	'%s' AS context,
-	COUNT(*) AS num
-FROM
-(
-	SELECT
-		ac_id, alloc_id, ac_type, ac_fn, ac_address, a_ptr, sl_member,
-		GROUP_CONCAT(IFNULL(lh.lock_id,\"null\") ORDER BY l.id ASC SEPARATOR '+') AS locks,
-		GROUP_CONCAT(IFNULL(l.type,\"null\") ORDER BY l.id ASC SEPARATOR '+') AS lock_types,
-		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') ORDER BY l.id ASC SEPARATOR '+') AS embedded_in_same
-	FROM
-	(
-		SELECT
-			ac.id AS ac_id, 
-			ac.alloc_id AS alloc_id,
-			ac.type AS ac_type,
-			ac.fn AS ac_fn,
-			ac.address AS ac_address,
-			a.ptr AS a_ptr,
-			sl.member AS sl_member
-		FROM accesses AS ac
-		INNER JOIN allocations AS a ON a.id=ac.alloc_id
-		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
-		WHERE 
-			a.type = %d AND
-			%s AND
-			ac.type ='%s' AND
-			%s
-		GROUP BY ac.id
-	) s
-	LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
-	LEFT JOIN locks AS l ON l.id=lh.lock_id
-	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-	WHERE
-		%s
-	GROUP BY ac_id
-) t
-GROUP BY ac_type, lock_types, sl_member
-ORDER BY num DESC;";
 
 if (!isset($db_conf['client']['database'])) {
 	$db_conf['client']['database'] = $default_db;
@@ -152,53 +103,83 @@ if ($sql->real_query($query)) {
 	die("Cannot find an id for the given datatype:" . $datatype . "\n");
 }
 
-$dist_query = "";
-/*$query  = sprintf("SELECT * FROM structs_layout WHERE type_id = %d;",$datatype_id);
-if ($sql->real_query($query)) {
-	$result = $sql->store_result();
-	if ($result ) {
-		while ($row = $result->fetch_assoc()) {
-			foreach ($ac_types AS $ac_type) {
-				foreach ($contexts AS $id => $value) {
-					$dist_query .= sprintf($dist_query_raw,$id, $row['member'],$ac_type,$value) . "\n";
-				}
-			}
+if (!is_null($context_filter)) {
+		if (isset($contexts[$context_filter])) {
+			$context_clause = $contexts[$context_filter];
+		} else {
+			$sql->close();
+			die("No such context!\n");
 		}
-		$result->free_result();
-	} else {
-		if ($result) {
-			$result->free_result();
-		}
-		$sql->close();
-		die("Cannot retrieve member for data type: " . $datatype . "(" . $datatype_id . ")\n");
-	}
 } else {
-	$error_msg = $sql->error;
-	$sql->close();
-	die("Cannot retrieve member for data type " . $datatype . "(" . $datatype_id . "):" . $error_msg . "\n");
-}*/
-
-foreach ($ac_types AS $ac_type) {
-	if (!is_null($ac_type_filter) && strcmp($ac_type,$ac_type_filter) != 0) {
-		continue;
-	}
-	foreach ($contexts AS $key => $value) {
-		if (!is_null($context_filter) && strcmp($value,$context_filter) != 0) {
-			continue;
-		}
-		if (is_null($member_filter)) {
-			$member_clause = "1";
-		} else {
-			$member_clause = sprintf("sl.member = '%s'",$sql->real_escape_string($member_filter));
-		}
-		if (is_null($instance_filter)) {
-			$instance_clause = "1";
-		} else {
-			$instance_clause = sprintf("a.id = %d",$sql->real_escape_string($instance_filter));
-		}
-		$dist_query .= sprintf($dist_query_raw, $key, $datatype_id, $member_clause, $ac_type, $instance_clause, $value) . "\n";
-	}
+		$context_clause = $contexts['unknown'] . " OR (lh.start IS NOT NULL AND (" . $contexts['hardirq'] . " OR " . $contexts['softirq'] . " OR " . $contexts['noirq'] . "))";
 }
+if (!is_null($ac_type_filter)) {
+		if (in_array($ac_type_filter,$ac_types)) {
+			$ac_type_clause = "'" . $ac_type_filter . "'";
+		} else {
+			$sql->close();
+			die("No such ac type!\n");
+		}
+} else {
+		$ac_type_clause = "'" . implode("','",$ac_types) . "'";
+}
+
+if (is_null($member_filter)) {
+	$member_clause = "1";
+} else {
+	$member_clause = sprintf("sl.member = '%s'",$sql->real_escape_string($member_filter));
+}
+if (is_null($instance_filter)) {
+	$instance_clause = "1";
+} else {
+	$instance_clause = sprintf("a.id = %d",$sql->real_escape_string($instance_filter));
+}
+
+$dist_query = "
+SELECT
+	ac_id, alloc_id, ac_type, ac_fn, ac_address, a_ptr, sl_member,
+	IFNULL(lh.lock_id,\"null\") AS locks,
+	IFNULL(l.type,\"null\") AS lock_types,
+	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
+	CASE 
+		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
+		WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
+		WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+		ELSE 'unknown'
+	END AS context,
+	IF(l.type IS NULL, 'null',
+	  IF(sl2.member IS NULL,CONCAT(l.type,'_',l.id),CONCAT(sl2.member,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
+	'".$db_conf['client']['database'] ."' AS db,
+	COUNT(*) AS num
+FROM
+(
+	SELECT
+		ac.id AS ac_id, 
+		ac.alloc_id AS alloc_id,
+		ac.type AS ac_type,
+		ac.fn AS ac_fn,
+		ac.address AS ac_address,
+		a.ptr AS a_ptr,
+		sl.member AS sl_member
+	FROM accesses AS ac
+	INNER JOIN allocations AS a ON a.id=ac.alloc_id
+	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+	WHERE 
+		a.type = ".$datatype_id." AND
+		".$member_clause." AND
+		ac.type  IN (".$ac_type_clause.") AND
+		".$instance_clause."
+	GROUP BY ac.id
+) s
+LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
+LEFT JOIN locks AS l ON l.id=lh.lock_id
+LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
+LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
+WHERE
+	".$context_clause."
+GROUP BY ac_type, lock_member, sl_member
+ORDER BY num DESC;";
+
 fwrite(STDERR,$dist_query."\n");
 if (strcmp($outfile_name ,"--") == 0) {
 	$outfile = STDOUT;
@@ -209,16 +190,17 @@ if ($outfile === false) {
 	$sql->close();
 	die("Cannot open " . $outfile_name . "\n");
 }
-$line = "ac_type" . $delimiter . "locks" . $delimiter . "lock_types" . $delimiter . "embedded_in_same" . $delimiter . "member" . $delimiter . "context" . $delimiter . "num\n";
+$line = "ac_type" . $delimiter . "lock_member" . $delimiter . "member" . $delimiter . "embedded_in_same" . $delimiter;
+$line .= "lock_types" . $delimiter . "context" . $delimiter . "locks" . $delimiter . "num" . $delimiter . "db\n";
 fwrite($outfile,$line);
 
 if ($sql->multi_query($dist_query)) {
 	do {
 		if ($result = $sql->store_result()) {
 			while ($row = $result->fetch_assoc()) {
-				$line = $row['ac_type'] . $delimiter . $row['locks'] . $delimiter . $row['lock_types'];
-				$line .= $delimiter . $row['embedded_in_same'] . $delimiter . $row['sl_member'] . $delimiter . $row['context'];
-				$line .= $delimiter . $row['num'] . "\n";
+				$line = $row['ac_type'] . $delimiter . $row['lock_member'] . $delimiter . $row['sl_member'] . $delimiter . $row['embedded_in_same'];
+				$line .= $delimiter . $row['lock_types'] . $delimiter . $row['context'] . $delimiter . $row['locks'];
+				$line .= $delimiter . $row['num'] . $delimiter . $row['db'] . "\n";
 				fwrite($outfile,$line);
 			}
 			$result->free_result();
@@ -235,6 +217,6 @@ $sql->close();
 fclose($outfile);
 
 function usage($name) {
-	echo "$name [-l <my.cnf>] [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n";
+	fwrite(STDERR,"$name [-l <my.cnf>] [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-m <member>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n");
 }
 ?>

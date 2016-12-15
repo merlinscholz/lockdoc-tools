@@ -32,15 +32,17 @@ data <- read.csv(inputfile,header=T,sep=";")
 ac_types <- c("r","w")
 members <- unlist(data$member)
 members <- members[!duplicated(members)]
+database <- unlist(data$db)
+database <- database[!duplicated(database)]
 for (member in members) {
   if (!is.null(memberFilter) && member != memberFilter) {
     next
   }
-  name = sprintf("dists-%s",member)
+  name = sprintf("dists-%s-%s",database,member)
   fname = sprintf("%s.pdf",name)
   cat(sprintf("Creating: %s\n",name))
-  plot <- ggplot(data[data$member==member,],aes(x=lock_types,y=num)) +
-  geom_bar(aes(fill=embedded_in_same),position="dodge",stat="identity") +
+  plot <- ggplot(data[data$member==member,],aes(x=lock_member,y=num)) +
+  geom_bar(position="dodge",stat="identity") +
   facet_grid(ac_type ~ context, scales = "free_y") +
   scale_y_log10() + 
   theme(axis.text.x= element_text(angle=45,hjust=1)) +
