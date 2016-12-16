@@ -20,7 +20,7 @@
  * This program takes a csv as input, which contains a series of events.
  * Each event might be of the following types: alloc, free, p(acquiere), v (release), read, or write.
  * The programm groups the alloc and free events as well as the p and v events by their pointer, and assigns an unique id to each unique entitiy (allocation or lock).
- * For each read or write access it generates the 
+ * For each read or write access it generates the
  * OUTPUT: TODO
  */
 
@@ -41,7 +41,7 @@ struct LockPos {
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
 	string lastLockFn;											// Lock function used the last time
-	int lastPreemptCount;											// Value of preemptcount() after the lock has been acquired
+	int lastPreemptCount;										// Value of preemptcount() after the lock has been acquired
 
 };
 
@@ -69,7 +69,7 @@ struct DataType {
 
 /**
  * Describes an instance of a certain datatype, e.g. an instance of task_struct
- * 
+ *
  */
 struct Allocation {
 	unsigned long long start;									// Timestamp when it has been allocated
@@ -106,7 +106,7 @@ static map<unsigned long long,Allocation> activeAllocs;
  */
 static DataType types[MAX_OBSERVED_TYPES];
 /**
- * The list of the LOOK_BEHIND_WINDOW last memory accesses. 
+ * The list of the LOOK_BEHIND_WINDOW last memory accesses.
  */
 static vector<MemAccess> lastMemAccesses;
 /**
@@ -225,7 +225,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 	int i;
 	struct tag *ret;
 	CusIterArgs *cusIterArgs = (CusIterArgs*)cookie;
-	
+
 	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// Skip known datatypes
 		if (cusIterArgs->types[i].foundInDw) {
@@ -251,7 +251,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 		if (cusIterArgs->types[i].foundInDw == 0) {
 			return 0;
 		}
-	}	
+	}
 
 	// No need to proceed with the remaining compilation untis. Stop iteration.
 	return 1;
@@ -261,9 +261,9 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 static int readSections(const char *filename) {
 	asection *bsSection, *dataSection;
 	bfd *kernelBfd;
-	
+
 	bfd_init();
-	
+
 	kernelBfd = bfd_openr(filename,"elf32-i386");
 	if (kernelBfd == NULL) {
 		bfd_perror("open vmlinux");
@@ -276,7 +276,7 @@ static int readSections(const char *filename) {
 		bfd_close(kernelBfd);
 		return -1;
 	}
-	
+
 	bsSection = bfd_get_section_by_name(kernelBfd,".bss");
 	if (bsSection == NULL) {
 		bfd_perror("Cannot find section '.bss'");
@@ -286,7 +286,7 @@ static int readSections(const char *filename) {
 	bssStart = bfd_section_vma(kernelBfd, bsSection);
 	bssSize = bfd_section_size(kernelBfd, bsSection);
 	cout << bfd_section_name(kernelBFD,bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
-	
+
 	dataSection = bfd_get_section_by_name(kernelBfd,".data");
 	if (bsSection == NULL) {
 		bfd_perror("Cannot find section '.bss'");
@@ -298,14 +298,14 @@ static int readSections(const char *filename) {
 	cout << bfd_section_name(kernelBFD,dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
 
 	bfd_close(kernelBfd);
-	
+
 	return 0;
 }
 
 static int extractStructDefs(struct cus *cus, const char *filename) {
 	CusIterArgs cusIterArgs;
 	struct conf_load confLoad;
-	FILE *structsLayoutOFile;	
+	FILE *structsLayoutOFile;
 
 	memset(&confLoad,0,sizeof(confLoad));
 	confLoad.get_addr_info = true;
@@ -314,9 +314,9 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 		cerr << "No debug information found in " << filename << endl;
 		return -1;
 	}
-	
+
 	memset(&cusIterArgs,0,sizeof(cusIterArgs));
-	
+
 	// Open the output file and add the header
 	structsLayoutOFile = fopen("structs_layout.csv","w+");
 	if (structsLayoutOFile == NULL) {
@@ -326,7 +326,7 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 		return -1;
 	}
 	fprintf(structsLayoutOFile,"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
-	
+
 	// Pass the context information to the callback: types array and the outputfile
 	cusIterArgs.types = (DataType*)&types;
 	cusIterArgs.fp = structsLayoutOFile;
@@ -334,8 +334,8 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	cus__for_each_cu(cus, convert_cus_iterator,&cusIterArgs,NULL);
 
 	fclose(structsLayoutOFile);
-	
-	return 0;	
+
+	return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -347,22 +347,22 @@ int main(int argc, char *argv[]) {
 	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0, i;
 	char action, param, *vmlinuxName = NULL;
-	
+
 	if (argc < 2) {
 		cerr << "Need at least an input file!" << endl;
 		return EXIT_FAILURE;
 	}
 
 	while ((param = getopt(argc,argv,"k:")) != -1) {
-		switch (param) {				
-			case 'k':
-				vmlinuxName = optarg;
-				break;
+		switch (param) {
+		case 'k':
+			vmlinuxName = optarg;
+			break;
 		}
 	}
 	if (vmlinuxName == NULL || optind == argc) {
 		printUsageAndExit(argv[0]);
-	}	
+	}
 
 	types[0].typeStr = "task_struct";
 	types[0].foundInDw = 0;
@@ -399,10 +399,10 @@ int main(int argc, char *argv[]) {
 		cerr << "Cannot open file: " << argv[optind] << endl;
 		return EXIT_FAILURE;
 	}
-	
+
 	// Create the outputfiles. One for each table.
 	ofstream datatypesOFile("data_types.csv",std::ofstream::out | std::ofstream::trunc);
-	ofstream allocOFile("allocations.csv",std::ofstream::out | std::ofstream::trunc);	
+	ofstream allocOFile("allocations.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream accessOFile("accesses.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
@@ -430,253 +430,260 @@ int main(int argc, char *argv[]) {
 
 	// Start reading the inputfile
 	for (;getline(infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
-			// Skip the header
-			if (lineCounter == 0) {
-				continue;
+		if ((lineCounter % 100000) == 0) {
+			cerr << lockPrimKey.size() << " "
+				<< activeAllocs.size() << " "
+				<< lastMemAccesses.size() << " "
+				<< functionAddresses.size() << " "
+				<< lineElems.size() << " "
+				<< ss.str().size() << std::endl;
+		}
+		// Skip the header
+		if (lineCounter == 0) {
+			continue;
+		}
+		if (lineCounter % 100 == 0) {
+			allocOFile.flush();
+			accessOFile.flush();
+			locksOFile.flush();
+			locksHeldOFile.flush();
+		}
+
+		ss << inputLine;
+		// Tokenize each line by DELIMITER_CHAR, and store each element in a vector
+		while (getline(ss,token,DELIMITER_CHAR)) {
+			lineElems.push_back(token);
+		}
+
+		// Parse each element
+		ts = std::stoull(lineElems.at(0));
+		if (lineElems.size() != MAX_COLUMNS) {
+			cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
+			return EXIT_FAILURE;
+		}
+		try {
+			action = lineElems.at(1).at(0);
+			typeStr = lineElems.at(2);
+			if (lineElems.at(3).compare("NULL") != 0) {
+				ptr = std::stoull(lineElems.at(3),NULL,16);
+			} else {
+				ptr = 0;
 			}
-			if (lineCounter % 100 == 0) {
-				allocOFile.flush();
-				accessOFile.flush();
-				locksOFile.flush();
-				locksHeldOFile.flush();
+			if (lineElems.at(4).compare("NULL") != 0) {
+				size = std::stoull(lineElems.at(4));
+			} else {
+				size = 0;
+			}
+			file = lineElems.at(5);
+			if (lineElems.at(6).compare("NULL") != 0) {
+				line = std::stoull(lineElems.at(6));
+			} else {
+				line = 42;
+			}
+			fn = lineElems.at(7);
+			lockfn = lineElems.at(8);
+			lockType = lineElems.at(9);
+			if (lineElems.at(10).compare("NULL") != 0) {
+				preemptCount = std::stoull(lineElems.at(10),NULL,16);
+			}
+			if (lineElems.at(11).compare("NULL") != 0) {
+				address = std::stoull(lineElems.at(11),NULL,16);
+			}
+			if (lineElems.at(12).compare("NULL") != 0) {
+				instrPtr = std::stoull(lineElems.at(12),NULL,16);
+			}
+			if (lineElems.at(13).compare("NULL") != 0) {
+				stackPtr = std::stoull(lineElems.at(13),NULL,16);
 			}
 
-			ss << inputLine;
-			// Tokenize each line by DELIMITER_CHAR, and store each element in a vector
-			while (getline(ss,token,DELIMITER_CHAR)) {
-				lineElems.push_back(token);
-			}
-			
-			// Parse each element
-			ts = std::stoull(lineElems.at(0));
-			if (lineElems.size() != MAX_COLUMNS) {
-				cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
-				return EXIT_FAILURE;
-			}
-			try {
-				action = lineElems.at(1).at(0);
-				typeStr = lineElems.at(2);		
-				if (lineElems.at(3).compare("NULL") != 0) {
-					ptr = std::stoull(lineElems.at(3),NULL,16);
-				} else {
-					ptr = 0;
-				}
-				if (lineElems.at(4).compare("NULL") != 0) {
-					size = std::stoull(lineElems.at(4));
-				} else {
-					size = 0;
-				}
-				file = lineElems.at(5);
-				if (lineElems.at(6).compare("NULL") != 0) {
-					line = std::stoull(lineElems.at(6));
-				} else {
-					line = 42;
-				}
-				fn = lineElems.at(7);
-				lockfn = lineElems.at(8);
-				lockType = lineElems.at(9);
-				if (lineElems.at(10).compare("NULL") != 0) {
-					preemptCount = std::stoull(lineElems.at(10),NULL,16);
-				}
-				if (lineElems.at(11).compare("NULL") != 0) {
-					address = std::stoull(lineElems.at(11),NULL,16);
-				}
-				if (lineElems.at(12).compare("NULL") != 0) {
-					instrPtr = std::stoull(lineElems.at(12),NULL,16);
-				}
-				if (lineElems.at(13).compare("NULL") != 0) {
-					stackPtr = std::stoull(lineElems.at(13),NULL,16);
-				}
-				
-			} catch (exception &e) {
-				cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
-			}
+		} catch (exception &e) {
+			cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
+		}
 
-			writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
-			switch(action) {
-					case 'a':
-							{
-							if (activeAllocs.find(ptr) != activeAllocs.end()) {
-								cerr << "Found active allocation at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-								continue;
-							}
-							// Do we know that datatype?
-							for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
-								if (types[i].typeStr.compare(typeStr) == 0) {
-									break;
-								}
-							}
-							if (i >= MAX_OBSERVED_TYPES) {
-								cerr << "Found unknown datatype: " << typeStr << endl;
-								continue;
-							}
-							// Remember that allocation 
-							pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
-								activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,Allocation()));
-							if (!retAlloc.second) {
-								cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-							}
-							Allocation& tempAlloc = retAlloc.first->second;
-							tempAlloc.id = curAllocKey++;
-							tempAlloc.start = ts;
-							tempAlloc.idx = i;
-							tempAlloc.size = size;
-							break;
-							}
-					case 'f':
-							{
-							itAlloc = activeAllocs.find(ptr);
-							if (itAlloc == activeAllocs.end()) {
-								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-								continue;
-							}
-							Allocation& tempAlloc = itAlloc->second;
-							// An allocations datatype is 
-							allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
-							// Iterate through the set of locks, and delete any lock that resided in the freed memory area
-							for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
-								if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
-									// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
-									itTemp = itLock;
-									itLock++;
-									lockPrimKey.erase(itTemp);
-								} else {
-									itLock++;
-								}
-							}
-							
-							activeAllocs.erase(itAlloc);
-							break;
-							}
-					case 'v':
-					case 'p':
-							{
-							if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
-								// static lock which resides either in the bss segment or in the data segment
-								// or global static lock aka rcu lock
+		writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
+		switch (action) {
+		case 'a':
+				{
+				if (activeAllocs.find(ptr) != activeAllocs.end()) {
+					cerr << "Found active allocation at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+					continue;
+				}
+				// Do we know that datatype?
+				for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+					if (types[i].typeStr.compare(typeStr) == 0) {
+						break;
+					}
+				}
+				if (i >= MAX_OBSERVED_TYPES) {
+					cerr << "Found unknown datatype: " << typeStr << endl;
+					continue;
+				}
+				// Remember that allocation
+				pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
+					activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,Allocation()));
+				if (!retAlloc.second) {
+					cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+				}
+				Allocation& tempAlloc = retAlloc.first->second;
+				tempAlloc.id = curAllocKey++;
+				tempAlloc.start = ts;
+				tempAlloc.idx = i;
+				tempAlloc.size = size;
+				break;
+				}
+		case 'f':
+				{
+				itAlloc = activeAllocs.find(ptr);
+				if (itAlloc == activeAllocs.end()) {
+					cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+					continue;
+				}
+				Allocation& tempAlloc = itAlloc->second;
+				// An allocations datatype is
+				allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
+				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
+				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
+					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
+						// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
+						itTemp = itLock;
+						itLock++;
+						lockPrimKey.erase(itTemp);
+					} else {
+						itLock++;
+					}
+				}
+
+				activeAllocs.erase(itAlloc);
+				break;
+				}
+		case 'v':
+		case 'p':
+				{
+				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
+					// static lock which resides either in the bss segment or in the data segment
+					// or global static lock aka rcu lock
 #ifdef VERBOSE
-								cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
+					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
 #endif
-								// -1 indicates an static lock
-								i = -1;
+					// -1 indicates an static lock
+					i = -1;
+				} else {
+					// A lock which probably resides in one of the observed allocations. If not, we don't care!
+					i = -1; // Use variable i as an indicator if an allocation has been found
+					for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
+						if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
+							i = itAlloc->second.id;
+							break;
+						}
+					}
+					if (i < 0) {
+#ifdef VERBOSE
+						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
+#endif
+						continue;
+					}
+				}
+				itLock = lockPrimKey.find(ptr);
+				if (itLock != lockPrimKey.end()) {
+					if (action == 'p') {
+						// Found a known lock. Just update its metainformation
+#ifdef VERBOSE
+						cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
+#endif
+						itLock->second.typeStr = typeStr;
+						if (ptr == 0x42) {
+							itLock->second.held++;
+						} else {
+							// Has it already been acquired?
+							if (itLock->second.held != 0) {
+								cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_CONTEXT << endl;
+							}
+							itLock->second.held = 1;
+						}
+						itLock->second.lastNPos.push(LockPos());
+						LockPos& tempLockPos = itLock->second.lastNPos.top();
+						tempLockPos.start = ts;
+						tempLockPos.lastLine = line;
+						tempLockPos.lastFile = file;
+						tempLockPos.lastFn = fn;
+						tempLockPos.lastLockFn = lockfn;
+						tempLockPos.lastPreemptCount = preemptCount;
+					} else if (action == 'v') {
+						if (ptr == 0x42) {
+							if (itLock->second.held == 0) {
+								cerr << "RCU lock has already been released." << PRINT_CONTEXT << endl;
 							} else {
-								// A lock which probably resides in one of the observed allocations. If not, we don't care!
-								i = -1; // Use variable i as an indicator if an allocation has been found
-								for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
-									if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
-										i = itAlloc->second.id;
-										break;
-									}
-								}
-								if (i < 0) {
-#ifdef VERBOSE
-									cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
-#endif
-									continue;
-								}
+								itLock->second.held--;
 							}
-							itLock = lockPrimKey.find(ptr);
-							if (itLock != lockPrimKey.end()) {
-								if (action == 'p') {
-									// Found a known lock. Just update its metainformation
-#ifdef VERBOSE
-									cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
-#endif
-									itLock->second.typeStr = typeStr;
-									if (ptr == 0x42) {
-										itLock->second.held++;
-									} else {
-										// Has it already been acquired?
-										if (itLock->second.held != 0) {
-											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_CONTEXT << endl;
-										}
-										itLock->second.held = 1;
-									}
-									itLock->second.lastNPos.push(LockPos());
-									LockPos& tempLockPos = itLock->second.lastNPos.top();
-									tempLockPos.start = ts;
-									tempLockPos.lastLine = line;
-									tempLockPos.lastFile = file;
-									tempLockPos.lastFn = fn;
-									tempLockPos.lastLockFn = lockfn;
-									tempLockPos.lastPreemptCount = preemptCount;
-								} else if (action == 'v') {
-									if (ptr == 0x42) {
-										if (itLock->second.held == 0) {
-											cerr << "RCU lock has already been released." << PRINT_CONTEXT << endl;
-										} else {
-											itLock->second.held--;
-										}
-									} else {
-										// Has it already been released?
-										if (itLock->second.held != 1) {
-											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_CONTEXT << endl;
-										}
-										itLock->second.held = 0;
-									}
-									itLock->second.lastNPos.pop();
-								}
-								// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
-								continue;
-							} else if (action == 'v') {
-								cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-								continue;
+						} else {
+							// Has it already been released?
+							if (itLock->second.held != 1) {
+								cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_CONTEXT << endl;
 							}
+							itLock->second.held = 0;
+						}
+						itLock->second.lastNPos.pop();
+					}
+					// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
+					continue;
+				} else if (action == 'v') {
+					cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+					continue;
+				}
 
-							// Insert virgin lock into map, and write entry to file
-							pair<map<unsigned long long,Lock>::iterator,bool> retLock =
-								lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,Lock()));
-							if (!retLock.second) {
-								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-							}
-							//Lock& tempLock = (*(retLock.first)).second;
-							Lock& tempLock = retLock.first->second;
-							tempLock.ptr = ptr;
-							tempLock.held = 1;
-							tempLock.key = curLockKey++;
-							tempLock.datatype_idx = i;
-							tempLock.lockType = lockType;
-							tempLock.typeStr = typeStr;
-							tempLock.lastNPos.push(LockPos());
-							LockPos& tempLockPos = tempLock.lastNPos.top();
-							tempLockPos.start = ts;
-							tempLockPos.lastLine = line;
-							tempLockPos.lastFile = file;
-							tempLockPos.lastFn = fn;
-							tempLockPos.lastLockFn = lockfn;
-							tempLockPos.lastPreemptCount = preemptCount;
+				// Insert virgin lock into map, and write entry to file
+				pair<map<unsigned long long,Lock>::iterator,bool> retLock =
+					lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,Lock()));
+				if (!retLock.second) {
+					cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+				}
+				Lock& tempLock = retLock.first->second;
+				tempLock.ptr = ptr;
+				tempLock.held = 1;
+				tempLock.key = curLockKey++;
+				tempLock.datatype_idx = i;
+				tempLock.lockType = lockType;
+				tempLock.typeStr = typeStr;
+				tempLock.lastNPos.push(LockPos());
+				LockPos& tempLockPos = tempLock.lastNPos.top();
+				tempLockPos.start = ts;
+				tempLockPos.lastLine = line;
+				tempLockPos.lastFile = file;
+				tempLockPos.lastFn = fn;
+				tempLockPos.lastLockFn = lockfn;
+				tempLockPos.lastPreemptCount = preemptCount;
 
-							locksOFile << dec << tempLock.key << DELIMITER_CHAR << tempLock.typeStr << DELIMITER_CHAR << tempLock.ptr << DELIMITER_CHAR;
-							if (tempLock.datatype_idx == -1) {
-								locksOFile << "-1";
-							} else {
-								locksOFile << tempLock.datatype_idx;
-							}
-							locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
-							break;
-							}
-					case 'w':
-					case 'r':
-							{
-							itAlloc = activeAllocs.find(ptr);
-							if (itAlloc == activeAllocs.end()) {
-								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
-								continue;
-							}
+				locksOFile << dec << tempLock.key << DELIMITER_CHAR << tempLock.typeStr << DELIMITER_CHAR << tempLock.ptr << DELIMITER_CHAR;
+				if (tempLock.datatype_idx == -1) {
+					locksOFile << "-1";
+				} else {
+					locksOFile << tempLock.datatype_idx;
+				}
+				locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
+				break;
+				}
+		case 'w':
+		case 'r':
+				{
+				itAlloc = activeAllocs.find(ptr);
+				if (itAlloc == activeAllocs.end()) {
+					cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
+					continue;
+				}
 
-							lastMemAccesses.push_back(MemAccess());
-							MemAccess& tempAccess = lastMemAccesses.back();
-							tempAccess.id = curAccessKey++;
-							tempAccess.ts = ts;
-							tempAccess.alloc_id = itAlloc->second.id;
-							tempAccess.action = action;
-							tempAccess.size = size;
-							tempAccess.address = address;
-							tempAccess.stackPtr = stackPtr;
-							tempAccess.instrPtr = instrPtr;
-							break;
-							}
-			}
+				lastMemAccesses.push_back(MemAccess());
+				MemAccess& tempAccess = lastMemAccesses.back();
+				tempAccess.id = curAccessKey++;
+				tempAccess.ts = ts;
+				tempAccess.alloc_id = itAlloc->second.id;
+				tempAccess.action = action;
+				tempAccess.size = size;
+				tempAccess.address = address;
+				tempAccess.stackPtr = stackPtr;
+				tempAccess.instrPtr = instrPtr;
+				break;
+				}
+		}
 	}
 	// Due to the fact that we abort the expriment as soon as the benchmark has finished, some allocations may not have been freed.
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
@@ -685,7 +692,7 @@ int main(int argc, char *argv[]) {
 		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
 		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "-1" << "\n";
 	}
-	
+
 	infile.close();
 	datatypesOFile.close();
 	allocOFile.close();
