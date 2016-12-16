@@ -561,30 +561,6 @@ int main(int argc, char *argv[]) {
 		case 'v':
 		case 'p':
 				{
-				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
-					// static lock which resides either in the bss segment or in the data segment
-					// or global static lock aka rcu lock
-#ifdef VERBOSE
-					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
-#endif
-					// -1 indicates an static lock
-					i = -1;
-				} else {
-					// A lock which probably resides in one of the observed allocations. If not, we don't care!
-					i = -1; // Use variable i as an indicator if an allocation has been found
-					for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
-						if (ptr >= itAlloc->first && ptr <= itAlloc->first + itAlloc->second.size) {
-							i = itAlloc->second.id;
-							break;
-						}
-					}
-					if (i < 0) {
-#ifdef VERBOSE
-						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
-#endif
-						continue;
-					}
-				}
 				itLock = lockPrimKey.find(ptr);
 				if (itLock != lockPrimKey.end()) {
 					if (action == 'p') {
@@ -632,7 +608,36 @@ int main(int argc, char *argv[]) {
 					}
 					// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 					continue;
-				} else if (action == 'v') {
+				}
+
+				// categorize currently unknown lock
+				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
+					// static lock which resides either in the bss segment or in the data segment
+					// or global static lock aka rcu lock
+#ifdef VERBOSE
+					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
+#endif
+					// -1 indicates an static lock
+					i = -1;
+				} else {
+					// A lock which probably resides in one of the observed allocations. If not, we don't care!
+					i = -1; // Use variable i as an indicator if an allocation has been found
+					itAlloc = activeAllocs.upper_bound(ptr);
+					if (itAlloc != activeAllocs.begin()) {
+						itAlloc--;
+					    if (ptr <= itAlloc->first + itAlloc->second.size) {
+							i = itAlloc->second.id;
+						}
+					}
+					if (i == -1) {
+#ifdef VERBOSE
+						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
+#endif
+						continue;
+					}
+				}
+
+				if (action == 'v') {
 					cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 					continue;
 				}
