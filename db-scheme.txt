@@ -15,7 +15,6 @@ CREATE TABLE `accesses` (
 
 CREATE TABLE `locks` (
   `id` bigint(20) NOT NULL,															-- identifies a particular lock
-  `variable` varchar(255) DEFAULT NULL,												-- the variable which was used to acquire the lock, e.g. &pferd->lock
   `ptr` bigint(20) DEFAULT NULL,													-- the address of the lock variable
   `embedded_in` int(12) DEFAULT NULL,												-- A number greater or equal 0 references an entry in the datatypes table where that lock was embedded in
   `type` varchar(255) DEFAULT NULL,													-- describes the lock type

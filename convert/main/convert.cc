@@ -49,11 +49,10 @@ struct LockPos {
  * Describes an instance of a lock
  */
 struct Lock {
+	unsigned long long id;										// A unique id which describes a particular lock within our dataset
 	unsigned long long ptr;										// The pointer to the memory area, where the lock resides
 	int held;													// Indicates wether the lock is held or not
-	unsigned long long key;										// A unique id which describes a particular lock within our dataset
-	string typeStr;												// Describes the argument provided to the lock function
-	int datatype_idx;										    // An index into to types array if the lock resides in an allocation. Otherwise, it'll be -1.
+	int allocation_id;										    // ID of the allocation this lock resides in (-1 if not embedded)
 	string lockType;											// Describes the lock type
 	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
 };
@@ -127,15 +126,15 @@ std::map<uint64_t, const char *> functionAddresses;
 /**
  * The next id for a new lock.
  */
-static unsigned long long curLockKey = 1;
+static unsigned long long curLockID = 1;
 /**
  * The next id for a new allocation.
  */
-static unsigned long long curAllocKey = 1;
+static unsigned long long curAllocID = 1;
 /**
  * The next id for a new memory access.
  */
-static unsigned long long curAccessKey = 1;
+static unsigned long long curAccessID = 1;
 
 static struct cus *cus;
 
@@ -207,7 +206,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 			Lock& tempLock = itLock->second;
 			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
 				LockPos& tempLockPos = itLock->second.lastNPos.top();
-				*pLocksHeldOFile << dec << itLock->second.key << DELIMITER_CHAR  << tempAccess.id << DELIMITER_CHAR;
+				*pLocksHeldOFile << dec << itLock->second.id << DELIMITER_CHAR << tempAccess.id << DELIMITER_CHAR;
 				*pLocksHeldOFile << tempLockPos.start << DELIMITER_CHAR << tempLockPos.lastFile << DELIMITER_CHAR;
 				*pLocksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
 				*pLocksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
@@ -345,7 +344,7 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
-	int lineCounter = 0, i;
+	int lineCounter = 0;
 	char action, param, *vmlinuxName = NULL;
 
 	if (argc < 2) {
@@ -416,14 +415,14 @@ int main(int argc, char *argv[]) {
 	accessOFile << "type" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
 	accessOFile << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
 
-	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR;
+	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
 	locksOFile << "embedded" << DELIMITER_CHAR << "locktype" << endl;
 
 	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR;
 	locksHeldOFile << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR;
 	locksHeldOFile << "lastPreemptCount" << DELIMITER_CHAR << "lastLockFn" << endl;
 
-	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+	for (int i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
 		datatypesOFile << types[i].id << DELIMITER_CHAR << types[i].typeStr << endl;
 	}
@@ -511,12 +510,13 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				// Do we know that datatype?
-				for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
-					if (types[i].typeStr.compare(typeStr) == 0) {
+				int datatype_idx;
+				for (datatype_idx = 0; datatype_idx < MAX_OBSERVED_TYPES; datatype_idx++) {
+					if (types[datatype_idx].typeStr.compare(typeStr) == 0) {
 						break;
 					}
 				}
-				if (i >= MAX_OBSERVED_TYPES) {
+				if (datatype_idx >= MAX_OBSERVED_TYPES) {
 					cerr << "Found unknown datatype: " << typeStr << endl;
 					continue;
 				}
@@ -527,9 +527,9 @@ int main(int argc, char *argv[]) {
 					cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 				}
 				Allocation& tempAlloc = retAlloc.first->second;
-				tempAlloc.id = curAllocKey++;
+				tempAlloc.id = curAllocID++;
 				tempAlloc.start = ts;
-				tempAlloc.idx = i;
+				tempAlloc.idx = datatype_idx;
 				tempAlloc.size = size;
 				break;
 				}
@@ -568,7 +568,6 @@ int main(int argc, char *argv[]) {
 #ifdef VERBOSE
 						cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
 #endif
-						itLock->second.typeStr = typeStr;
 						if (ptr == 0x42) {
 							itLock->second.held++;
 						} else {
@@ -611,25 +610,26 @@ int main(int argc, char *argv[]) {
 				}
 
 				// categorize currently unknown lock
+				int allocation_id;
 				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
 					// static lock which resides either in the bss segment or in the data segment
 					// or global static lock aka rcu lock
 #ifdef VERBOSE
 					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
 #endif
-					// -1 indicates an static lock
-					i = -1;
+					// -1 indicates a static lock
+					allocation_id = -1;
 				} else {
 					// A lock which probably resides in one of the observed allocations. If not, we don't care!
-					i = -1; // Use variable i as an indicator if an allocation has been found
+					allocation_id = -1;
 					itAlloc = activeAllocs.upper_bound(ptr);
 					if (itAlloc != activeAllocs.begin()) {
 						itAlloc--;
 					    if (ptr <= itAlloc->first + itAlloc->second.size) {
-							i = itAlloc->second.id;
+							allocation_id = itAlloc->second.id;
 						}
 					}
-					if (i == -1) {
+					if (allocation_id == -1) {
 #ifdef VERBOSE
 						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
 #endif
@@ -651,10 +651,9 @@ int main(int argc, char *argv[]) {
 				Lock& tempLock = retLock.first->second;
 				tempLock.ptr = ptr;
 				tempLock.held = 1;
-				tempLock.key = curLockKey++;
-				tempLock.datatype_idx = i;
+				tempLock.id = curLockID++;
+				tempLock.allocation_id = allocation_id;
 				tempLock.lockType = lockType;
-				tempLock.typeStr = typeStr;
 				tempLock.lastNPos.push(LockPos());
 				LockPos& tempLockPos = tempLock.lastNPos.top();
 				tempLockPos.start = ts;
@@ -664,13 +663,8 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastLockFn = lockfn;
 				tempLockPos.lastPreemptCount = preemptCount;
 
-				locksOFile << dec << tempLock.key << DELIMITER_CHAR << tempLock.typeStr << DELIMITER_CHAR << tempLock.ptr << DELIMITER_CHAR;
-				if (tempLock.datatype_idx == -1) {
-					locksOFile << "-1";
-				} else {
-					locksOFile << tempLock.datatype_idx;
-				}
-				locksOFile << DELIMITER_CHAR << tempLock.lockType << "\n";
+				locksOFile << dec << tempLock.id << DELIMITER_CHAR << tempLock.ptr;
+				locksOFile << DELIMITER_CHAR << tempLock.allocation_id << DELIMITER_CHAR << tempLock.lockType << "\n";
 				break;
 				}
 		case 'w':
@@ -690,7 +684,7 @@ int main(int argc, char *argv[]) {
 
 				lastMemAccesses.push_back(MemAccess());
 				MemAccess& tempAccess = lastMemAccesses.back();
-				tempAccess.id = curAccessKey++;
+				tempAccess.id = curAccessID++;
 				tempAccess.ts = ts;
 				tempAccess.alloc_id = itAlloc->second.id;
 				tempAccess.action = action;
