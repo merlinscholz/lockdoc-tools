@@ -619,12 +619,16 @@ int main(int argc, char *argv[]) {
 							}
 						} else {
 							// Has it already been released?
-							if (itLock->second.held != 1) {
+							if (itLock->second.held == 0) {
 								cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_CONTEXT << endl;
 							}
 							itLock->second.held = 0;
 						}
-						itLock->second.lastNPos.pop();
+						if (!itLock->second.lastNPos.empty()) {
+							itLock->second.lastNPos.pop();
+						} else {
+							cerr << "No last locking position known for lock at address " << showbase << hex << ptr << noshowbase << ", cannot pop." << PRINT_CONTEXT << endl;
+						}
 					}
 					// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 					continue;
