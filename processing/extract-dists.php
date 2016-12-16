@@ -148,7 +148,7 @@ SELECT
 		ELSE 'unknown'
 	END AS context,
 	IF(l.type IS NULL, 'null',
-	  IF(sl2.member IS NULL,CONCAT(l.type,'_',l.id),CONCAT(sl2.member,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
+	  IF(sl2.member IS NULL,CONCAT('gloal_',l.type,'_',l.id),CONCAT(sl2.member,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
 	'".$db_conf['client']['database'] ."' AS db,
 	COUNT(*) AS num
 FROM
