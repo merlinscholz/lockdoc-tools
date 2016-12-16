@@ -413,7 +413,7 @@ int main(int argc, char *argv[]) {
 	allocOFile << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 
 	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR;
-	accessOFile << "type" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
+	accessOFile << "type" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
 	accessOFile << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
 
 	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR << "var" << DELIMITER_CHAR;
