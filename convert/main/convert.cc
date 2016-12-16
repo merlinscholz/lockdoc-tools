@@ -430,6 +430,7 @@ int main(int argc, char *argv[]) {
 
 	// Start reading the inputfile
 	for (;getline(infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+#ifdef DEBUG_DATASTRUCTURE_GROWTH
 		if ((lineCounter % 100000) == 0) {
 			cerr << lockPrimKey.size() << " "
 				<< activeAllocs.size() << " "
@@ -438,6 +439,7 @@ int main(int argc, char *argv[]) {
 				<< lineElems.size() << " "
 				<< ss.str().size() << std::endl;
 		}
+#endif
 		// Skip the header
 		if (lineCounter == 0) {
 			continue;
