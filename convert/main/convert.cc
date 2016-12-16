@@ -681,6 +681,12 @@ int main(int argc, char *argv[]) {
 					cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 					continue;
 				}
+				// sanity check
+				if (ptr + itAlloc->second.size < address || address + size < ptr) {
+					cerr << "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation " << ptr << noshowbase << PRINT_CONTEXT << endl;
+					continue;
+					return EXIT_FAILURE;
+				}
 
 				lastMemAccesses.push_back(MemAccess());
 				MemAccess& tempAccess = lastMemAccesses.back();
