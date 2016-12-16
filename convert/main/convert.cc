@@ -121,6 +121,8 @@ struct CusIterArgs {
 	DataType *types;
 	FILE *fp;
 };
+// address -> function name cache
+std::map<uint64_t, const char *> functionAddresses;
 
 /**
  * The next id for a new lock.
@@ -142,6 +144,19 @@ static void printUsageAndExit(const char *elf) {
 	cerr << " -k <path/to/vmlinux";
 	cerr << " inputfile" << endl;
 	exit(EXIT_FAILURE);
+}
+
+// caching wrapper around cus__get_function_at_addr
+static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
+{
+	auto it = functionAddresses.find(addr);
+	const char *ret;
+	if (it == functionAddresses.end()) {
+		functionAddresses[addr] = ret = cus__get_function_at_addr(cus, addr);
+	} else {
+		ret = it->second;
+	}
+	return ret;
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<unsigned long long,Lock> *pLockPrimKey) {
@@ -186,7 +201,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
-		*pMemAccessOFile << DELIMITER_CHAR << cus__get_function_at_addr(cus,tempAccess.instrPtr) << "\n";	
+		*pMemAccessOFile << DELIMITER_CHAR << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
 		// Create an entry for each lock being held
 		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
 			Lock& tempLock = itLock->second;
