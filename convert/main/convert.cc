@@ -429,7 +429,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Start reading the inputfile
-	for (;getline(infile,inputLine); ss.clear(), lineElems.clear(), lineCounter++) {
+	for (;getline(infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
 			// Skip the header
 			if (lineCounter == 0) {
 				continue;
