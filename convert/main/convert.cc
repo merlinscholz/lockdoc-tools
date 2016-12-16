@@ -497,7 +497,7 @@ int main(int argc, char *argv[]) {
 					case 'a':
 							{
 							if (activeAllocs.find(ptr) != activeAllocs.end()) {
-								cerr << "Found active allocation at address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Found active allocation at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 								continue;
 							}
 							// Do we know that datatype?
@@ -514,7 +514,7 @@ int main(int argc, char *argv[]) {
 							pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
 								activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,Allocation()));
 							if (!retAlloc.second) {
-								cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Cannot insert allocation into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 							}
 							Allocation& tempAlloc = retAlloc.first->second;
 							tempAlloc.id = curAllocKey++;
@@ -527,7 +527,7 @@ int main(int argc, char *argv[]) {
 							{
 							itAlloc = activeAllocs.find(ptr);
 							if (itAlloc == activeAllocs.end()) {
-								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 								continue;
 							}
 							Allocation& tempAlloc = itAlloc->second;
@@ -570,7 +570,7 @@ int main(int argc, char *argv[]) {
 								}
 								if (i < 0) {
 #ifdef VERBOSE
-									cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_KONTEXT << endl;
+									cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
 #endif
 									continue;
 								}
@@ -588,7 +588,7 @@ int main(int argc, char *argv[]) {
 									} else {
 										// Has it already been acquired?
 										if (itLock->second.held != 0) {
-											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_KONTEXT << endl;
+											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_CONTEXT << endl;
 										}
 										itLock->second.held = 1;
 									}
@@ -603,14 +603,14 @@ int main(int argc, char *argv[]) {
 								} else if (action == 'v') {
 									if (ptr == 0x42) {
 										if (itLock->second.held == 0) {
-											cerr << "RCU lock has already been released." << PRINT_KONTEXT << endl;
+											cerr << "RCU lock has already been released." << PRINT_CONTEXT << endl;
 										} else {
 											itLock->second.held--;
 										}
 									} else {
 										// Has it already been released?
 										if (itLock->second.held != 1) {
-											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_KONTEXT << endl;
+											cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_CONTEXT << endl;
 										}
 										itLock->second.held = 0;
 									}
@@ -619,7 +619,7 @@ int main(int argc, char *argv[]) {
 								// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
 								continue;
 							} else if (action == 'v') {
-								cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Cannot find a lock at address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 								continue;
 							}
 
@@ -627,7 +627,7 @@ int main(int argc, char *argv[]) {
 							pair<map<unsigned long long,Lock>::iterator,bool> retLock =
 								lockPrimKey.insert(pair<unsigned long long,Lock>(ptr,Lock()));
 							if (!retLock.second) {
-								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Cannot insert lock into map: " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 							}
 							//Lock& tempLock = (*(retLock.first)).second;
 							Lock& tempLock = retLock.first->second;
@@ -660,7 +660,7 @@ int main(int argc, char *argv[]) {
 							{
 							itAlloc = activeAllocs.find(ptr);
 							if (itAlloc == activeAllocs.end()) {
-								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_KONTEXT << endl;
+								cerr << "Didn't find active allocation for address " << showbase << hex << ptr << noshowbase << PRINT_CONTEXT << endl;
 								continue;
 							}
 

@@ -8,6 +8,6 @@
 #define MAX_COLUMNS 14
 #define LOOK_BEHIND_WINDOW 2
 //#define VERBOSE
-#define PRINT_KONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
+#define PRINT_CONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
 
 #endif // __CONFIG_H__
