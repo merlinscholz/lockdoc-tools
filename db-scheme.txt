@@ -1,9 +1,9 @@
 CREATE TABLE `accesses` (
-  `id` bigint(20) NOT NULL,															-- an unique id identifying a particular access
-  `alloc_id` bigint(20) DEFAULT NULL,												-- references the memory area which is accessed by this event
+  `id` int(11) NOT NULL,															-- an unique id identifying a particular access
+  `alloc_id` int(11) DEFAULT NULL,													-- references the memory area which is accessed by this event
   `ts` bigint(20) DEFAULT NULL,
   `type` enum('r','w') DEFAULT NULL,												-- Defines the event type, read vs. write access
-  `size` bigint(20) DEFAULT NULL,													-- How many bytes were written?
+  `size` int(11) DEFAULT NULL,														-- How many bytes were written?
   `address` bigint(20) DEFAULT NULL,												-- The start address of this access
   `stackptr` bigint(20) DEFAULT NULL,												-- stack pointer
   `instrptr` bigint(20) DEFAULT NULL,												-- current instruction pointer when the access happened
@@ -14,9 +14,9 @@ CREATE TABLE `accesses` (
 ;
 
 CREATE TABLE `locks` (
-  `id` bigint(20) NOT NULL,															-- identifies a particular lock
+  `id` int(11) NOT NULL,															-- identifies a particular lock
   `ptr` bigint(20) DEFAULT NULL,													-- the address of the lock variable
-  `embedded_in` int(12) DEFAULT NULL,												-- A number greater or equal 0 references an entry in the datatypes table where that lock was embedded in
+  `embedded_in` int(11) DEFAULT NULL,												-- A number greater or equal 0 references an entry in the datatypes table where that lock was embedded in
   `type` varchar(255) DEFAULT NULL,													-- describes the lock type
   PRIMARY KEY (`id`),
   KEY `embedded_in` (`embedded_in`)
@@ -24,10 +24,10 @@ CREATE TABLE `locks` (
 ;
 
 CREATE TABLE `allocations` (
-  `id` bigint(20) NOT NULL,															-- identifies a certain allocation
-  `type` bigint(20) DEFAULT NULL,													-- describes the data type of an allocation. References table datatypes
+  `id` int(11) NOT NULL,															-- identifies a certain allocation
+  `type` int(11) DEFAULT NULL,														-- describes the data type of an allocation. References table datatypes
   `ptr` bigint(20) DEFAULT NULL,													-- the start address of an allocation
-  `size` bigint(20) DEFAULT NULL,													-- size of the memory area
+  `size` int(11) DEFAULT NULL,														-- size of the memory area
   `start` bigint(20) DEFAULT NULL,													-- Start of lifetime
   `end` bigint(20) DEFAULT NULL,													-- End of life
   PRIMARY KEY (`id`)
@@ -35,13 +35,13 @@ CREATE TABLE `allocations` (
 ;
 
 CREATE TABLE `locks_held` (															-- Normally, there are several entries for one memory access. That means those locks were held during the access.
-  `lock_id` bigint(20) NOT NULL,													-- References a lock which was held during the access
-  `access_id` bigint(20) NOT NULL,													-- References the access
+  `lock_id` int(11) NOT NULL,														-- References a lock which was held during the access
+  `access_id` int(11) NOT NULL,														-- References the access
   `start` bigint(20) DEFAULT NULL,													-- The timestamp when the lock was acquired
   `lastFile` varchar(255) DEFAULT NULL,												-- Last file
-  `lastLine` bigint(20) DEFAULT NULL,												-- Last line 
+  `lastLine` int(11) DEFAULT NULL,													-- Last line 
   `lastFn` varchar(255) DEFAULT NULL,												-- Last function where the lock has been acquired from
-  `lastPreemptCount` bigint(20) DEFAULT NULL,										-- Value of preemptcount() after the lock has been acquired
+  `lastPreemptCount` int(11) DEFAULT NULL,											-- Value of preemptcount() after the lock has been acquired
   `lastLockFn` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`lock_id`,`access_id`),
   KEY `fk_access_id` (`access_id`)
@@ -49,32 +49,32 @@ CREATE TABLE `locks_held` (															-- Normally, there are several entries
 ;
 
 CREATE TABLE `structs_layout` (
-  `type_id` bigint(20) DEFAULT NULL,												-- Refers to the datatype to which a member belongs to
+  `type_id` int(11) DEFAULT NULL,													-- Refers to the datatype to which a member belongs to
   `type` varchar(255) DEFAULT NULL,													-- Describes the type of a member
   `member` varchar(255) DEFAULT NULL,												-- The name of the member
-  `offset` bigint(20) DEFAULT NULL,													-- The offset in bytes from the beginning of a struct
-  `size` bigint(20) DEFAULT NULL													-- The size in bytes of a member
+  `offset` int(11) DEFAULT NULL,													-- The offset in bytes from the beginning of a struct
+  `size` int(11) DEFAULT NULL														-- The size in bytes of a member
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 
 CREATE TABLE `data_types` (
-  `id` bigint(20) NOT NULL,															-- An unique id identifying a data type
+  `id` int(11) NOT NULL,															-- An unique id identifying a data type
   `name` varchar(255) NOT NULL,														-- A humand-readable id of a datat type
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 
 CREATE TABLE `lock_symbols` (
-  `ac_id` bigint(20) DEFAULT NULL,
-  `alloc_id` bigint(20) NOT NULL,
+  `ac_id` int(11) DEFAULT NULL,
+  `alloc_id` int(11) NOT NULL,
   `type` enum('r','w') DEFAULT NULL,
-  `data_type` bigint(20) DEFAULT NULL,
+  `data_type` int(11) DEFAULT NULL,
   `locks` varchar(255) DEFAULT NULL,
   `lock_types` varchar(255) DEFAULT NULL,
   `embedded_in_type` varchar(255) DEFAULT NULL,
   `embedded_in_same` varchar(255) DEFAULT NULL,
-  `offset` bigint(20) DEFAULT NULL,
-  `size` bigint(20) DEFAULT NULL,
+  `offset` int(11) DEFAULT NULL,
+  `size` int(11) DEFAULT NULL,
   `member` varchar(255) DEFAULT NULL,
   `pos` varchar(400) DEFAULT NULL,
   `preemptcount` varchar(255) DEFAULT NULL,
