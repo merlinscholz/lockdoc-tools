@@ -34,11 +34,13 @@ members <- unlist(data$member)
 members <- members[!duplicated(members)]
 database <- unlist(data$db)
 database <- database[!duplicated(database)]
+dt_name <- unlist(data$dt_name)
+dt_name <- dt_name[!duplicated(dt_name)]
 for (member in members) {
   if (!is.null(memberFilter) && member != memberFilter) {
     next
   }
-  name = sprintf("dists-%s-%s",database,member)
+  name = sprintf("%s-%s-%s",dt_name,member,database)
   fname = sprintf("%s.pdf",name)
   cat(sprintf("Creating: %s\n",name))
   plot <- ggplot(data[data$member==member,],aes(x=lock_member,y=num)) +

@@ -137,7 +137,7 @@ if (is_null($instance_filter)) {
 
 $dist_query = "
 SELECT
-	ac_id, alloc_id, ac_type, ac_fn, ac_address, a_ptr, sl_member,
+	ac_id, alloc_id, ac_type, ac_fn, ac_address, a_ptr, sl_member, dt_name,
 	IFNULL(lh.lock_id,\"null\") AS locks,
 	IFNULL(l.type,\"null\") AS lock_types,
 	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
@@ -160,9 +160,11 @@ FROM
 		ac.fn AS ac_fn,
 		ac.address AS ac_address,
 		a.ptr AS a_ptr,
-		sl.member AS sl_member
+		sl.member AS sl_member,
+		dt.name AS dt_name
 	FROM accesses AS ac
 	INNER JOIN allocations AS a ON a.id=ac.alloc_id
+	INNER JOIN data_types AS dt ON dt.id=a.type
 	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 	WHERE 
 		a.type = ".$datatype_id." AND
@@ -191,7 +193,7 @@ if ($outfile === false) {
 	die("Cannot open " . $outfile_name . "\n");
 }
 $line = "ac_type" . $delimiter . "lock_member" . $delimiter . "member" . $delimiter . "embedded_in_same" . $delimiter;
-$line .= "lock_types" . $delimiter . "context" . $delimiter . "locks" . $delimiter . "num" . $delimiter . "db\n";
+$line .= "lock_types" . $delimiter . "context" . $delimiter . "locks" . $delimiter . "num" . $delimiter . "db" . $delimiter . "dt_name\n";
 fwrite($outfile,$line);
 
 if ($sql->multi_query($dist_query)) {
@@ -200,7 +202,7 @@ if ($sql->multi_query($dist_query)) {
 			while ($row = $result->fetch_assoc()) {
 				$line = $row['ac_type'] . $delimiter . $row['lock_member'] . $delimiter . $row['sl_member'] . $delimiter . $row['embedded_in_same'];
 				$line .= $delimiter . $row['lock_types'] . $delimiter . $row['context'] . $delimiter . $row['locks'];
-				$line .= $delimiter . $row['num'] . $delimiter . $row['db'] . "\n";
+				$line .= $delimiter . $row['num'] . $delimiter . $row['db'] . $delimiter . $row['dt_name'] . "\n";
 				fwrite($outfile,$line);
 			}
 			$result->free_result();
