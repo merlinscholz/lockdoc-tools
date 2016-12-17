@@ -51,7 +51,7 @@ struct LockPos {
 struct Lock {
 	unsigned long long id;										// A unique id which describes a particular lock within our dataset
 	unsigned long long ptr;										// The pointer to the memory area, where the lock resides
-	int held;													// Indicates wether the lock is held or not
+	int held;													// Indicates whether the lock is held or not
 	int allocation_id;										    // ID of the allocation this lock resides in (-1 if not embedded)
 	string lockType;											// Describes the lock type
 	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
@@ -186,7 +186,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		    window[0].address == pAddress &&
 		    window[0].size == window[1].size) {
 #ifdef VERBOSE
-			cout << "Discarding event r+w " << dec << window[0].ts << " reading and writing " << window[0].size  << " bytes at address " << showbase << hex << window[0].address << noshowbase << endl;
+			cout << "Discarding event r+w " << dec << window[0].ts << " reading and writing " << window[0].size << " bytes at address " << showbase << hex << window[0].address << noshowbase << endl;
 #endif
 			// Remove the two last memory accesses from the list, because they belong to the upcoming acquire or release on a spinlock.
 			// We do *not* want them to be in our dataset.
@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
 	cus = cus__new();
 	if (cus == NULL) {
 		cerr << "Insufficient memory" << endl;
-		return -1;
+		return EXIT_FAILURE;
 	}
 
 	if (extractStructDefs(cus,vmlinuxName)) {
