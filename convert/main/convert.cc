@@ -553,7 +553,7 @@ int main(int argc, char *argv[]) {
 				allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
 				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
-					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr <= (itAlloc->first + tempAlloc.size)) {
+					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr < (itAlloc->first + tempAlloc.size)) {
 						// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
 						itTemp = itLock;
 						itLock++;
@@ -619,7 +619,7 @@ int main(int argc, char *argv[]) {
 
 				// categorize currently unknown lock
 				unsigned allocation_id;
-				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
+				if ((ptr >= bssStart && ptr < bssStart + bssSize) || ( ptr >= dataStart && ptr < dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
 					// static lock which resides either in the bss segment or in the data segment
 					// or global static lock aka rcu lock
 #ifdef VERBOSE
@@ -633,7 +633,7 @@ int main(int argc, char *argv[]) {
 					itAlloc = activeAllocs.upper_bound(ptr);
 					if (itAlloc != activeAllocs.begin()) {
 						itAlloc--;
-						if (ptr <= itAlloc->first + itAlloc->second.size) {
+						if (ptr < itAlloc->first + itAlloc->second.size) {
 							allocation_id = itAlloc->second.id;
 						}
 					}
