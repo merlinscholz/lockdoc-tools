@@ -9,7 +9,7 @@ fi
 DB=${1}
 DELIMITER=';'
 
-TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout")
+TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns")
 
 MYSQL="mysql -v ${DB}"
 MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 -v ${DB}"

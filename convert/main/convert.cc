@@ -91,6 +91,22 @@ struct MemAccess {
 	unsigned long long instrPtr;								// Instruction pointer
 };
 
+/**
+ * Represents a Transaction (TXN).
+ *
+ * A TXN starts with a P or V, and ends with a P or V -- i.e., with a change in
+ * the set of currently acquired locks.  If no lock is held, no TXN is active.
+ * Hence, each TXN is associated with a set of held locks, which can be ordered
+ * by looking at their start timestamp.
+ *
+ * Note that a TXN does not necessarily end with a V() on the same lock as it
+ * started with using a P().
+ */
+struct TXN {
+	unsigned long long id;										// ID
+	unsigned long long start;									// Timestamp when this TXN started
+	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
+};
 
 /**
  * Contains all known locks. The ptr of a lock is used as an index.
@@ -108,6 +124,11 @@ static DataType types[MAX_OBSERVED_TYPES];
  * The list of the LOOK_BEHIND_WINDOW last memory accesses.
  */
 static vector<MemAccess> lastMemAccesses;
+/**
+ * A stack of currently active, nested TXNs.
+ */
+static std::stack<TXN, std::vector<TXN> > activeTXNs;
+
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
@@ -135,6 +156,10 @@ static unsigned long long curAllocID = 1;
  * The next id for a new memory access.
  */
 static unsigned long long curAccessID = 1;
+/**
+ * The next id for a new transaction.
+ */
+static unsigned long long curTXNID = 1;
 
 static struct cus *cus;
 
@@ -158,8 +183,38 @@ static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 	return ret;
 }
 
-static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses, ofstream *pLocksHeldOFile, map<unsigned long long,Lock> *pLockPrimKey) {
-	map<unsigned long long,Lock>::iterator itLock;
+static void startTXN(unsigned long long ts)
+{
+	activeTXNs.push(TXN());
+	activeTXNs.top().id = curTXNID++;
+	activeTXNs.top().start = ts;
+}
+
+static void finishTXN(unsigned long long ts, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
+{
+	if (!SKIP_EMPTY_TXNS || activeTXNs.top().memAccessCounter > 0) {
+		// Record this TXN
+		txnsOFile << activeTXNs.top().id << DELIMITER_CHAR;
+		txnsOFile << activeTXNs.top().start << DELIMITER_CHAR;
+		txnsOFile << ts << "\n";
+
+		// Note which locks were held during this TXN
+		for (auto itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
+			Lock& tempLock = itLock->second;
+			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
+				LockPos& tempLockPos = itLock->second.lastNPos.top();
+				locksHeldOFile << dec << activeTXNs.top().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
+				locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
+				locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
+				locksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
+				locksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
+			}
+		}
+	}
+	activeTXNs.pop();
+}
+
+static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
 	vector<MemAccess>::iterator itAccess;
 	MemAccess window[LOOK_BEHIND_WINDOW];
 	int size;
@@ -168,8 +223,17 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	if (pAction == 'r' || pAction == 'w') {
 		return;
 	}
+	// A TXN is not terminated/suspended by alloc / free
+	if (pAction == 'a' || pAction == 'f') {
+		return;
+	}
 
-	if ((pAction == 'p' || pAction == 'v') && pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
+	// We know we're looking at a P() or V() now -- which terminates a TXN.
+	// This means we need to write out all seen memory accesses, and associate
+	// them with the current TXN, which will soon be terminated by the main
+	// loop.
+
+	if (pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
 		size = pMemAccesses->size();
 		// Have a look at the two last events
 		window[0] = pMemAccesses->at(size - 2);
@@ -195,27 +259,28 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		}
 	}
 
-	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++) {
+	// write memory accesses to disk and associate them with the current TXN
+	unsigned accessCount = 0;
+	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++, ++accessCount) {
 		MemAccess& tempAccess = *itAccess;
-		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id << DELIMITER_CHAR << tempAccess.ts;
+		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id;
+		*pMemAccessOFile << DELIMITER_CHAR << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.top().id));
+		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
 		*pMemAccessOFile << DELIMITER_CHAR << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
-		// Create an entry for each lock being held
-		for (itLock = pLockPrimKey->begin(); itLock != pLockPrimKey->end(); itLock++) {
-			Lock& tempLock = itLock->second;
-			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
-				LockPos& tempLockPos = itLock->second.lastNPos.top();
-				*pLocksHeldOFile << dec << itLock->second.id << DELIMITER_CHAR << tempAccess.id << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLockPos.start << DELIMITER_CHAR << tempLockPos.lastFile << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
-				*pLocksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
-			}
-		}
 	}
+
+	// count memory accesses for the current TXN if there's one active
+	if (!activeTXNs.empty()) {
+		activeTXNs.top().memAccessCounter += accessCount;
+	}
+
+	// We'll record the TXN and which locks were held while it ran when it
+	// finishes (with the final V()).
+
 	// Disabled flush of output files for performance reasons
 //	pMemAccessOFile->flush();
-//	pLocksHeldOFile->flush();
 	pMemAccesses->clear();
 }
 
@@ -337,10 +402,11 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	return 0;
 }
 
-static inline std::string sql_null_if_0(unsigned x)
+// returns stringified var if cond is false, or "NULL" if cond is true
+static inline std::string sql_null_if(unsigned var, bool cond)
 {
-	if (x != 0) {
-		return std::to_string(x);
+	if (!cond) {
+		return std::to_string(var);
 	}
 	return "\\N";
 }
@@ -351,7 +417,7 @@ int main(int argc, char *argv[]) {
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
-	unsigned long long ts, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0;
 	char action, param, *vmlinuxName = NULL;
 
@@ -413,22 +479,28 @@ int main(int argc, char *argv[]) {
 	ofstream accessOFile("accesses.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
-	// Add the header. Hallo, Horst. :)
+	ofstream txnsOFile("txns.csv",std::ofstream::out | std::ofstream::trunc);
+
+	// CSV headers
 	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
 
 	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
 	allocOFile << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 
-	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "ts" << DELIMITER_CHAR;
+	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "txn_id" << DELIMITER_CHAR;
+	accessOFile << "ts" << DELIMITER_CHAR;
 	accessOFile << "type" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
 	accessOFile << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
 
 	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
 	locksOFile << "embedded" << DELIMITER_CHAR << "locktype" << endl;
 
-	locksHeldOFile << "lock_id" << DELIMITER_CHAR << "access_id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR;
+	locksHeldOFile << "txn_id" << DELIMITER_CHAR << "lock_id" << DELIMITER_CHAR;
+	locksHeldOFile << "start" << DELIMITER_CHAR;
 	locksHeldOFile << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR;
 	locksHeldOFile << "lastPreemptCount" << DELIMITER_CHAR << "lastLockFn" << endl;
+
+	txnsOFile << "id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 
 	for (int i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
@@ -503,7 +575,7 @@ int main(int argc, char *argv[]) {
 			cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
 		}
 
-		writeMemAccesses(action, address, &accessOFile, &lastMemAccesses, &locksHeldOFile, &lockPrimKey);
+		writeMemAccesses(action, address, &accessOFile, &lastMemAccesses);
 		switch (action) {
 		case 'a':
 				{
@@ -591,6 +663,9 @@ int main(int argc, char *argv[]) {
 						tempLockPos.lastFn = fn;
 						tempLockPos.lastLockFn = lockfn;
 						tempLockPos.lastPreemptCount = preemptCount;
+
+						// a P() suspends the current TXN and creates a new one
+						startTXN(ts);
 					} else if (action == 'v') {
 						if (ptr == 0x42) {
 							if (itLock->second.held == 0) {
@@ -606,6 +681,15 @@ int main(int argc, char *argv[]) {
 							itLock->second.held = 0;
 						}
 						if (!itLock->second.lastNPos.empty()) {
+							// a V() finishes the current TXN (even if it does
+							// not match its starting P()!) and continues the
+							// enclosing one
+							if (activeTXNs.empty()) {
+								cerr << "TXN: V() but no running transaction!" << PRINT_CONTEXT << endl;
+							} else {
+								finishTXN(ts, txnsOFile, locksHeldOFile);
+							}
+
 							itLock->second.lastNPos.pop();
 						} else {
 							cerr << "No last locking position known for lock at address " << showbase << hex << ptr << noshowbase << ", cannot pop." << PRINT_CONTEXT << endl;
@@ -670,7 +754,10 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastPreemptCount = preemptCount;
 
 				locksOFile << dec << tempLock.id << DELIMITER_CHAR << tempLock.ptr;
-				locksOFile << DELIMITER_CHAR << sql_null_if_0(tempLock.allocation_id) << DELIMITER_CHAR << tempLock.lockType << "\n";
+				locksOFile << DELIMITER_CHAR << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << DELIMITER_CHAR << tempLock.lockType << "\n";
+
+				// a P() suspends the current TXN and creates a new one
+				startTXN(ts);
 				break;
 				}
 		case 'w':
@@ -701,6 +788,7 @@ int main(int argc, char *argv[]) {
 				}
 		}
 	}
+
 	// Due to the fact that we abort the expriment as soon as the benchmark has finished, some allocations may not have been freed.
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
@@ -709,12 +797,23 @@ int main(int argc, char *argv[]) {
 		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "\\N" << "\n";
 	}
 
+	// Flush memory writes by pretending there's a final V()
+	writeMemAccesses('v', 0, &accessOFile, &lastMemAccesses);
+
+	// Flush transactions if there are still open ones
+	while (!activeTXNs.empty()) {
+		cerr << "TXN: There are still " << activeTXNs.size() << " TXNs active, flushing the topmost one." << endl;
+		// pretend there's a V() at the last seen timestamp
+		finishTXN(ts, txnsOFile, locksHeldOFile);
+	}
+
 	infile.close();
 	datatypesOFile.close();
 	allocOFile.close();
 	accessOFile.close();
 	locksOFile.close();
 	locksHeldOFile.close();
+	txnsOFile.close();
 
 	cus__delete(cus);
 	dwarves__exit();
