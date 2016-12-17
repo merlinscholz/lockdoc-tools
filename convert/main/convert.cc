@@ -169,13 +169,13 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		return;
 	}
 
-	if ((pAction == 'p' || pAction == 'v') && pMemAccesses->size() > 0 && pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
+	if ((pAction == 'p' || pAction == 'v') && pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
 		size = pMemAccesses->size();
 		// Have a look at the two last events
 		window[0] = pMemAccesses->at(size - 2);
 		window[1] = pMemAccesses->at(size - 1);
 		// If they have the same timestamp, access the same address, access the same amount of memory, and one is a read and the other event is a write,
-		// they'll propably belong to the upcoming acquire or release events.
+		// they'll probably belong to the upcoming acquire or release events.
 		// To increase the certainty that both events belong to the lock operation, the read/write address is compared to the address of the lock.
 		// As long as the Linux Kernel developer do *not* change the layout of spinlock_t, this step will work.
 		// That means they have to be discarded. Otherwise, the dataset will be polluted, and the following steps might produce wrong results.
@@ -686,7 +686,6 @@ int main(int argc, char *argv[]) {
 				// sanity check
 				if (ptr + itAlloc->second.size < address || address + size < ptr) {
 					cerr << "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation " << ptr << noshowbase << PRINT_CONTEXT << endl;
-					continue;
 					return EXIT_FAILURE;
 				}
 
