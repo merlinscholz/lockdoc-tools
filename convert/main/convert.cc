@@ -52,7 +52,7 @@ struct Lock {
 	unsigned long long id;										// A unique id which describes a particular lock within our dataset
 	unsigned long long ptr;										// The pointer to the memory area, where the lock resides
 	int held;													// Indicates whether the lock is held or not
-	int allocation_id;										    // ID of the allocation this lock resides in (-1 if not embedded)
+	unsigned allocation_id;										// ID of the allocation this lock resides in (0 if not embedded)
 	string lockType;											// Describes the lock type
 	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
 };
@@ -337,6 +337,14 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	return 0;
 }
 
+static inline std::string sql_null_if_0(unsigned x)
+{
+	if (x != 0) {
+		return std::to_string(x);
+	}
+	return "\\N";
+}
+
 int main(int argc, char *argv[]) {
 	stringstream ss;
 	string inputLine, token, typeStr, file, fn, lockfn, lockType;
@@ -610,26 +618,26 @@ int main(int argc, char *argv[]) {
 				}
 
 				// categorize currently unknown lock
-				int allocation_id;
+				unsigned allocation_id;
 				if ((ptr >= bssStart && ptr <= bssStart + bssSize) || ( ptr >= dataStart && ptr <= dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
 					// static lock which resides either in the bss segment or in the data segment
 					// or global static lock aka rcu lock
 #ifdef VERBOSE
 					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
 #endif
-					// -1 indicates a static lock
-					allocation_id = -1;
+					// 0 indicates a static lock
+					allocation_id = 0;
 				} else {
 					// A lock which probably resides in one of the observed allocations. If not, we don't care!
-					allocation_id = -1;
+					allocation_id = 0;
 					itAlloc = activeAllocs.upper_bound(ptr);
 					if (itAlloc != activeAllocs.begin()) {
 						itAlloc--;
-					    if (ptr <= itAlloc->first + itAlloc->second.size) {
+						if (ptr <= itAlloc->first + itAlloc->second.size) {
 							allocation_id = itAlloc->second.id;
 						}
 					}
-					if (allocation_id == -1) {
+					if (allocation_id == 0) {
 #ifdef VERBOSE
 						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
 #endif
@@ -664,7 +672,7 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastPreemptCount = preemptCount;
 
 				locksOFile << dec << tempLock.id << DELIMITER_CHAR << tempLock.ptr;
-				locksOFile << DELIMITER_CHAR << tempLock.allocation_id << DELIMITER_CHAR << tempLock.lockType << "\n";
+				locksOFile << DELIMITER_CHAR << sql_null_if_0(tempLock.allocation_id) << DELIMITER_CHAR << tempLock.lockType << "\n";
 				break;
 				}
 		case 'w':
@@ -701,7 +709,7 @@ int main(int argc, char *argv[]) {
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		Allocation& tempAlloc = itAlloc->second;
 		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
-		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "-1" << "\n";
+		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "\\N" << "\n";
 	}
 
 	infile.close();
