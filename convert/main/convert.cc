@@ -554,6 +554,10 @@ int main(int argc, char *argv[]) {
 				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr < (itAlloc->first + tempAlloc.size)) {
+						// Lock should not be held anymore
+						if (itLock->second.held > 0) {
+							cerr << "Lock at address " << showbase << hex << itLock->second.ptr << noshowbase << " is being freed but held = " << itLock->second.held << "! " << PRINT_CONTEXT << endl;
+						}
 						// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
 						itTemp = itLock;
 						itLock++;
