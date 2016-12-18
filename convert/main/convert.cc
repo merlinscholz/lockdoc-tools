@@ -199,10 +199,10 @@ static void finishTXN(unsigned long long ts, std::ofstream& txnsOFile, std::ofst
 		txnsOFile << ts << "\n";
 
 		// Note which locks were held during this TXN
-		for (auto itLock = lockPrimKey.begin(); itLock != lockPrimKey.end(); itLock++) {
-			Lock& tempLock = itLock->second;
+		for (auto itLock : lockPrimKey) {
+			Lock& tempLock = itLock.second;
 			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
-				LockPos& tempLockPos = itLock->second.lastNPos.top();
+				LockPos& tempLockPos = tempLock.lastNPos.top();
 				locksHeldOFile << dec << activeTXNs.top().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
 				locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
 				locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
@@ -261,14 +261,14 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 
 	// write memory accesses to disk and associate them with the current TXN
 	unsigned accessCount = 0;
-	for (itAccess = pMemAccesses->begin(); itAccess != pMemAccesses->end(); itAccess++, ++accessCount) {
-		MemAccess& tempAccess = *itAccess;
+	for (auto&& tempAccess : *pMemAccesses) {
 		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id;
 		*pMemAccessOFile << DELIMITER_CHAR << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.top().id));
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
 		*pMemAccessOFile << DELIMITER_CHAR << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
+		++accessCount;
 	}
 
 	// count memory accesses for the current TXN if there's one active
