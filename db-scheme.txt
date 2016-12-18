@@ -1,7 +1,7 @@
 CREATE TABLE `accesses` (
   `id` int(11) UNSIGNED NOT NULL,		-- an unique id identifying a particular access
   `alloc_id` int(11) UNSIGNED NOT NULL,		-- references the memory area which is accessed by this event
-  `txn_id` int(11) UNSIGNED NOT NULL,		-- references the transaction this access occurs in
+  `txn_id` int(11) UNSIGNED DEFAULT NULL,	-- references the transaction this access occurs in (NULL for none)
   `ts` bigint(20) DEFAULT NULL,
   `type` enum('r','w') NOT NULL,		-- Defines the event type, read vs. write access
   `size` tinyint(11) UNSIGNED NOT NULL,		-- How many bytes were written?
