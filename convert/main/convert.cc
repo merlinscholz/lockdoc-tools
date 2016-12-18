@@ -519,9 +519,14 @@ int main(int argc, char *argv[]) {
 				<< ss.str().size() << std::endl;
 		}
 #endif
-		// Skip the header
+		// Skip the header if there is one.  This check exploits the fact that
+		// any valid input line must start with a decimal digit.
 		if (lineCounter == 0) {
-			continue;
+			if (inputLine.length() == 0 || !isdigit(inputLine[0])) {
+				continue;
+			} else {
+				cerr << "Warning: Input data does not start with a CSV header." << endl;
+			}
 		}
 
 		ss << inputLine;
