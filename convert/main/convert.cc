@@ -451,12 +451,6 @@ int main(int argc, char *argv[]) {
 		if (lineCounter == 0) {
 			continue;
 		}
-		if (lineCounter % 100 == 0) {
-			allocOFile.flush();
-			accessOFile.flush();
-			locksOFile.flush();
-			locksHeldOFile.flush();
-		}
 
 		ss << inputLine;
 		// Tokenize each line by DELIMITER_CHAR, and store each element in a vector
