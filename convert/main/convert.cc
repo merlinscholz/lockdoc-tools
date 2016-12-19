@@ -106,6 +106,7 @@ struct TXN {
 	unsigned long long id;										// ID
 	unsigned long long start;									// Timestamp when this TXN started
 	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
+	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
 };
 
 /**
@@ -125,9 +126,10 @@ static DataType types[MAX_OBSERVED_TYPES];
  */
 static vector<MemAccess> lastMemAccesses;
 /**
- * A stack of currently active, nested TXNs.
+ * A stack of currently active, nested TXNs.  Implemented as a deque for mass
+ * insert() in finishTXN().
  */
-static std::stack<TXN, std::vector<TXN> > activeTXNs;
+static std::deque<TXN> activeTXNs;
 
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
@@ -157,7 +159,7 @@ static unsigned long long curAllocID = 1;
  */
 static unsigned long long curAccessID = 1;
 /**
- * The next id for a new transaction.
+ * The next id for a new TXN.
  */
 static unsigned long long curTXNID = 1;
 
@@ -183,36 +185,98 @@ static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 	return ret;
 }
 
-static void startTXN(unsigned long long ts)
+static void startTXN(unsigned long long ts, unsigned long long lockPtr)
 {
-	activeTXNs.push(TXN());
-	activeTXNs.top().id = curTXNID++;
-	activeTXNs.top().start = ts;
-	activeTXNs.top().memAccessCounter = 0;
+	activeTXNs.push_back(TXN());
+	activeTXNs.back().id = curTXNID++;
+	activeTXNs.back().start = ts;
+	activeTXNs.back().memAccessCounter = 0;
+	activeTXNs.back().lockPtr = lockPtr;
 }
 
-static void finishTXN(unsigned long long ts, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
+#if 0
+// debugging stuff
+static void dumpTXNs(const std::deque<TXN>& txns)
 {
-	if (!SKIP_EMPTY_TXNS || activeTXNs.top().memAccessCounter > 0) {
-		// Record this TXN
-		txnsOFile << activeTXNs.top().id << DELIMITER_CHAR;
-		txnsOFile << activeTXNs.top().start << DELIMITER_CHAR;
-		txnsOFile << ts << "\n";
+	cerr << "[ ";
+	for (auto&& txn : txns) {
+		cerr << txn.lockPtr << " ";
+	}
+	cerr << "]" << endl;
+}
+#endif
 
-		// Note which locks were held during this TXN
-		for (auto itLock : lockPrimKey) {
-			Lock& tempLock = itLock.second;
-			if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
-				LockPos& tempLockPos = tempLock.lastNPos.top();
-				locksHeldOFile << dec << activeTXNs.top().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
-				locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
-				locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
-				locksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
-				locksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
+static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
+{
+	// We have to differentiate two cases:
+	//
+	// 1. The lock we're seeing a V() on (lockPtr) belongs to the top-most,
+	//    currently active TXN.  Here we simply close this TXN: We write it to
+	//    disk along with all locks that are currently held (which is
+	//    equivalent to "the locks belonging to all currently active TXNs).
+	// 2. The lock we're seeing a V() on belongs to a TXN below the top-most
+	//    one.  Then we have to close all TXNs down to (and including) this
+	//    TXN, and open new TXNs for all TXNs (excluding the one with the
+	//    matching lock) we just closed, in the same layering order as we
+	//    closed them.
+	//
+	// The following code assumes we're observing case 2, of which case 1 is a
+	// special case (while loop terminates after one iteration).
+
+	std::deque<TXN> restartTXNs;
+	bool found = false;
+	
+	while (!activeTXNs.empty()) {
+		if (!SKIP_EMPTY_TXNS || activeTXNs.back().memAccessCounter > 0) {
+			// Record this TXN
+			txnsOFile << activeTXNs.back().id << DELIMITER_CHAR;
+			txnsOFile << activeTXNs.back().start << DELIMITER_CHAR;
+			txnsOFile << ts << "\n";
+
+			// Note which locks were held during this TXN by looking at all
+			// TXNs "below" it (the order does not matter because we record the
+			// start timestamp)
+			for (auto thisTXN : activeTXNs) {
+				Lock& tempLock = lockPrimKey[thisTXN.lockPtr];
+				if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
+					LockPos& tempLockPos = tempLock.lastNPos.top();
+					locksHeldOFile << dec << activeTXNs.back().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
+					locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
+					locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
+					locksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
+					locksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
+				} else {
+					cerr << "TXN: Internal error, lock is part of the TXN hierarchy but not held? lockPtr = " << showbase << hex << thisTXN.lockPtr << noshowbase << endl;
+				}
 			}
 		}
+
+		// are we done deconstructing the TXN stack?
+		if (activeTXNs.back().lockPtr == lockPtr) {
+			activeTXNs.pop_back();
+			found = true;
+			break;
+		}
+
+		// this is a TXN we need to recreate under a different ID after we're done
+
+		// pushing in front to preserve order
+		restartTXNs.push_front(std::move(activeTXNs.back()));
+		activeTXNs.pop_back();
+		// give TXN a new ID + timestamp + memAccessCounter
+		restartTXNs.front().id = curTXNID++;
+		restartTXNs.front().start = ts;
+		restartTXNs.front().memAccessCounter = 0;
 	}
-	activeTXNs.pop();
+
+	// sanity check whether activeTXNs is not empty -- this should never happen
+	// because we check whether we know this lock before we call finishTXN()!
+	if (!found) {
+		cerr << "TXN: Internal error -- V() but no matching TXN! lockPtr = " << showbase << hex << lockPtr << noshowbase << endl;
+	}
+
+	// recreate TXNs
+	std::move(restartTXNs.begin(), restartTXNs.end(), std::back_inserter(activeTXNs));
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
@@ -264,7 +328,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	unsigned accessCount = 0;
 	for (auto&& tempAccess : *pMemAccesses) {
 		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id;
-		*pMemAccessOFile << DELIMITER_CHAR << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.top().id));
+		*pMemAccessOFile << DELIMITER_CHAR << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.ts;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
 		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
@@ -274,7 +338,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 
 	// count memory accesses for the current TXN if there's one active
 	if (!activeTXNs.empty()) {
-		activeTXNs.top().memAccessCounter += accessCount;
+		activeTXNs.back().memAccessCounter += accessCount;
 	}
 
 	// We'll record the TXN and which locks were held while it ran when it
@@ -652,12 +716,18 @@ int main(int argc, char *argv[]) {
 #ifdef VERBOSE
 						cerr << "Found existing lock at address " << showbase << hex << ptr << noshowbase << ". Just updating the meta information." << endl;
 #endif
-						if (ptr == 0x42) {
+						if (ptr == 0x42) { // RCU
 							itLock->second.held++;
 						} else {
 							// Has it already been acquired?
 							if (itLock->second.held != 0) {
 								cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " is already being held!" << PRINT_CONTEXT << endl;
+								// finish TXN for this lock, we may have missed
+								// the corresponding V()
+								finishTXN(ts, ptr, txnsOFile, locksHeldOFile);
+								// forget locking position because this kind of
+								// lock can officially only be held once
+								itLock->second.lastNPos.pop();
 							}
 							itLock->second.held = 1;
 						}
@@ -671,8 +741,22 @@ int main(int argc, char *argv[]) {
 						tempLockPos.lastPreemptCount = preemptCount;
 
 						// a P() suspends the current TXN and creates a new one
-						startTXN(ts);
+						startTXN(ts, ptr);
 					} else if (action == 'v') {
+						if (!itLock->second.lastNPos.empty()) {
+							// a V() finishes the current TXN (even if it does
+							// not match its starting P()!) and continues the
+							// enclosing one
+							if (activeTXNs.empty()) {
+								cerr << "TXN: V() but no running TXN!" << PRINT_CONTEXT << endl;
+							} else {
+								finishTXN(ts, ptr, txnsOFile, locksHeldOFile);
+							}
+
+							itLock->second.lastNPos.pop();
+						} else {
+							cerr << "No last locking position known for lock at address " << showbase << hex << ptr << noshowbase << ", cannot pop." << PRINT_CONTEXT << endl;
+						}
 						if (ptr == 0x42) {
 							if (itLock->second.held == 0) {
 								cerr << "RCU lock has already been released." << PRINT_CONTEXT << endl;
@@ -685,20 +769,6 @@ int main(int argc, char *argv[]) {
 								cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " has already been released." << PRINT_CONTEXT << endl;
 							}
 							itLock->second.held = 0;
-						}
-						if (!itLock->second.lastNPos.empty()) {
-							// a V() finishes the current TXN (even if it does
-							// not match its starting P()!) and continues the
-							// enclosing one
-							if (activeTXNs.empty()) {
-								cerr << "TXN: V() but no running transaction!" << PRINT_CONTEXT << endl;
-							} else {
-								finishTXN(ts, txnsOFile, locksHeldOFile);
-							}
-
-							itLock->second.lastNPos.pop();
-						} else {
-							cerr << "No last locking position known for lock at address " << showbase << hex << ptr << noshowbase << ", cannot pop." << PRINT_CONTEXT << endl;
 						}
 					}
 					// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
@@ -763,7 +833,7 @@ int main(int argc, char *argv[]) {
 				locksOFile << DELIMITER_CHAR << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << DELIMITER_CHAR << tempLock.lockType << "\n";
 
 				// a P() suspends the current TXN and creates a new one
-				startTXN(ts);
+				startTXN(ts, ptr);
 				break;
 				}
 		case 'w':
@@ -806,11 +876,12 @@ int main(int argc, char *argv[]) {
 	// Flush memory writes by pretending there's a final V()
 	writeMemAccesses('v', 0, &accessOFile, &lastMemAccesses);
 
-	// Flush transactions if there are still open ones
+	// Flush TXNs if there are still open ones
 	while (!activeTXNs.empty()) {
 		cerr << "TXN: There are still " << activeTXNs.size() << " TXNs active, flushing the topmost one." << endl;
-		// pretend there's a V() at the last seen timestamp
-		finishTXN(ts, txnsOFile, locksHeldOFile);
+		// pretend there's a V() matching the top-most TXN's starting (P())
+		// lock at the last seen timestamp
+		finishTXN(ts, activeTXNs.back().lockPtr, txnsOFile, locksHeldOFile);
 	}
 
 	infile.close();
