@@ -188,6 +188,7 @@ static void startTXN(unsigned long long ts)
 	activeTXNs.push(TXN());
 	activeTXNs.top().id = curTXNID++;
 	activeTXNs.top().start = ts;
+	activeTXNs.top().memAccessCounter = 0;
 }
 
 static void finishTXN(unsigned long long ts, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
