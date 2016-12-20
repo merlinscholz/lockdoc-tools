@@ -10,6 +10,7 @@
 #include <stack>
 #include "dwarves_api.h"
 #include "config.h"
+#include "git_version.h"
 
 
 #define IS_MULTILVL_LOCK(x)	((x).ptr == 0x42)
@@ -501,6 +502,8 @@ int main(int argc, char *argv[]) {
 	if (vmlinuxName == NULL || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
+	
+	cerr << "convert version: " << GIT_MESSAGE << endl;
 
 	types[0].typeStr = "task_struct";
 	types[0].foundInDw = 0;
