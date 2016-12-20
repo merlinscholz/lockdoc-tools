@@ -29,6 +29,10 @@ endif
 #<name>_DIR=<dir_name>
 #<name>_SRC=<source files>
 #<name>_OBJ=$(patsubst %.o,$(OBJ_PATH)/$(<name>_DIR)/%.o,$(<name>_SRC:%.cpp=%.o))
+GZSTREAM_DIR=gzstream
+GZSTREAM_SRC= gzstream.cc
+GZSTREAM_OBJ=$(patsubst %.o,$(BUILD_PATH)/$(GZSTREAM_DIR)/%.o,$(GZSTREAM_SRC:%.cc=%.o))
+INCLUDE_PATHS+= -I$(GZSTREAM_DIR)
 
 DWARVES_DIR=dwarves
 DWARVES_SRC= dwarves.c dutil.c  dwarf_loader.c  dwarves_fprintf.c  rbtree.c strings.c gobuffer.c
@@ -55,7 +59,7 @@ LD_LIBS := -ldw -lelf -lz -lbfd
 
 # ADD YOUR NEW OBJ VAR HERE
 # Example: $(<name>_OBJ)
-OBJ = $(DWARVES_OBJ) $(MAIN_OBJ)
+OBJ = $(DWARVES_OBJ) $(GZSTREAM_OBJ) $(MAIN_OBJ)
 CONVERT_BIN = $(BUILD_PATH)/convert
 
 # ADD HERE YOUR NEW SOURCE DIRECTORY

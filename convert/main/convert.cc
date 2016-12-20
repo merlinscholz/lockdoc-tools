@@ -9,6 +9,7 @@
 #include <bfd.h>
 #include <stack>
 #include "dwarves_api.h"
+#include "gzstream/gzstream.h"
 #include "config.h"
 #include "git_version.h"
 
@@ -169,7 +170,7 @@ static struct cus *cus;
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf;
 	cerr << " -k <path/to/vmlinux";
-	cerr << " inputfile" << endl;
+	cerr << " <inputfile>.gz" << endl;
 	exit(EXIT_FAILURE);
 }
 
@@ -535,7 +536,7 @@ int main(int argc, char *argv[]) {
 		printUsageAndExit(argv[0]);
 	}
 
-	ifstream infile(argv[optind]);
+	igzstream infile(argv[optind]);
 	if (!infile.is_open()) {
 		cerr << "Cannot open file: " << argv[optind] << endl;
 		return EXIT_FAILURE;
