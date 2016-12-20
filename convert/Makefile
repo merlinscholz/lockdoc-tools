@@ -106,7 +106,7 @@ $(BUILD_PATH)/%.d: %.cc
 
 git_version.h:
 	@echo "Generating version information"
-	$(OUTPUT)./git_version.sh -o git_version.h
+	$(OUTPUT)./git_version.sh -s ../ -o git_version.h
 
 clean: clean-dep clean-obj 
 
