@@ -225,7 +225,7 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 
 	std::deque<TXN> restartTXNs;
 	bool found = false;
-	
+
 	while (!activeTXNs.empty()) {
 		if (!SKIP_EMPTY_TXNS || activeTXNs.back().memAccessCounter > 0) {
 			// Record this TXN
