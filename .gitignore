@@ -1,5 +1,6 @@
 data
 convert/build/
+convert/git_version.h
 *.d
 *.o
 .Rproj.user
