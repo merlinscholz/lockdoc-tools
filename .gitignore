@@ -1,0 +1,4 @@
+data
+convert/build/
+*.d
+*.o
