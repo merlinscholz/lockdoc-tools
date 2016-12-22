@@ -293,17 +293,9 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	if (pAction == 'r' || pAction == 'w') {
 		return;
 	}
-	// A TXN is not terminated/suspended by alloc / free
-	if (pAction == 'a' || pAction == 'f') {
-		return;
-	}
 
-	// We know we're looking at a P() or V() now -- which terminates a TXN.
-	// This means we need to write out all seen memory accesses, and associate
-	// them with the current TXN, which will soon be terminated by the main
-	// loop.
-
-	if (pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
+	if ((pAction == 'p' || pAction == 'v') &&
+	    pMemAccesses->size() >= LOOK_BEHIND_WINDOW) {
 		size = pMemAccesses->size();
 		// Have a look at the two last events
 		window[0] = pMemAccesses->at(size - 2);
@@ -328,6 +320,14 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 			pMemAccesses->pop_back();
 		}
 	}
+
+	// If this is a P() or V(), the current TXN will be terminated after
+	// returning from this function.  This means we need to write out all seen
+	// memory accesses, and associate them with the current TXN.
+	//
+	// If this is an Alloc or Free, we also need to write out all memory
+	// accesses to prevent them from being discarded later by the above
+	// heuristic.
 
 	// write memory accesses to disk and associate them with the current TXN
 	unsigned accessCount = 0;
