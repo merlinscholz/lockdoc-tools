@@ -6,7 +6,8 @@ args <- commandArgs(trailingOnly=T)
 
 spec = matrix(c(
   'inputfile', 'i', 1, 'character',
-  'member'   , 'm', 1, 'character'
+  'member'   , 'm', 1, 'character',
+  'directory'   , 'd', 1, 'character'
 ), byrow=TRUE, ncol=4);
 opt = getopt(spec);
 
@@ -20,6 +21,16 @@ if (is.null(opt$member)) {
   memberFilter = NULL
 } else {
   memberFilter = opt$member
+}
+
+if (is.null(opt$directory)) {
+  directory = NULL
+} else {
+  directory = opt$directory
+  if (!file.exists(directory)) {
+    cat(sprintf("Creating directory %s ...\n",directory))
+    dir.create(directory)
+  }
 }
 
 if (inputfname == "-") {
@@ -41,8 +52,12 @@ for (member in members) {
     next
   }
   name = sprintf("%s-%s-%s",dt_name,member,database)
-  fname = sprintf("%s.pdf",name)
-  cat(sprintf("Creating: %s\n",name))
+  if (is.null(directory)) {
+    fname = sprintf("%s.pdf",name)
+  } else {
+    fname = sprintf("%s/%s.pdf",directory,name)
+  }
+  cat(sprintf("Creating: %s\n",fname))
   plot <- ggplot(data[data$member==member,],aes(x=lock_member,y=num)) +
   geom_bar(position="dodge",stat="identity") +
   facet_grid(ac_type ~ context, scales = "free_y") +
