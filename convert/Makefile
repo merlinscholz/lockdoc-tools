@@ -120,7 +120,7 @@ distclean: clean
 	$(RM) -r $(BUILD_PATH)
 
 #***************************** INCLUDE EVERY EXISTING DEPENDENCY FILE  *****************************
-include $(EXISTING_DEPS)
+-include $(EXISTING_DEPS)
 #*****************************		END INCLUDE		       *****************************
 
 .PHONY: all clean clean-deps clean-obj distclean 
