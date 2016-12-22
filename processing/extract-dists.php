@@ -154,7 +154,8 @@ SELECT
 FROM
 (
 	SELECT
-		ac.id AS ac_id, 
+		ac.id AS ac_id,
+		ac.txn_id AS ac_txn_id,
 		ac.alloc_id AS alloc_id,
 		ac.type AS ac_type,
 		ac.fn AS ac_fn,
@@ -173,7 +174,7 @@ FROM
 		".$instance_clause."
 	GROUP BY ac.id
 ) s
-LEFT JOIN locks_held AS lh ON lh.access_id=ac_id
+LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 LEFT JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
