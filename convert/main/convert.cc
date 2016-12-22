@@ -531,7 +531,7 @@ int main(int argc, char *argv[]) {
 		printUsageAndExit(argv[0]);
 	}
 	
-	cerr << "convert version: " << GIT_MESSAGE << endl;
+	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
 
 	types[0].typeStr = "task_struct";
 	types[0].foundInDw = 0;
