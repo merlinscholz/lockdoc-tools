@@ -8,6 +8,9 @@
 #include <vector>
 #include <bfd.h>
 #include <stack>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "dwarves_api.h"
 #include "gzstream/gzstream.h"
 #include "config.h"
@@ -478,6 +481,30 @@ static inline std::string sql_null_if(unsigned var, bool cond)
 	return "\\N";
 }
 
+static int isGZIPFile(const char *filename) {
+	int fd, bytes;
+	unsigned char buffer[2];
+
+	fd = open(filename,O_RDONLY);
+	if (fd < 0) {
+		perror("isGZIPFile()->open");
+		return -1;
+	}
+	bytes = read(fd,buffer,2);
+	if (bytes < 0) {
+		perror("isGZIPFile()->read");
+		return -1;
+	} else if (bytes != 2) {
+		return -1;
+	}
+	close(fd);
+	if (buffer[0] == 0x1f && buffer[1] == 0x8b) {
+		return 1;
+	} else {
+		return 0;
+	}	
+}
+
 int main(int argc, char *argv[]) {
 	stringstream ss;
 	string inputLine, token, typeStr, file, fn, lockfn, lockType;
@@ -485,7 +512,7 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
-	int lineCounter = 0;
+	int lineCounter = 0, isGZ;
 	char action, param, *vmlinuxName = NULL;
 
 	if (argc < 2) {
@@ -535,12 +562,38 @@ int main(int argc, char *argv[]) {
 		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
 		printUsageAndExit(argv[0]);
 	}
+	
 
-	igzstream infile(argv[optind]);
-	if (!infile.is_open()) {
-		cerr << "Cannot open file: " << argv[optind] << endl;
+	// This is very bad design practise!
+	// Only the fstream does have a close() method.
+	// Since the gzstream is a direct subclass of iostream, a ptr of that type
+	// cannot be stored in one common ptr variable without losing the
+	// ability to call close(). 
+	istream *infile;
+	igzstream *gzinfile = NULL;
+	ifstream *rawinfile = NULL;
+	char *fname = argv[optind];
+	isGZ = isGZIPFile(fname);
+
+	if (isGZ == 1) {
+		gzinfile = new igzstream(fname);
+		if (!gzinfile->is_open()) {
+			cerr << "Cannot open file: " << fname << endl;
+			return EXIT_FAILURE;
+		}
+		infile = gzinfile;
+	} else if (isGZ == 0) {
+		rawinfile = new ifstream(fname);
+		if (!rawinfile->is_open()) {
+			cerr << "Cannot open file: " << fname << endl;
+			return EXIT_FAILURE;
+		}
+		infile = rawinfile;
+	} else {
+		cerr << "Cannot read inputfile: " << fname << endl;
 		return EXIT_FAILURE;
 	}
+
 
 	// Create the outputfiles. One for each table.
 	ofstream datatypesOFile("data_types.csv",std::ofstream::out | std::ofstream::trunc);
@@ -577,7 +630,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Start reading the inputfile
-	for (;getline(infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+	for (;getline(*infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
 #ifdef DEBUG_DATASTRUCTURE_GROWTH
 		if ((lineCounter % 100000) == 0) {
 			cerr << lockPrimKey.size() << " "
@@ -888,7 +941,15 @@ int main(int argc, char *argv[]) {
 		finishTXN(ts, activeTXNs.back().lockPtr, txnsOFile, locksHeldOFile);
 	}
 
-	infile.close();
+
+	if (isGZ) {
+		gzinfile->close();;
+		delete gzinfile;
+	} else {
+		rawinfile->close();
+		delete rawinfile;
+	}
+
 	datatypesOFile.close();
 	allocOFile.close();
 	accessOFile.close();
