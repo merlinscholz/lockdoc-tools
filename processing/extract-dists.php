@@ -171,7 +171,13 @@ FROM
 		a.type = ".$datatype_id." AND
 		".$member_clause." AND
 		ac.type  IN (".$ac_type_clause.") AND
-		".$instance_clause."
+		".$instance_clause." AND
+		ac.fn NOT IN
+		(
+			SELECT bl.fn
+			FROM blacklist AS bl
+			WHERE bl.datatype_id = a.type
+		)
 	GROUP BY ac.id
 ) s
 LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
