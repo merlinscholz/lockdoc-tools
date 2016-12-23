@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "config.h"
 #include "dwarves.h"
@@ -420,10 +421,11 @@ out_error:
 static void struct_member__fprintf(struct class_member *member,
 				     struct tag *type, const struct cu *cu, FILE *fp, unsigned long long id)
 {
+	struct class_member *pos;
 	const int size = member->byte_size;
 	uint32_t offset = member->byte_offset;
-	const char *cm_name = class_member__name(member, cu),
-		   *name = cm_name;
+	char *cm_name_temp = NULL;
+	const char *cm_name = class_member__name(member, cu), *temp, *name = cm_name;
 
 	fprintf(fp,"%llu" DELIMITER_STRING,id);
 	if (member->tag.tag == DW_TAG_inheritance) {
@@ -445,10 +447,51 @@ static void struct_member__fprintf(struct class_member *member,
 		fprintf(fp, ":%u;", member->bitfield_size);
 	}
 #endif
-	if (type__name(tag__type(type), cu) == NULL) {
-		cm_name = "anonymous";
+	if (tag__is_union(type)) {
+		int len = 0, curLen = 0;
+		struct type *ctype = tag__type(type);
+
+		type__for_each_member(ctype, pos) {
+			struct tag *type = cu__type(cu, pos->tag.type);
+
+			if (type == NULL) {
+				continue;
+			}
+			temp = class_member__name(pos, cu);
+			if (temp == NULL) {
+				continue;
+			}
+			curLen = strlen(temp) + 2;
+			len += curLen;
+			cm_name_temp = realloc(cm_name_temp,len);
+			if (len == curLen) {
+					memset(cm_name_temp,0,strlen(temp) + 2);
+			}
+			if (cm_name_temp == NULL) {
+				exit(0);
+			}
+			strcat(cm_name_temp,temp);
+			if (!list_is_last(&pos->tag.node,&ctype->namespace.tags)) {
+				strcat(cm_name_temp,"-");
+			}
+		}
+		if (cm_name_temp != NULL) {
+			cm_name = cm_name_temp;
+		}
 	}
+	if (cm_name == NULL) {
+		cm_name_temp = malloc(strlen("anonymous") + 10);
+		if (cm_name_temp == NULL) {
+			exit(0);
+		}
+		sprintf(cm_name_temp,"anonymous_%d",offset);
+		cm_name = cm_name_temp;
+	}
+	
 	fprintf(fp,DELIMITER_STRING "%s"DELIMITER_STRING "%d"DELIMITER_STRING "%d", cm_name,offset,size);
+	if (cm_name_temp != NULL) {
+		free(cm_name_temp);
+	}
 }
 
 const char *function__prototype(const struct function *func,
