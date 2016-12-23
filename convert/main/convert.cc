@@ -557,7 +557,7 @@ int main(int argc, char *argv[]) {
 	if (extractStructDefs(cus,vmlinuxName)) {
 		return EXIT_FAILURE;
 	}
-return 0;
+
 	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
 		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
 		printUsageAndExit(argv[0]);
