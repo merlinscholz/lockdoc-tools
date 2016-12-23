@@ -109,6 +109,7 @@ git_version.h:
 	$(OUTPUT)./git_version.sh -s ../ -o git_version.h
 
 clean: clean-dep clean-obj 
+	$(RM) git_version.h
 
 clean-dep:
 	$(RM) $(DEP)
@@ -123,7 +124,7 @@ distclean: clean
 -include $(EXISTING_DEPS)
 #*****************************		END INCLUDE		       *****************************
 
-.PHONY: all clean clean-deps clean-obj distclean 
+.PHONY: all clean clean-deps clean-obj distclean git_version.h
 
 # usage: $(call make-depend,source-file,object-file,depend-file)
 define make-depend
