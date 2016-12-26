@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 #include <bfd.h>
@@ -240,11 +241,21 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 
 			// Note which locks were held during this TXN by looking at all
 			// TXNs "below" it (the order does not matter because we record the
-			// start timestamp)
+			// start timestamp).  Don't mention a lock more than once (see
+			// below).
+			std::set<decltype(Lock::id)> locks_seen;
 			for (auto thisTXN : activeTXNs) {
 				Lock& tempLock = lockPrimKey[thisTXN.lockPtr];
 				if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
 					LockPos& tempLockPos = tempLock.lastNPos.top();
+					// Have we already seen this lock?
+					if (locks_seen.find(tempLock.id) != locks_seen.end()) {
+						// For example, RCU may be held multiple times, but the
+						// locks_held table structure currently does not allow
+						// this (because the lock_id is part of the PK).
+						continue;
+					}
+					locks_seen.insert(tempLock.id);
 					locksHeldOFile << dec << activeTXNs.back().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
 					locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
 					locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
