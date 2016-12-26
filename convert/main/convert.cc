@@ -473,7 +473,8 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 }
 
 // returns stringified var if cond is false, or "NULL" if cond is true
-static inline std::string sql_null_if(unsigned var, bool cond)
+template <typename T>
+static inline std::string sql_null_if(T var, bool cond)
 {
 	if (!cond) {
 		return std::to_string(var);
