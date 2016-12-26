@@ -8,7 +8,7 @@ fi
 DB=${1}
 DELIMITER=';'
 
-TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns")
+TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns" "blacklist")
 
 function mysqlimport_warnings() {
 mysql -vvv --show-warnings --execute="LOAD DATA LOCAL INFILE '$2' INTO TABLE ${2%%.csv} FIELDS TERMINATED BY '$DELIMITER' IGNORE 1 LINES" $1
