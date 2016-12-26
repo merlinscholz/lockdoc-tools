@@ -20,7 +20,7 @@
 #define IS_MULTILVL_LOCK(x)	((x).ptr == 0x42)
 
 /**
- * Author: Alexander Lochmann 2016
+ * Authors: Alexander Lochmann, Horst Schirmeier
  * Attention: This programm has to be compiled with -std=c++11 !
  * This program takes a csv as input, which contains a series of events.
  * Each event might be of the following types: alloc, free, p(acquiere), v (release), read, or write.
