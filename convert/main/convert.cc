@@ -23,8 +23,8 @@
  * Authors: Alexander Lochmann, Horst Schirmeier
  * Attention: This programm has to be compiled with -std=c++11 !
  * This program takes a csv as input, which contains a series of events.
- * Each event might be of the following types: alloc, free, p(acquiere), v (release), read, or write.
- * The programm groups the alloc and free events as well as the p and v events by their pointer, and assigns an unique id to each unique entitiy (allocation or lock).
+ * Each event might be of the following types: alloc, free, p(acquire), v (release), read, or write.
+ * The program groups the alloc and free events as well as the p and v events by their pointer, and assigns an unique id to each unique entitiy (allocation or lock).
  * For each read or write access it generates the
  * OUTPUT: TODO
  */
@@ -55,8 +55,8 @@ struct LockPos {
  */
 struct Lock {
 	unsigned long long id;										// A unique id which describes a particular lock within our dataset
-	unsigned long long ptr;										// The pointer to the memory area, where the lock resides
-	int held;													// Indicates whether the lock is held or not
+	unsigned long long ptr;										// The pointer to the memory area where the lock resides
+	int held;													// Indicates whether the lock is held or not (may be > 1 for recursive locks)
 	unsigned allocation_id;										// ID of the allocation this lock resides in (0 if not embedded)
 	string lockType;											// Describes the lock type
 	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
@@ -66,29 +66,29 @@ struct Lock {
  * Describes a certain datatype which is observed by our experiment
  */
 struct DataType {
-	string typeStr;												// Unique to describe a certain datatype, e.g. task_struct
+	string typeStr;												// Unique to describe a certain datatype, e.g., task_struct
 	bool foundInDw;												// True if the struct has been found in the dwarf information. False otherwise.
 	unsigned long long id;										// An unique id for a particular datatype
 };
 
 /**
- * Describes an instance of a certain datatype, e.g. an instance of task_struct
+ * Describes an instance of a certain datatype, e.g., an instance of task_struct
  *
  */
 struct Allocation {
 	unsigned long long start;									// Timestamp when it has been allocated
 	unsigned long long id;										// A unique id which refers to that particular instance
 	int size;													// Size in bytes
-	int idx;													// An index into the types array, which desibes the datatype of this allocation
+	int idx;													// An index into the types array, which describes the datatype of this allocation
 };
 
 /**
  * Represents a memory access
  */
 struct MemAccess {
-	unsigned long long id;										// Unique of a certain memory access
+	unsigned long long id;										// Unique ID of a certain memory access
 	unsigned long long ts;										// Timestamp
-	unsigned long long alloc_id;								// Id of the memory allocation which has been accessed
+	unsigned long long alloc_id;								// ID of the memory allocation which has been accessed
 	char action;												// Access type: r or w
 	int size;													// Size of memory access
 	unsigned long long address;									// Accessed address
@@ -123,7 +123,7 @@ static map<unsigned long long,Lock> lockPrimKey;
  */
 static map<unsigned long long,Allocation> activeAllocs;
 /**
- * An array of all observed datatypes . For now, we observe three datatypes.
+ * An array of all observed datatypes. For now, we observe three datatypes.
  */
 static DataType types[MAX_OBSERVED_TYPES];
 /**
@@ -365,7 +365,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 		if (cusIterArgs->types[i].foundInDw) {
 			continue;
 		}
-		// Do this compilation unit contain information of at datatype at index i?
+		// Does this compilation unit contain information of at datatype at index i?
 		ret = cu__find_struct_by_name(cu, cusIterArgs->types[i].typeStr.c_str(),1,&class_id);
 		if (ret == NULL) {
 			continue;
@@ -923,7 +923,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	// Due to the fact that we abort the expriment as soon as the benchmark has finished, some allocations may not have been freed.
+	// Due to the fact that we abort the experiment as soon as the benchmark has finished, some allocations may not have been freed.
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		Allocation& tempAlloc = itAlloc->second;
