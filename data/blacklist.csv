@@ -1,3 +1,4 @@
+datatype_id;fn
 2;ramfs_get_inode
 2;bdget
 2;alloc_anon_inode
