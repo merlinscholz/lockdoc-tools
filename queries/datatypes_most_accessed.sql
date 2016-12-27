@@ -1,11 +1,10 @@
 -- which data types are accessed most?
 SELECT dt.name, COUNT(*) AS accesscount
-FROM data_types dt
+FROM accesses ac
 JOIN allocations a
-ON dt.id = a.type
-JOIN accesses ac
-ON ac.alloc_id = a.id join structs_layout sl
-ON a.type = sl.type_id and sl.offset = ac.address - a.ptr
+ ON ac.alloc_id = a.id
+JOIN data_types dt
+ ON dt.id = a.type
 GROUP BY dt.id
-ORDER BY accesscount
+ORDER BY dt.name, accesscount
 ;
