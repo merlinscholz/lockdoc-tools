@@ -75,8 +75,9 @@ CREATE TABLE `data_types` (
 
 CREATE TABLE `blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
   `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
-  `fn` varchar(255) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
-  PRIMARY KEY (`datatype_id`,`fn`),
+  `datatype_member` varchar(80) DEFAULT NULL,
+  `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
+  PRIMARY KEY (`datatype_id`,`datatype_member`,`fn`),
   KEY `fk_datatype_id` (`datatype_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;

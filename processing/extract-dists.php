@@ -176,7 +176,12 @@ FROM
 		(
 			SELECT bl.fn
 			FROM blacklist AS bl
-			WHERE bl.datatype_id = a.type
+			WHERE
+			bl.datatype_id = a.type AND
+			(
+				bl.datatype_member IS NULL OR
+				bl.datatype_member = sl.member
+			)
 		)
 	GROUP BY ac.id
 ) s
