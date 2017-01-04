@@ -173,6 +173,7 @@ static struct cus *cus;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf;
+	cerr << " -s enable processing of seqlock_t (EXPERIMENTAL)" << endl;
 	cerr << " -k <path/to/vmlinux";
 	cerr << " <inputfile>.gz" << endl;
 	exit(EXIT_FAILURE);
@@ -526,16 +527,20 @@ int main(int argc, char *argv[]) {
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter = 0, isGZ;
 	char action, param, *vmlinuxName = NULL;
+	bool processSeqlock = false;
 
 	if (argc < 2) {
 		cerr << "Need at least an input file!" << endl;
 		return EXIT_FAILURE;
 	}
 
-	while ((param = getopt(argc,argv,"k:")) != -1) {
+	while ((param = getopt(argc,argv,"k:s")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
+			break;
+		case 's':
+			processSeqlock = true;
 			break;
 		}
 	}
@@ -544,6 +549,9 @@ int main(int argc, char *argv[]) {
 	}
 	
 	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
+	if (processSeqlock) {
+		cerr << "Enabled experimental feature 'processing of seq{lock,count}_t'" << endl;
+	}
 
 	types[0].typeStr = "task_struct";
 	types[0].foundInDw = 0;
@@ -712,6 +720,10 @@ int main(int argc, char *argv[]) {
 
 		} catch (exception &e) {
 			cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
+		}
+		
+		if (!processSeqlock && (lockType.compare("seqlock_t") == 0 || lockType.compare("seqcount_t") == 0)) {
+			continue;
 		}
 
 		writeMemAccesses(action, address, &accessOFile, &lastMemAccesses);
