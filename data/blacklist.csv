@@ -31,5 +31,3 @@ datatype_id;datatype_member;fn
 2;\N;sock_alloc_file
 2;i_count;ihold
 2;i_count;_atomic_dec_and_lock
-
-
