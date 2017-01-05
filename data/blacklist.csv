@@ -31,3 +31,11 @@ datatype_id;datatype_member;fn
 2;\N;sock_alloc_file
 2;i_count;ihold
 2;i_count;_atomic_dec_and_lock
+2;\N;ext4_iget
+2;\N;sock_alloc
+2;\N;shmem_fill_super
+2;\N;hugetlbfs_fill_super
+2;\N;mount_pseudo
+2;\N;proc_pid_instantiate
+2;\N;__ext4_new_inode
+2;\N;ext4_mb_init
