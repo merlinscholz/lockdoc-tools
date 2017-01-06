@@ -39,3 +39,10 @@ datatype_id;datatype_member;fn
 2;\N;proc_pid_instantiate
 2;\N;__ext4_new_inode
 2;\N;ext4_mb_init
+2;\N;shmem_evict_inode
+2;\N;shmem_free_inode
+2;\N;evict
+2;\N;ext4_evict_inode
+2;\N;ext4_free_inode
+2;\N;destroy_inode
+2;\N;__destroy_inode
