@@ -208,6 +208,7 @@ $line = "ac_type" . $delimiter . "lock_member" . $delimiter . "member" . $delimi
 $line .= "lock_types" . $delimiter . "context" . $delimiter . "locks" . $delimiter . "num" . $delimiter . "db" . $delimiter . "dt_name\n";
 fwrite($outfile,$line);
 
+$start = time();
 if ($sql->multi_query($dist_query)) {
 	do {
 		if ($result = $sql->store_result()) {
@@ -223,6 +224,8 @@ if ($sql->multi_query($dist_query)) {
 			fwrite(STDERR,"-----------------\n");
 		}
 	} while ($sql->next_result());
+	$end = time();
+	fwrite(STDERR,"Query took " . ($end - $start) . " seconds\n");
 } else {
 	fwrite(STDERR,"Cannot retrieve lock information: " . $sql->error . "\n");
 }
