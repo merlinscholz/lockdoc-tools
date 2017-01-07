@@ -137,61 +137,68 @@ if (is_null($instance_filter)) {
 
 $dist_query = "
 SELECT
-	ac_id, alloc_id, ac_type, ac_fn, ac_address, a_ptr, sl_member, dt_name,
-	IFNULL(lh.lock_id,\"null\") AS locks,
-	IFNULL(l.type,\"null\") AS lock_types,
-	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
-	CASE 
-		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
-		WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
-		WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
-		ELSE 'unknown'
-	END AS context,
-	IF(l.type IS NULL, 'null',
-	  IF(sl2.member IS NULL,CONCAT('global_',l.type,'_',l.id),CONCAT(sl2.member,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
-	'".$db_conf['client']['database'] ."' AS db,
+	ac_type,
+	dt_name,
+	sl_member,
+	lock_member,
+	context,
+	db,
 	COUNT(*) AS num
 FROM
 (
-	SELECT
-		ac.id AS ac_id,
-		ac.txn_id AS ac_txn_id,
-		ac.alloc_id AS alloc_id,
-		ac.type AS ac_type,
-		ac.fn AS ac_fn,
-		ac.address AS ac_address,
-		a.ptr AS a_ptr,
-		sl.member AS sl_member,
-		dt.name AS dt_name
-	FROM accesses AS ac
-	INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	INNER JOIN data_types AS dt ON dt.id=a.type
-	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
-	WHERE 
-		a.type = ".$datatype_id." AND
-		".$member_clause." AND
-		ac.type  IN (".$ac_type_clause.") AND
-		".$instance_clause." AND
-		ac.fn NOT IN
-		(
-			SELECT bl.fn
-			FROM blacklist AS bl
-			WHERE
-			bl.datatype_id = a.type AND
+	SELECT DISTINCT
+		ac_id,
+		ac_type,
+		dt_name,
+		sl_member,
+		IF(l.type IS NULL, 'null',
+		  IF(sl2.member IS NULL,CONCAT('global_',l.type,'_',l.id),CONCAT(sl2.member,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
+		CASE 
+			WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
+			WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
+			WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+			ELSE 'unknown'
+		END AS context,
+		'".$db_conf['client']['database'] ."' AS db
+	FROM
+	(
+		SELECT
+			ac.id AS ac_id,
+			ac.txn_id AS ac_txn_id,
+			ac.alloc_id AS alloc_id,
+			ac.type AS ac_type,
+			sl.member AS sl_member,
+			dt.name AS dt_name
+		FROM accesses AS ac
+		INNER JOIN allocations AS a ON a.id=ac.alloc_id
+		INNER JOIN data_types AS dt ON dt.id=a.type
+		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+		WHERE 
+			a.type = ".$datatype_id." AND
+			".$member_clause." AND
+			ac.type  IN (".$ac_type_clause.") AND
+			".$instance_clause." AND
+			ac.fn NOT IN
 			(
-				bl.datatype_member IS NULL OR
-				bl.datatype_member = sl.member
+				SELECT bl.fn
+				FROM blacklist AS bl
+				WHERE
+				bl.datatype_id = a.type AND
+				(
+					bl.datatype_member IS NULL OR
+					bl.datatype_member = sl.member
+				)
 			)
-		)
-	GROUP BY ac.id
-) s
-LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
-LEFT JOIN locks AS l ON l.id=lh.lock_id
-LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
-WHERE
-	".$context_clause."
-GROUP BY ac_type, lock_member, sl_member
+		GROUP BY ac.id
+	) s
+	LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
+	LEFT JOIN locks AS l ON l.id=lh.lock_id
+	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
+	LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
+	WHERE
+		".$context_clause."
+) u
+GROUP BY ac_type, lock_member, sl_member, context
 ORDER BY num DESC;";
 
 fwrite(STDERR,$dist_query."\n");
@@ -204,8 +211,8 @@ if ($outfile === false) {
 	$sql->close();
 	die("Cannot open " . $outfile_name . "\n");
 }
-$line = "ac_type" . $delimiter . "lock_member" . $delimiter . "member" . $delimiter . "embedded_in_same" . $delimiter;
-$line .= "lock_types" . $delimiter . "context" . $delimiter . "locks" . $delimiter . "num" . $delimiter . "db" . $delimiter . "dt_name\n";
+$line = "ac_type" . $delimiter . "lock_member" . $delimiter . "member";
+$line .= $delimiter . "context" . $delimiter . "num" . $delimiter . "db" . $delimiter . "dt_name\n";
 fwrite($outfile,$line);
 
 $start = time();
@@ -213,8 +220,7 @@ if ($sql->multi_query($dist_query)) {
 	do {
 		if ($result = $sql->store_result()) {
 			while ($row = $result->fetch_assoc()) {
-				$line = $row['ac_type'] . $delimiter . $row['lock_member'] . $delimiter . $row['sl_member'] . $delimiter . $row['embedded_in_same'];
-				$line .= $delimiter . $row['lock_types'] . $delimiter . $row['context'] . $delimiter . $row['locks'];
+				$line = $row['ac_type'] . $delimiter . $row['lock_member'] . $delimiter . $row['sl_member'] . $delimiter . $row['context'] ;
 				$line .= $delimiter . $row['num'] . $delimiter . $row['db'] . $delimiter . $row['dt_name'] . "\n";
 				fwrite($outfile,$line);
 			}
