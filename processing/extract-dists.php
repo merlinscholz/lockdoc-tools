@@ -173,22 +173,13 @@ FROM
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		INNER JOIN data_types AS dt ON dt.id=a.type
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+		LEFT JOIN blacklist bl ON bl.datatype_id = a.type AND bl.fn = ac.fn AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
 		WHERE 
 			a.type = ".$datatype_id." AND
 			".$member_clause." AND
 			ac.type  IN (".$ac_type_clause.") AND
 			".$instance_clause." AND
-			ac.fn NOT IN
-			(
-				SELECT bl.fn
-				FROM blacklist AS bl
-				WHERE
-				bl.datatype_id = a.type AND
-				(
-					bl.datatype_member IS NULL OR
-					bl.datatype_member = sl.member
-				)
-			)
+			bl.fn IS NULL
 		GROUP BY ac.id
 	) s
 	LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
