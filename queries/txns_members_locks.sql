@@ -8,7 +8,9 @@
 
 SET SESSION group_concat_max_len = 8192;
 
-SELECT type_name, members_accessed, locks_held,
+SELECT
+--	type_name, -- FOR NOW: only look at inodes
+	members_accessed, locks_held,
 	COUNT(*) AS occurrences
 FROM
 
@@ -48,6 +50,9 @@ FROM
 			LEFT JOIN structs_layout sl
 			  ON a.type = sl.type_id
 			 AND ac.address - a.ptr BETWEEN sl.offset AND sl.offset + sl.size - 1
+			-- === FOR NOW: only look at inodes ===
+			WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
+			-- ====================================
 			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
 		) AS fac -- = Folded ACcesses
 
