@@ -50,9 +50,14 @@ FROM
 			LEFT JOIN structs_layout sl
 			  ON a.type = sl.type_id
 			 AND ac.address - a.ptr BETWEEN sl.offset AND sl.offset + sl.size - 1
+			LEFT JOIN blacklist bl
+			  ON bl.datatype_id = a.type
+			 AND bl.fn = ac.fn
+			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
 			-- === FOR NOW: only look at inodes ===
 			WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
 			-- ====================================
+			AND bl.fn IS NULL
 			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
 		) AS fac -- = Folded ACcesses
 
