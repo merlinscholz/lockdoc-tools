@@ -2,7 +2,7 @@ SELECT
 	ac_id, alloc_id, 
 	ac_type, ac_fn,
 	ac_address,
-	ac_ptr,
+--	ac_ptr,
 	lower(hex(ac_instrptr)) AS ac_instrptr,
 	sl_member,
 	dt_name,
