@@ -14,12 +14,17 @@ FROM
 
 (
 	-- add GROUP_CONCAT of all held locks (in locking order) to each list of accessed members
-	SELECT type_id, type_name, members_accessed,
+	SELECT concatgroups.type_id, concatgroups.type_name, concatgroups.members_accessed,
 		GROUP_CONCAT(
 			CASE
-			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')')
-			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id THEN CONCAT('EMB(', l.type, ')')
-			ELSE CONCAT('EXT(', lock_a_dt.name, '.', l.type, ')')
+--			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
+--			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id THEN CONCAT('EMBSAME(', l.type, ')') -- embedded in same
+----			ELSE CONCAT('EXT(', lock_a_dt.name, '.', l.type, ')') -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(', l.type, ')') -- embedded in other
+			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
+			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -55,10 +60,19 @@ FROM
 	  ON lh.txn_id = concatgroups.txn_id
 	JOIN locks l
 	  ON l.id = lh.lock_id
+
+	-- find out more about each held lock (allocation -> structs_layout
+	-- member or contained-in member in case of a complex member)
 	LEFT JOIN allocations lock_a
 	  ON l.embedded_in = lock_a.id
-	LEFT JOIN data_types lock_a_dt
-	  ON lock_a.type = lock_a_dt.id
+--	LEFT JOIN data_types lock_a_dt
+--	  ON lock_a.type = lock_a_dt.id
+	LEFT JOIN structs_layout lock_member
+	  ON lock_a.type = lock_member.type_id
+	 AND l.ptr - lock_a.ptr BETWEEN lock_member.offset AND lock_member.offset + lock_member.size - 1
+	-- lock_a.id IS NULL                         => not embedded
+	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
+	-- else                                      => the lock is contained in this member, exact name unknown
 
 	GROUP BY concatgroups.type_id, concatgroups.alloc_id, concatgroups.txn_id
 ) AS withlocks
