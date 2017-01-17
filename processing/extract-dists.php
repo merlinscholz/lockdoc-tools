@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$db_conf_file='~/.my.cnf';
+$db_conf_file=$_SERVER['HOME'].'/.my.cnf';
 $delimiter = ";";
 $default_db = "lockdebugging";
 $default_port = 3306;
