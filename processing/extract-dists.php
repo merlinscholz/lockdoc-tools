@@ -121,7 +121,7 @@ if (!is_null($ac_type_filter)) {
 			die("No such ac type!\n");
 		}
 } else {
-		$ac_type_clause = "'" . implode("','",$ac_types) . "'";
+		$ac_type_clause = "1";
 }
 
 if (is_null($member_filter)) {
@@ -146,7 +146,7 @@ SELECT
 	COUNT(*) AS num
 FROM
 (
-	SELECT DISTINCT
+	SELECT -- DISTINCT
 		ac_id,
 		ac_type,
 		dt_name,
@@ -177,7 +177,7 @@ FROM
 		WHERE 
 			a.type = ".$datatype_id." AND
 			".$member_clause." AND
-			ac.type  IN (".$ac_type_clause.") AND
+			".$ac_type_clause." AND
 			".$instance_clause." AND
 			bl.fn IS NULL
 		GROUP BY ac.id
