@@ -1,5 +1,9 @@
 #include <iostream>
+#include <sstream>
+#include <fstream>
 #include <vector>
+#include <string>
+
 #include "optionparser.h"
 
 enum optionIndex { UNKNOWN, HELP };
@@ -41,4 +45,42 @@ int main(int argc, char **argv)
 	const char *filename = parse.nonOption(0);
 
 	// === Load input CSV into memory ===
+	// input format example:
+	// r:i_mode,r:i_opflags,r:i_uid,r:i_flags,r:i_sb,r:i_rdev  EMB:5705(i_mutex),16(rcu)       1
+	std::ifstream infile(filename);
+	if (!infile.is_open()) {
+		std::cerr << "Cannot open file: " << filename << std::endl;
+		return 1;
+	}
+
+	std::stringstream ss;
+	std::vector<std::string> lineElems;
+	std::string inputLine, inputColumn, inputElement;
+	for (unsigned lineCounter = 0; getline(infile, inputLine); lineCounter++) {
+
+		// Skip the header if there is one.  This check exploits the fact that
+		// any valid input line must end with a decimal digit.
+		if (lineCounter == 0) {
+			if (inputLine.length() == 0 || !isdigit(inputLine[inputLine.length() - 1])) {
+				continue;
+			} else {
+				std::cerr << "Warning: Input data does not start with a CSV header." << std::endl;
+			}
+		}
+
+		// Split along tab characters
+		ss.clear();
+		ss.str("");
+		ss << inputLine;
+		lineElems.clear();
+		while (getline(ss, inputColumn, '\t')) {
+			lineElems.push_back(inputColumn);
+		}
+
+		// Sanity check
+		if (lineElems.size() != 3) {
+			std::cerr << "Warning: Line " << lineCounter << " does not have the required number of columns." << std::endl;
+			continue;
+		}
+	}
 }
