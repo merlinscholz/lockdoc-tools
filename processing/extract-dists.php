@@ -111,7 +111,7 @@ if (!is_null($context_filter)) {
 			die("No such context!\n");
 		}
 } else {
-		$context_clause = $contexts['unknown'] . " OR (lh.start IS NOT NULL AND (" . $contexts['hardirq'] . " OR " . $contexts['softirq'] . " OR " . $contexts['noirq'] . "))";
+		$context_clause = "1";
 }
 if (!is_null($ac_type_filter)) {
 		if (in_array($ac_type_filter,$ac_types)) {
