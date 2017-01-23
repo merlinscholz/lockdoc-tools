@@ -62,7 +62,7 @@ for (member in members) {
   geom_bar(position="dodge",stat="identity") +
   facet_grid(ac_type ~ context, scales = "free_y") +
   scale_y_log10() + 
-  theme(axis.text.x= element_text(angle=45,hjust=1)) +
+  theme(axis.text.x= element_text(angle=90,hjust=1)) +
   ggtitle(name)
   ggsave(file=fname,plot,units="cm")
 }
