@@ -58,6 +58,7 @@ FROM
 			WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
 			-- ====================================
 			AND bl.fn IS NULL
+			AND ac.txn_id IS NOT NULL
 			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
 		) AS fac -- = Folded ACcesses
 
