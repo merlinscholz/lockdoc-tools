@@ -8,6 +8,7 @@
 #include <limits>
 #include <algorithm>
 #include <tuple>
+#include <iomanip>
 
 #include "optionparser.h"
 
@@ -346,9 +347,22 @@ int main(int argc, char **argv)
 			if (match_fraction < match_threshold) {
 				break;
 			}
-			std::cout << "    " << match_fraction * 100 << "% ("
-				<< h.occurrences << " out of " << member.occurrences << " mem accesses under locks): "
-				<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+			if (h.matches.size() > 1) {
+				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+					<< h.occurrences << " out of " << member.occurrences << " mem accesses under locks): "
+					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+
+				// show locking-order distribution
+				for (auto&& match : h.matches) {
+					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
+						<< locks2string(match.first) << std::endl;
+				}
+			} else {
+				// only one locking order observed, show this one right away
+				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+					<< h.occurrences << " out of " << member.occurrences << " mem accesses under locks): "
+					<< locks2string(h.matches.begin()->first) << std::endl;
+			}
 			printed++;
 		}
 
