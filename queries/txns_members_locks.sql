@@ -86,8 +86,29 @@ FROM
 	-- else                                      => the lock is contained in this member, exact name unknown
 
 	GROUP BY concatgroups.type_id, concatgroups.alloc_id, concatgroups.txn_id
+
+	UNION ALL
+
+	SELECT dt.id AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', sl.member) AS members_accessed, '' AS locks_held
+	FROM accesses ac
+	JOIN allocations a
+	  ON ac.alloc_id = a.id
+	JOIN data_types dt
+	  ON dt.id = a.type
+	LEFT JOIN structs_layout sl
+	  ON a.type = sl.type_id
+	 AND ac.address - a.ptr BETWEEN sl.offset AND sl.offset + sl.size - 1
+	LEFT JOIN blacklist bl
+	  ON bl.datatype_id = a.type
+	 AND bl.fn = ac.fn
+	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	-- === FOR NOW: only look at inodes ===
+	WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
+	-- ====================================
+	AND bl.fn IS NULL
+	AND ac.txn_id IS NULL
 ) AS withlocks
 
 GROUP BY type_id, members_accessed, locks_held
-ORDER BY type_id, occurrences
+ORDER BY type_id, occurrences, members_accessed, locks_held
 ;
