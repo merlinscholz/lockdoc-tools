@@ -11,21 +11,25 @@
 #include <iomanip>
 
 #include "optionparser.h"
+#include "optionparser_ext.h"
 
 // hypothesizer: Creates hypotheses on locking rules, and tests them against a
 // set of observations/lock combinations.
 //
 // Input: The output of txns_members_locks.sql in the form of a CSV file.
 
-const double match_threshold = .1;
+const double match_threshold_default = .1;
 
-enum optionIndex { UNKNOWN, HELP };
+enum optionIndex { UNKNOWN, HELP, THRESHOLD };
 const option::Descriptor usage[] = {
 {
-  UNKNOWN, 0, "", "", option::Arg::None,
+  UNKNOWN, 0, "", "", Arg::None,
   "Usage: hypothesizer [options] input.csv\n\nOptions:"
 }, {
-  HELP, 0, "h", "help", option::Arg::None, "--help \tPrint usage and exit"
+  HELP, 0, "h", "help", Arg::None, "--help  \tPrint usage and exit"
+}, {
+  THRESHOLD, 0, "t", "threshold", Arg::Required,
+  "-t/--threshold n  \tSet hypothesis match threshold to n% (default: 10.0)"
 }, {0,0,0,0,0,0}
 };
 
@@ -201,6 +205,17 @@ int main(int argc, char **argv)
 		argc == 0 || parse.nonOptionsCount() != 1) {
 		option::printUsage(std::cout, usage);
 		return options[HELP] ? 0 : 1;
+	}
+
+	double match_threshold = match_threshold_default;
+	if (options[THRESHOLD]) {
+		try {
+			match_threshold = std::stod(options[THRESHOLD].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse threshold value " << options[THRESHOLD].last()->arg << std::endl;
+			return 1;
+		}
+		match_threshold /= 100.0;
 	}
 
 	const char *filename = parse.nonOption(0);
