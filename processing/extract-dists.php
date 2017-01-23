@@ -5,7 +5,7 @@ $delimiter = ";";
 $default_db = "lockdebugging";
 $default_port = 3306;
 
-$options = getopt("d:f:m:a:i:c:l:w:");
+$options = getopt("d:f:m:a:i:c:l:w:o");
 if ($options == FALSE ||
     !array_key_exists('f',$options) || strlen(trim($options['f'])) == 0 ||
     !array_key_exists('d',$options) || strlen(trim($options['d'])) == 0) {
@@ -42,6 +42,12 @@ if (array_key_exists('i',$options)) {
 	$instance_filter = $options['i'];
 } else {
 	$instance_filter = null;
+}
+
+if (array_key_exists('o',$options)) {
+	$own_lock_filter = "(l.embedded_in IS NULL OR l.embedded_in = alloc_id)";
+} else {
+	$own_lock_filter = "1";
 }
 
 if (array_key_exists('p',$options)) {
@@ -183,10 +189,11 @@ FROM
 		GROUP BY ac.id
 	) s
 	LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
-	LEFT JOIN locks AS l ON l.id=lh.lock_id
+	LEFT JOIN locks AS l ON l.id=lh.lock_id 
 	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 	LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
 	WHERE
+		".$own_lock_filter." AND
 		".$context_clause."
 ) u
 GROUP BY ac_type, lock_member, sl_member, context
@@ -231,6 +238,6 @@ $sql->close();
 fclose($outfile);
 
 function usage($name) {
-	fwrite(STDERR,"$name [-l <my.cnf>] [-w <database>] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-m <member>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n");
+	fwrite(STDERR,"$name [-l <my.cnf>] [-w <database>] [-o (use global and own locks only)] [-p <port>] [-i <instance id>] [-a <access type, r or w>] [-m <member>] [-c <context, e.g. noirq, or hardirq>] -d <datatype> -f <output file>\n");
 }
 ?>
