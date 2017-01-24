@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <cstdint>
 #include <limits>
@@ -20,7 +21,7 @@
 
 const double match_threshold_default = .1;
 
-enum optionIndex { UNKNOWN, HELP, THRESHOLD };
+enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -30,6 +31,9 @@ const option::Descriptor usage[] = {
 }, {
   THRESHOLD, 0, "t", "threshold", Arg::Required,
   "-t/--threshold n  \tSet hypothesis match threshold to n% (default: 10.0)"
+}, {
+  MEMBER, 0, "m", "member", Arg::Required,
+  "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
 }, {0,0,0,0,0,0}
 };
 
@@ -218,6 +222,11 @@ int main(int argc, char **argv)
 		match_threshold /= 100.0;
 	}
 
+	std::set<std::string> accepted_members;
+	for (option::Option *o = options[MEMBER]; o; o = o->next()) {
+		accepted_members.insert(o->arg);
+	}
+
 	const char *filename = parse.nonOption(0);
 
 	// === Load input CSV into memory ===
@@ -359,6 +368,13 @@ int main(int argc, char **argv)
 //	for (auto&& member : members) {
 	for (auto it = members.begin(); it < members.end(); ++it) {
 		Member& member = *it;
+
+		// Skip if user has specified members + this one is not in the list
+		if (accepted_members.size() > 0 &&
+			accepted_members.find(member.name) == accepted_members.end()) {
+			continue;
+		}
+
 		find_hypotheses(member);
 
 #pragma omp critical
