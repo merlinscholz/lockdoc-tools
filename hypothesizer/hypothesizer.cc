@@ -95,7 +95,7 @@ struct Member {
 	std::string name;
 	uint64_t occurrences; // counts all accesses to this member
 	uint64_t occurrences_with_locks; // counts accesses to this member with at least one lock held
-	std::map<std::vector<myid_t>, LockCombination> combinations;
+	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
 };
 
@@ -138,10 +138,10 @@ void evaluate_hypothesis(Member& member, std::vector<myid_t>& hypothesis)
 	auto&& matches = ret.first->second;
 	//std::cout << "new hypothesis: " << locks2string(hypothesis, " + ");
 	for (const auto& lc : member.combinations) {
-		if (lc.second.contains_locks(hypothesis)) {
-			matches.occurrences += lc.second.occurrences;
+		if (lc.contains_locks(hypothesis)) {
+			matches.occurrences += lc.occurrences;
 			matches.sorted_hypothesis = hypothesis;
-			matches.matches[lc.second.lock_order(hypothesis)] += lc.second.occurrences;
+			matches.matches[lc.lock_order(hypothesis)] += lc.occurrences;
 		}
 	}
 	//std::cout << ", matches: " << matches.occurrences << std::endl;
@@ -167,11 +167,11 @@ void find_hypotheses(Member& member)
 
 		//std::cerr << "depth " << depth << std::endl;
 
+		std::vector<myid_t> cur;
 		for (const auto& lc : member.combinations) {
 			//std::cout << locks2string(obs.locks_held_sorted, " + ") << std::endl;
-			std::vector<myid_t> cur;
-			cur.reserve(depth);
-			find_hypotheses_rek(member, lc.second, 0, cur, depth);
+			cur.clear();
+			find_hypotheses_rek(member, lc, 0, cur, depth);
 		}
 
 		// if no additional hypotheses with requested depth found, we're done
@@ -238,6 +238,10 @@ int main(int argc, char **argv)
 	// member/lock to ID mapping, only needed temporarily during CSV parsing
 	std::map<std::string, myid_t> member_to_id;
 	std::map<std::string, myid_t> lock_to_id;
+	// per-member lock combination to LockCombination mapping (the latter
+	// contains, among other things, the occurrence count), only needed
+	// temporarily during CSV parsing
+	std::vector<std::map<std::vector<myid_t>, LockCombination> > members_combinations;
 	for (unsigned lineCounter = 0; getline(infile, inputLine); lineCounter++) {
 
 		// Skip the header if there is one.  This check exploits the fact that
@@ -306,6 +310,7 @@ int main(int argc, char **argv)
 			auto it = member_to_id.find(inputElement);
 			if (it == member_to_id.end()) {
 				members.push_back(Member(inputElement));
+				members_combinations.resize(members_combinations.size() + 1);
 				if (members.size() - 1 > std::numeric_limits<decltype(member_id)>::max()) {
 					std::cerr << "Error: More members than myid_t can hold("
 						<< (uint64_t) std::numeric_limits<decltype(member_id)>::max()
@@ -322,7 +327,8 @@ int main(int argc, char **argv)
 			members[member_id].occurrences += occurrences;
 			if (locks_held.size() > 0) {
 				members[member_id].occurrences_with_locks += occurrences;
-				auto ret = members[member_id].combinations.emplace(std::piecewise_construct,
+				auto& combinations = members_combinations[member_id];
+				auto ret = combinations.emplace(std::piecewise_construct,
 					std::forward_as_tuple(locks_held), std::forward_as_tuple(occurrences, locks_held));
 				if (ret.second == false) {
 					ret.first->second.occurrences += occurrences;
@@ -330,6 +336,16 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+
+	// clear unneeded data structures
+	member_to_id.clear();
+	lock_to_id.clear();
+
+	// copy lock combinations to members for fast access (and clear the former)
+	for (myid_t i = 0; i < members.size(); ++i) {
+		map2vec(members_combinations[i], members[i].combinations);
+	}
+	members_combinations.clear();
 
 	std::cerr << "Input file read ("
 		<< members.size() << " distinct members, "
