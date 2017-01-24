@@ -364,7 +364,7 @@ int main(int argc, char **argv)
 			}
 			if (h.matches.size() > 1) {
 				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-					<< h.occurrences << " out of " << member.occurrences << " mem accesses under locks): "
+					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 
 				// show locking-order distribution
@@ -375,7 +375,7 @@ int main(int argc, char **argv)
 			} else {
 				// only one locking order observed, show this one right away
 				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-					<< h.occurrences << " out of " << member.occurrences << " mem accesses under locks): "
+					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 					<< locks2string(h.matches.begin()->first) << std::endl;
 			}
 			printed++;
