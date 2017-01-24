@@ -96,6 +96,12 @@ struct LockingHypothesisMatches {
 
 struct Member {
 	Member(std::string name) : name(name), occurrences(0), occurrences_with_locks(0) { }
+	void clear()
+	{
+		name.clear();
+		combinations.clear();
+		hypotheses.clear();
+	}
 	std::string name;
 	uint64_t occurrences; // counts all accesses to this member
 	uint64_t occurrences_with_locks; // counts accesses to this member with at least one lock held
@@ -372,6 +378,7 @@ int main(int argc, char **argv)
 		// Skip if user has specified members + this one is not in the list
 		if (accepted_members.size() > 0 &&
 			accepted_members.find(member.name) == accepted_members.end()) {
+			member.clear();
 			continue;
 		}
 
@@ -431,5 +438,7 @@ int main(int argc, char **argv)
 				<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
 		}
 }
+
+		member.clear();
 	}
 }
