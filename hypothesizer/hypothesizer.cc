@@ -384,5 +384,14 @@ int main(int argc, char **argv)
 		if (printed == 0) {
 			std::cout << "    (No hypothesis exceeds match threshold of " << match_threshold * 100 << "%.)" << std::endl;
 		}
+
+		if (member.occurrences != member.occurrences_with_locks) {
+			std::cout << "    (Possibly accessible without locks, "
+				<< (member.occurrences - member.occurrences_with_locks)
+				<< " accesses without locks ["
+				<< (double) (member.occurrences - member.occurrences_with_locks) /
+					(double) member.occurrences * 100
+				<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
+		}
 	}
 }
