@@ -57,13 +57,13 @@ struct LockCombination {
 	}
 	// Checks whether all locks in l are contained in locks_held.  Assumes l to
 	// be sorted.
-	bool contains_locks(std::vector<myid_t>& l)
+	bool contains_locks(const std::vector<myid_t>& l) const
 	{
-		auto it_theirlock = l.begin();
-		for (auto mylock : locks_held_sorted) {
+		auto it_theirlock = l.cbegin();
+		for (const auto mylock : locks_held_sorted) {
 			if (mylock == *it_theirlock) {
 				++it_theirlock;
-				if (it_theirlock == l.end()) {
+				if (it_theirlock == l.cend()) {
 					return true;
 				}
 			}
@@ -71,11 +71,11 @@ struct LockCombination {
 		return false;
 	}
 	// Returns actual order of locks presented in l.
-	std::vector<myid_t> lock_order(std::vector<myid_t>& l)
+	std::vector<myid_t> lock_order(const std::vector<myid_t>& l) const
 	{
 		std::vector<myid_t> ret;
-		for (auto mylock : locks_held) {
-			if (find(l.begin(), l.end(), mylock) != l.end()) {
+		for (const auto mylock : locks_held) {
+			if (find(l.cbegin(), l.cend(), mylock) != l.cend()) {
 				ret.push_back(mylock);
 			}
 		}
@@ -109,7 +109,7 @@ std::vector<std::string> locks;
 
 template <typename M, typename V> 
 void map2vec(const M& m, V& v) {
-	for (auto&& elem : m) {
+	for (const auto& elem : m) {
 		v.push_back(elem.second);
 	}
 }
@@ -137,7 +137,7 @@ void evaluate_hypothesis(Member& member, std::vector<myid_t>& hypothesis)
 
 	auto&& matches = ret.first->second;
 	//std::cout << "new hypothesis: " << locks2string(hypothesis, " + ");
-	for (auto&& lc : member.combinations) {
+	for (const auto& lc : member.combinations) {
 		if (lc.second.contains_locks(hypothesis)) {
 			matches.occurrences += lc.second.occurrences;
 			matches.sorted_hypothesis = hypothesis;
@@ -147,7 +147,7 @@ void evaluate_hypothesis(Member& member, std::vector<myid_t>& hypothesis)
 	//std::cout << ", matches: " << matches.occurrences << std::endl;
 }
 
-void find_hypotheses_rek(Member& member, LockCombination& lc, unsigned next_lockpos, std::vector<myid_t>& cur, unsigned depth)
+void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned next_lockpos, std::vector<myid_t>& cur, unsigned depth)
 {
 	for (unsigned lockpos = next_lockpos; lockpos < lc.locks_held_sorted.size(); ++lockpos) {
 		cur.push_back(lc.locks_held_sorted[lockpos]);
@@ -167,7 +167,7 @@ void find_hypotheses(Member& member)
 
 		//std::cerr << "depth " << depth << std::endl;
 
-		for (auto&& lc : member.combinations) {
+		for (const auto& lc : member.combinations) {
 			//std::cout << locks2string(obs.locks_held_sorted, " + ") << std::endl;
 			std::vector<myid_t> cur;
 			cur.reserve(depth);
@@ -362,7 +362,7 @@ int main(int argc, char **argv)
 
 		int printed = 0;
 		std::cout.precision(3);
-		for (auto&& h : sorted_hypotheses) {
+		for (const auto& h : sorted_hypotheses) {
 			double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
 			if (match_fraction < match_threshold) {
 				break;
@@ -373,7 +373,7 @@ int main(int argc, char **argv)
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 
 				// show locking-order distribution
-				for (auto&& match : h.matches) {
+				for (const auto& match : h.matches) {
 					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
 						<< locks2string(match.first) << std::endl;
 				}
