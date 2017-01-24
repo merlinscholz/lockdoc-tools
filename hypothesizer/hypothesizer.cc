@@ -339,10 +339,15 @@ int main(int argc, char **argv)
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
-	for (auto&& member : members) {
-		std::cout << "member: " << member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
-
+#pragma omp parallel for
+//	for (auto&& member : members) {
+	for (auto it = members.begin(); it < members.end(); ++it) {
+		Member& member = *it;
 		find_hypotheses(member);
+
+#pragma omp critical
+{
+		std::cout << "member: " << member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 //		for (auto it = member.hypotheses.cbegin(); it != member.hypotheses.cend(); ++it) {
 //			std::cout << locks2string(it->first) << ", ";
@@ -393,5 +398,6 @@ int main(int argc, char **argv)
 					(double) member.occurrences * 100
 				<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
 		}
+}
 	}
 }
