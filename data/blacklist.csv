@@ -46,6 +46,10 @@ datatype_id;datatype_member;fn
 2;\N;ext4_free_inode
 2;\N;destroy_inode
 2;\N;__destroy_inode
+2;\N;proc_setup_self
+2;\N;debugfs_mknod
+2;\N;proc_pid_make_inode
+2;\N;init_special_inode
 3;\N;ext4_fill_super
 3;\N;inode_init_always
 3;\N;jbd2_journal_init_inode
