@@ -21,7 +21,7 @@
 
 const double match_threshold_default = .1;
 
-enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER };
+enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER, SORT };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -34,8 +34,13 @@ const option::Descriptor usage[] = {
 }, {
   MEMBER, 0, "m", "member", Arg::Required,
   "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
+}, {
+  SORT, 0, "s", "sort", Arg::Required,
+  "-s/--sort member|combinations|hypotheses  \tSort output by member name, number of lock combinations, or number of hypotheses"
 }, {0,0,0,0,0,0}
 };
+
+enum class SortCriterion { NONE, MEMBER, COMBINATIONS, HYPOTHESES };
 
 // ID type
 typedef uint16_t myid_t;
@@ -284,6 +289,21 @@ int main(int argc, char **argv)
 		accepted_members.insert(o->arg);
 	}
 
+	SortCriterion sortby = SortCriterion::NONE;
+	if (options[SORT]) {
+		std::string criterion = options[SORT].last()->arg;
+		if (criterion == "member") {
+			sortby = SortCriterion::MEMBER;
+		} else if (criterion == "combinations") {
+			sortby = SortCriterion::COMBINATIONS;
+		} else if (criterion == "hypotheses") {
+			sortby = SortCriterion::HYPOTHESES;
+		} else {
+			std::cerr << "Unknown sort criterion " << criterion << std::endl;
+			return 1;
+		}
+	}
+
 	const char *filename = parse.nonOption(0);
 
 	// === Load input CSV into memory ===
@@ -437,9 +457,38 @@ int main(int argc, char **argv)
 
 #pragma omp critical
 {
-		print_hypotheses(member, match_threshold);
-}
+		if (sortby == SortCriterion::NONE) {
+			print_hypotheses(member, match_threshold);
 
-		member.clear();
+			member.clear();
+		} else {
+			std::cerr << ".";
+		}
+}
+	}
+
+	if (sortby != SortCriterion::NONE) {
+		std::cerr << std::endl;
+		switch (sortby) {
+		case SortCriterion::MEMBER:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.name < b.name; });
+			break;
+		case SortCriterion::COMBINATIONS:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.combinations.size() < b.combinations.size(); });
+			break;
+		case SortCriterion::HYPOTHESES:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.hypotheses.size() < b.hypotheses.size(); });
+			break;
+		default: ;
+		}
+		for (const auto& member : members) {
+			print_hypotheses(member, match_threshold);
+		}
 	}
 }
