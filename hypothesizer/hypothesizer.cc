@@ -21,7 +21,7 @@
 
 const double match_threshold_default = .1;
 
-enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER };
+enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER, SORT };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -34,8 +34,13 @@ const option::Descriptor usage[] = {
 }, {
   MEMBER, 0, "m", "member", Arg::Required,
   "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
+}, {
+  SORT, 0, "s", "sort", Arg::Required,
+  "-s/--sort member|combinations|hypotheses  \tSort output by member name, number of lock combinations, or number of hypotheses"
 }, {0,0,0,0,0,0}
 };
+
+enum class SortCriterion { NONE, MEMBER, COMBINATIONS, HYPOTHESES };
 
 // ID type
 typedef uint16_t myid_t;
@@ -191,6 +196,57 @@ void find_hypotheses(Member& member)
 	}
 }
 
+void print_hypotheses(const Member& member, double match_threshold)
+{
+	std::cout << "member: " << member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
+	std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
+
+	std::vector<LockingHypothesisMatches> sorted_hypotheses;
+	map2vec(member.hypotheses, sorted_hypotheses);
+	sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
+		[](const LockingHypothesisMatches& a, const LockingHypothesisMatches& b)
+		{ return a.occurrences > b.occurrences; }); // reverse order
+
+	int printed = 0;
+	std::cout.precision(3);
+	for (const auto& h : sorted_hypotheses) {
+		double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
+		if (match_fraction < match_threshold) {
+			break;
+		}
+		if (h.matches.size() > 1) {
+			std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
+				<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+
+			// show locking-order distribution
+			for (const auto& match : h.matches) {
+				std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
+					<< locks2string(match.first) << std::endl;
+			}
+		} else {
+			// only one locking order observed, show this one right away
+			std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
+				<< locks2string(h.matches.begin()->first) << std::endl;
+		}
+		printed++;
+	}
+
+	if (printed == 0) {
+		std::cout << "    (No hypothesis exceeds match threshold of " << match_threshold * 100 << "%.)" << std::endl;
+	}
+
+	if (member.occurrences != member.occurrences_with_locks) {
+		std::cout << "    (Possibly accessible without locks, "
+			<< (member.occurrences - member.occurrences_with_locks)
+			<< " accesses without locks ["
+			<< (double) (member.occurrences - member.occurrences_with_locks) /
+				(double) member.occurrences * 100
+			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	// === Command-line parsing ===
@@ -231,6 +287,21 @@ int main(int argc, char **argv)
 	std::set<std::string> accepted_members;
 	for (option::Option *o = options[MEMBER]; o; o = o->next()) {
 		accepted_members.insert(o->arg);
+	}
+
+	SortCriterion sortby = SortCriterion::NONE;
+	if (options[SORT]) {
+		std::string criterion = options[SORT].last()->arg;
+		if (criterion == "member") {
+			sortby = SortCriterion::MEMBER;
+		} else if (criterion == "combinations") {
+			sortby = SortCriterion::COMBINATIONS;
+		} else if (criterion == "hypotheses") {
+			sortby = SortCriterion::HYPOTHESES;
+		} else {
+			std::cerr << "Unknown sort criterion " << criterion << std::endl;
+			return 1;
+		}
 	}
 
 	const char *filename = parse.nonOption(0);
@@ -386,59 +457,38 @@ int main(int argc, char **argv)
 
 #pragma omp critical
 {
-		std::cout << "member: " << member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
-		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
-//		for (auto it = member.hypotheses.cbegin(); it != member.hypotheses.cend(); ++it) {
-//			std::cout << locks2string(it->first) << ", ";
-//		}
-//		std::cout << std::endl;
+		if (sortby == SortCriterion::NONE) {
+			print_hypotheses(member, match_threshold);
 
-		std::vector<LockingHypothesisMatches> sorted_hypotheses;
-		map2vec(member.hypotheses, sorted_hypotheses);
-		sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
-			[](const LockingHypothesisMatches& a, const LockingHypothesisMatches& b)
-			{ return a.occurrences > b.occurrences; }); // reverse order
-
-		int printed = 0;
-		std::cout.precision(3);
-		for (const auto& h : sorted_hypotheses) {
-			double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
-			if (match_fraction < match_threshold) {
-				break;
-			}
-			if (h.matches.size() > 1) {
-				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
-					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
-
-				// show locking-order distribution
-				for (const auto& match : h.matches) {
-					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
-						<< locks2string(match.first) << std::endl;
-				}
-			} else {
-				// only one locking order observed, show this one right away
-				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
-					<< locks2string(h.matches.begin()->first) << std::endl;
-			}
-			printed++;
-		}
-
-		if (printed == 0) {
-			std::cout << "    (No hypothesis exceeds match threshold of " << match_threshold * 100 << "%.)" << std::endl;
-		}
-
-		if (member.occurrences != member.occurrences_with_locks) {
-			std::cout << "    (Possibly accessible without locks, "
-				<< (member.occurrences - member.occurrences_with_locks)
-				<< " accesses without locks ["
-				<< (double) (member.occurrences - member.occurrences_with_locks) /
-					(double) member.occurrences * 100
-				<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
+			member.clear();
+		} else {
+			std::cerr << ".";
 		}
 }
+	}
 
-		member.clear();
+	if (sortby != SortCriterion::NONE) {
+		std::cerr << std::endl;
+		switch (sortby) {
+		case SortCriterion::MEMBER:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.name < b.name; });
+			break;
+		case SortCriterion::COMBINATIONS:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.combinations.size() < b.combinations.size(); });
+			break;
+		case SortCriterion::HYPOTHESES:
+			sort(members.begin(), members.end(),
+				[](const Member& a, const Member& b)
+				{ return a.hypotheses.size() < b.hypotheses.size(); });
+			break;
+		default: ;
+		}
+		for (const auto& member : members) {
+			print_hypotheses(member, match_threshold);
+		}
 	}
 }
