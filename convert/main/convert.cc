@@ -861,26 +861,24 @@ int main(int argc, char *argv[]) {
 				}
 
 				// categorize currently unknown lock
-				unsigned allocation_id;
-				if ((ptr >= bssStart && ptr < bssStart + bssSize) || ( ptr >= dataStart && ptr < dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
-					// static lock which resides either in the bss segment or in the data segment
-					// or global static lock aka rcu lock
-#ifdef VERBOSE
-					cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
-#endif
-					// 0 indicates a static lock
-					allocation_id = 0;
-				} else {
-					// A lock which probably resides in one of the observed allocations. If not, we don't care!
-					allocation_id = 0;
-					itAlloc = activeAllocs.upper_bound(ptr);
-					if (itAlloc != activeAllocs.begin()) {
-						itAlloc--;
-						if (ptr < itAlloc->first + itAlloc->second.size) {
-							allocation_id = itAlloc->second.id;
-						}
+				unsigned allocation_id = 0;
+				// A lock which probably resides in one of the observed allocations. If not, check if it is a global lock
+				// This way, locks which reside in global structs are recognized as 'embedded in'.
+				itAlloc = activeAllocs.upper_bound(ptr);
+				if (itAlloc != activeAllocs.begin()) {
+					itAlloc--;
+					if (ptr < itAlloc->first + itAlloc->second.size) {
+						allocation_id = itAlloc->second.id;
 					}
-					if (allocation_id == 0) {
+				}
+				if (allocation_id == 0) {
+					if ((ptr >= bssStart && ptr < bssStart + bssSize) || ( ptr >= dataStart && ptr < dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == 0x42)) {
+						// static lock which resides either in the bss segment or in the data segment
+						// or global static lock aka rcu lock
+#ifdef VERBOSE
+						cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
+#endif
+					} else {
 #ifdef VERBOSE
 						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
 #endif
