@@ -968,21 +968,11 @@ int main(int argc, char *argv[]) {
 		finishTXN(ts, activeTXNs.back().lockPtr, txnsOFile, locksHeldOFile);
 	}
 
-
 	if (isGZ) {
-		gzinfile->close();;
 		delete gzinfile;
 	} else {
-		rawinfile->close();
 		delete rawinfile;
 	}
-
-	datatypesOFile.close();
-	allocOFile.close();
-	accessOFile.close();
-	locksOFile.close();
-	locksHeldOFile.close();
-	txnsOFile.close();
 
 	cus__delete(cus);
 	dwarves__exit();
