@@ -209,7 +209,7 @@ void cus__for_each_cu(struct cus *self, int (*iterator)(struct cu *cu,
 		      void *cookie,
 		      struct cu *(*filter)(struct cu *cu));
 
-void class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id);
+int class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id);
 struct tag *cu__find_struct_by_name(const struct cu *cu, const char *name,
 				    const int include_decls, uint16_t *id);
 

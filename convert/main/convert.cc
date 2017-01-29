@@ -387,9 +387,10 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 		if (ret->tag == DW_TAG_class_type ||
 			ret->tag == DW_TAG_interface_type ||
 			ret->tag == DW_TAG_structure_type) {
-			class__fprintf(ret, cu, cusIterArgs->fp, cusIterArgs->types[i].id);
-			cusIterArgs->types[i].foundInDw = 1;
-		}
+
+			if (class__fprintf(ret, cu, cusIterArgs->fp, cusIterArgs->types[i].id)) {
+				cusIterArgs->types[i].foundInDw = 1;
+			}		}
 	}
 
 	// If at least the information about one datatype is still missing, continue iterating through the cus.

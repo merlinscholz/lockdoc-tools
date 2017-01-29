@@ -589,20 +589,23 @@ void ftype__fprintf(const struct ftype *ftype, const struct cu *cu,
 }
 
 
-void class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id)
+int class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id)
 {
 	struct class *class = (struct class*)class_;
 	struct type *type = &class->type;
 	struct class_member *pos;
 	struct tag *tag_pos;
+	int ret = 0;
 
 	type__for_each_tag(type, tag_pos) {
 		struct tag *type;
-
+	
 		if (tag_pos->tag != DW_TAG_member &&
 		    tag_pos->tag != DW_TAG_inheritance) {
 			continue;
 		}
+
+		ret = 1;
 		pos = tag__class_member(tag_pos);
 
 		type = cu__type(cu, pos->tag.type);
@@ -614,6 +617,7 @@ void class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long l
 		struct_member__fprintf(pos, type, cu, out,id);
 		fprintf(out,"\n");
 	}
+	return ret;
 }
 
 void cus__print_error_msg(const char *progname, const struct cus *cus,
