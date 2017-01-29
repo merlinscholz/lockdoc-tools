@@ -173,11 +173,17 @@ static struct cus *cus;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf
-		<< " -s enable processing of seqlock_t (EXPERIMENTAL)" << endl
-		<< " -k path/to/vmlinux"
-		<< " -b path/to/blacklist.csv"
-		<< " <inputfile>.gz" << endl;
+		<< " [options] -k path/to/vmlinux -b path/to/blacklist.csv input.csv[.gz]\n\n"
+		"Options:\n"
+		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
+		" -v  show version\n"
+		" -h  help\n";
 	exit(EXIT_FAILURE);
+}
+
+static void printVersion()
+{
+	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
 }
 
 // caching wrapper around cus__get_function_at_addr
@@ -532,12 +538,7 @@ int main(int argc, char *argv[]) {
 	char action, param, *vmlinuxName = NULL, *blacklistName = nullptr;
 	bool processSeqlock = false;
 
-	if (argc < 2) {
-		cerr << "Need at least an input file!" << endl;
-		return EXIT_FAILURE;
-	}
-
-	while ((param = getopt(argc,argv,"k:b:s")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:svh")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
@@ -548,13 +549,19 @@ int main(int argc, char *argv[]) {
 		case 's':
 			processSeqlock = true;
 			break;
+		case 'v':
+			printVersion();
+			return EXIT_SUCCESS;
+		case 'h':
+			printUsageAndExit(argv[0]);
+			break;
 		}
 	}
 	if (!vmlinuxName || !blacklistName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
 	
-	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
+	printVersion();
 	if (processSeqlock) {
 		cerr << "Enabled experimental feature 'processing of seq{lock,count}_t'" << endl;
 	}
