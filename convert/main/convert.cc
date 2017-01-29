@@ -172,10 +172,11 @@ static unsigned long long curTXNID = 1;
 static struct cus *cus;
 
 static void printUsageAndExit(const char *elf) {
-	cerr << "usage: " << elf;
-	cerr << " -s enable processing of seqlock_t (EXPERIMENTAL)" << endl;
-	cerr << " -k <path/to/vmlinux";
-	cerr << " <inputfile>.gz" << endl;
+	cerr << "usage: " << elf
+		<< " -s enable processing of seqlock_t (EXPERIMENTAL)" << endl
+		<< " -k path/to/vmlinux"
+		<< " -b path/to/blacklist.csv"
+		<< " <inputfile>.gz" << endl;
 	exit(EXIT_FAILURE);
 }
 
@@ -527,8 +528,8 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
-	int lineCounter = 0, isGZ;
-	char action, param, *vmlinuxName = NULL;
+	int lineCounter, isGZ;
+	char action, param, *vmlinuxName = NULL, *blacklistName = nullptr;
 	bool processSeqlock = false;
 
 	if (argc < 2) {
@@ -536,17 +537,20 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	while ((param = getopt(argc,argv,"k:s")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:s")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
+			break;
+		case 'b':
+			blacklistName = optarg;
 			break;
 		case 's':
 			processSeqlock = true;
 			break;
 		}
 	}
-	if (vmlinuxName == NULL || optind == argc) {
+	if (!vmlinuxName || !blacklistName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
 	
@@ -619,6 +623,11 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
+	ifstream blacklistinfile(blacklistName);
+	if (!blacklistinfile.is_open()) {
+		cerr << "Cannot open file: " << blacklistName << endl;
+		return EXIT_FAILURE;
+	}
 
 	// Create the outputfiles. One for each table.
 	ofstream datatypesOFile("data_types.csv",std::ofstream::out | std::ofstream::trunc);
@@ -627,6 +636,7 @@ int main(int argc, char *argv[]) {
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream txnsOFile("txns.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream blacklistOFile("blacklist.csv",std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
@@ -649,13 +659,18 @@ int main(int argc, char *argv[]) {
 
 	txnsOFile << "id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 
+	blacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member"
+		<< DELIMITER_CHAR << "fn" << endl;
+
 	for (int i = 0; i < MAX_OBSERVED_TYPES; i++) {
 		// The unique id for each datatype will be its index + 1
 		datatypesOFile << types[i].id << DELIMITER_CHAR << types[i].typeStr << endl;
 	}
 
 	// Start reading the inputfile
-	for (;getline(*infile,inputLine); ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+	for (lineCounter = 0;
+		getline(*infile,inputLine);
+		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
 #ifdef DEBUG_DATASTRUCTURE_GROWTH
 		if ((lineCounter % 100000) == 0) {
 			cerr << lockPrimKey.size() << " "
@@ -976,6 +991,47 @@ int main(int argc, char *argv[]) {
 
 	cus__delete(cus);
 	dwarves__exit();
+
+	// Helper: type -> ID mapping
+	std::map<std::string, decltype(DataType::id)> type2id;
+	for (int i = 0; i < MAX_OBSERVED_TYPES; ++i) {
+		type2id[types[i].typeStr] = types[i].id;
+	}
+
+	// Process blacklist
+	for (lineCounter = 0;
+		getline(blacklistinfile, inputLine);
+		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+
+		// Skip the CSV header
+		if (lineCounter == 0) {
+			continue;
+		}
+
+		ss << inputLine;
+		// Tokenize each line
+		while (getline(ss, token, DELIMITER_CHAR)) {
+			lineElems.push_back(token);
+		}
+
+		// Sanity check
+		if (lineElems.size() != 3) {
+			cerr << "Ignoring invalid blacklist entry in line " << (lineCounter + 1)
+				<< ": " << inputLine << endl;
+			continue;
+		}
+
+		auto it = type2id.find(lineElems.at(0));
+		if (it == type2id.end()) {
+			cerr << "Unknown type in blacklist line " << (lineCounter + 1)
+				<< ": " << lineElems.at(0) << endl;
+			continue;
+		}
+
+		blacklistOFile << it->second << DELIMITER_CHAR
+			<< lineElems.at(1) << DELIMITER_CHAR
+			<< lineElems.at(2) << endl;
+	}
 
 	cerr << "Finished." << endl;
 
