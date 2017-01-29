@@ -1,7 +1,7 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define MAX_OBSERVED_TYPES 3
+#define MAX_OBSERVED_TYPES 4
 #define DELIMITER_CHAR ';'
 #define DELIMITER_STRING ";"
 #define NEED_BSS_DATA

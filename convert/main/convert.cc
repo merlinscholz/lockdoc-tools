@@ -563,6 +563,9 @@ int main(int argc, char *argv[]) {
 	types[2].typeStr = "super_block";
 	types[2].foundInDw = 0;
 	types[2].id = 3;
+	types[3].typeStr = "backing_dev_info";
+	types[3].foundInDw = 0;
+	types[3].id = 4;
 
 	if (readSections(vmlinuxName)) {
 		return EXIT_FAILURE;
