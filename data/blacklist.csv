@@ -53,11 +53,10 @@ datatype_id;datatype_member;fn
 3;\N;ext4_fill_super
 3;\N;inode_init_always
 3;\N;jbd2_journal_init_inode
-3;\N;ext4_fill_super
 3;\N;ext4_mb_initialize_context
 3;\N;ext4_mb_init_cache
 3;\N;ext4_mb_init_group
-3;\N;devpts_mount
+33;\N;devpts_mount
 3;\N;configfs_fill_super
 3;\N;debug_fill_super
 3;\N;shmem_fill_super
