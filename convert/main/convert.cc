@@ -7,15 +7,19 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <bfd.h>
+#include <algorithm>
 #include <stack>
+
+#include <bfd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "dwarves_api.h"
-#include "gzstream/gzstream.h"
+
 #include "config.h"
 #include "git_version.h"
+
+#include "dwarves_api.h"
+#include "gzstream/gzstream.h"
 
 
 #define IS_MULTILVL_LOCK(x)	((x).ptr == 0x42)
@@ -64,12 +68,13 @@ struct Lock {
 };
 
 /**
- * Describes a certain datatype which is observed by our experiment
+ * Describes a certain datatype that is observed by our experiment
  */
 struct DataType {
-	string typeStr;												// Unique to describe a certain datatype, e.g., task_struct
-	bool foundInDw;												// True if the struct has been found in the dwarf information. False otherwise.
+	DataType(unsigned id, std::string name) : id(id), name(name), foundInDw(false) { }
 	unsigned long long id;										// An unique id for a particular datatype
+	std::string name;												// Unique to describe a certain datatype, e.g., task_struct
+	bool foundInDw;												// True if the struct has been found in the dwarf information. False otherwise.
 };
 
 /**
@@ -124,9 +129,9 @@ static map<unsigned long long,Lock> lockPrimKey;
  */
 static map<unsigned long long,Allocation> activeAllocs;
 /**
- * An array of all observed datatypes. For now, we observe three datatypes.
+ * Contains all observed datatypes.
  */
-static DataType types[MAX_OBSERVED_TYPES];
+static std::vector<DataType> types;
 /**
  * The list of the LOOK_BEHIND_WINDOW last memory accesses.
  */
@@ -146,12 +151,16 @@ static unsigned long long bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0
  * Have a look at convert_cus_iterator().
  */
 struct CusIterArgs {
-	DataType *types;
-	FILE *fp;
+	std::vector<DataType> *types = nullptr;
+	FILE *fp = nullptr;
 };
 // address -> function name cache
 std::map<uint64_t, const char *> functionAddresses;
 
+/**
+ * The next id for a new data type.
+ */
+static unsigned long long curTypeID = 1;
 /**
  * The next id for a new lock.
  */
@@ -173,7 +182,7 @@ static struct cus *cus;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf
-		<< " [options] -k path/to/vmlinux -b path/to/blacklist.csv input.csv[.gz]\n\n"
+		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/blacklist.csv input.csv[.gz]\n\n"
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
@@ -375,17 +384,16 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 
 static int convert_cus_iterator(struct cu *cu, void *cookie) {
 	uint16_t class_id;
-	int i;
 	struct tag *ret;
 	CusIterArgs *cusIterArgs = (CusIterArgs*)cookie;
 
-	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
+	for (auto& type : *cusIterArgs->types) {
 		// Skip known datatypes
-		if (cusIterArgs->types[i].foundInDw) {
+		if (type.foundInDw) {
 			continue;
 		}
-		// Does this compilation unit contain information of at datatype at index i?
-		ret = cu__find_struct_by_name(cu, cusIterArgs->types[i].typeStr.c_str(),1,&class_id);
+		// Does this compilation unit contain information on this type?
+		ret = cu__find_struct_by_name(cu, type.name.c_str(), 1, &class_id);
 		if (ret == NULL) {
 			continue;
 		}
@@ -395,20 +403,20 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 			ret->tag == DW_TAG_interface_type ||
 			ret->tag == DW_TAG_structure_type) {
 
-			if (class__fprintf(ret, cu, cusIterArgs->fp, cusIterArgs->types[i].id)) {
-				cusIterArgs->types[i].foundInDw = 1;
+			if (class__fprintf(ret, cu, cusIterArgs->fp, type.id)) {
+				type.foundInDw = true;
 			}
 		}
 	}
 
 	// If at least the information about one datatype is still missing, continue iterating through the cus.
-	for (i = 0; i < MAX_OBSERVED_TYPES; i++) {
-		if (cusIterArgs->types[i].foundInDw == 0) {
+	for (const auto& type : *cusIterArgs->types) {
+		if (!type.foundInDw) {
 			return 0;
 		}
 	}
 
-	// No need to proceed with the remaining compilation untis. Stop iteration.
+	// No need to proceed with the remaining compilation units. Stop iteration.
 	return 1;
 }
 
@@ -470,8 +478,6 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 		return -1;
 	}
 
-	memset(&cusIterArgs,0,sizeof(cusIterArgs));
-
 	// Open the output file and add the header
 	structsLayoutOFile = fopen("structs_layout.csv","w+");
 	if (structsLayoutOFile == NULL) {
@@ -483,7 +489,7 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	fprintf(structsLayoutOFile,"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
 
 	// Pass the context information to the callback: types array and the outputfile
-	cusIterArgs.types = (DataType*)&types;
+	cusIterArgs.types = &types;
 	cusIterArgs.fp = structsLayoutOFile;
 	// Iterate through every compilation unit, and look for information about the datatypes of interest
 	cus__for_each_cu(cus, convert_cus_iterator,&cusIterArgs,NULL);
@@ -535,16 +541,19 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter, isGZ;
-	char action, param, *vmlinuxName = NULL, *blacklistName = nullptr;
+	char action, param, *vmlinuxName = NULL, *blacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false;
 
-	while ((param = getopt(argc,argv,"k:b:svh")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:t:svh")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
 			break;
 		case 'b':
 			blacklistName = optarg;
+			break;
+		case 't':
+			datatypesName = optarg;
 			break;
 		case 's':
 			processSeqlock = true;
@@ -557,7 +566,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	}
-	if (!vmlinuxName || !blacklistName || optind == argc) {
+	if (!vmlinuxName || !blacklistName || !datatypesName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
 	
@@ -566,19 +575,22 @@ int main(int argc, char *argv[]) {
 		cerr << "Enabled experimental feature 'processing of seq{lock,count}_t'" << endl;
 	}
 
-	types[0].typeStr = "task_struct";
-	types[0].foundInDw = 0;
-	types[0].id = 1;
-	types[1].typeStr = "inode";
-	types[1].foundInDw = 0;
-	types[1].id = 2;
-	types[2].typeStr = "super_block";
-	types[2].foundInDw = 0;
-	types[2].id = 3;
-	types[3].typeStr = "backing_dev_info";
-	types[3].foundInDw = 0;
-	types[3].id = 4;
+	// Load data types
+	ifstream datatypesinfile(datatypesName);
+	if (!datatypesinfile.is_open()) {
+		cerr << "Cannot open file: " << datatypesName << endl;
+		return EXIT_FAILURE;
+	}
 
+	for (lineCounter = 0; getline(datatypesinfile, inputLine); lineCounter++) {
+		// Skip CSV header
+		if (lineCounter == 0) {
+			continue;
+		}
+		types.emplace_back(curTypeID++, inputLine);
+	}
+
+	// Examine Linux-kernel ELF
 	if (readSections(vmlinuxName)) {
 		return EXIT_FAILURE;
 	}
@@ -669,9 +681,8 @@ int main(int argc, char *argv[]) {
 	blacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member"
 		<< DELIMITER_CHAR << "fn" << endl;
 
-	for (int i = 0; i < MAX_OBSERVED_TYPES; i++) {
-		// The unique id for each datatype will be its index + 1
-		datatypesOFile << types[i].id << DELIMITER_CHAR << types[i].typeStr << endl;
+	for (const auto& type : types) {
+		datatypesOFile << type.id << DELIMITER_CHAR << type.name << endl;
 	}
 
 	// Start reading the inputfile
@@ -762,16 +773,13 @@ int main(int argc, char *argv[]) {
 					continue;
 				}
 				// Do we know that datatype?
-				int datatype_idx;
-				for (datatype_idx = 0; datatype_idx < MAX_OBSERVED_TYPES; datatype_idx++) {
-					if (types[datatype_idx].typeStr.compare(typeStr) == 0) {
-						break;
-					}
-				}
-				if (datatype_idx >= MAX_OBSERVED_TYPES) {
+				const auto it = find_if(types.cbegin(), types.cend(),
+					[&typeStr](const DataType& type) { return type.name == typeStr; } );
+				if (it == types.cend()) {
 					cerr << "Found unknown datatype: " << typeStr << endl;
 					continue;
 				}
+				int datatype_idx = it - types.cbegin();
 				// Remember that allocation
 				pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
 					activeAllocs.insert(pair<unsigned long long,Allocation>(ptr,Allocation()));
@@ -1001,8 +1009,8 @@ int main(int argc, char *argv[]) {
 
 	// Helper: type -> ID mapping
 	std::map<std::string, decltype(DataType::id)> type2id;
-	for (int i = 0; i < MAX_OBSERVED_TYPES; ++i) {
-		type2id[types[i].typeStr] = types[i].id;
+	for (const auto& type : types) {
+		type2id[type.name] = type.id;
 	}
 
 	// Process blacklist
