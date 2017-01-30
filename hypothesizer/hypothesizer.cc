@@ -93,14 +93,13 @@ struct LockCombination {
 };
 
 struct LockingHypothesisMatches {
-	LockingHypothesisMatches() : occurrences(0) { }
-	uint64_t occurrences;
+	uint64_t occurrences = 0;
 	std::vector<myid_t> sorted_hypothesis;
 	std::map<std::vector<myid_t>, uint64_t> matches;
 };
 
 struct Member {
-	Member(std::string name) : name(name), occurrences(0), occurrences_with_locks(0) { }
+	Member(std::string name) : name(name) { }
 	void clear()
 	{
 		name.clear();
@@ -108,8 +107,8 @@ struct Member {
 		hypotheses.clear();
 	}
 	std::string name;
-	uint64_t occurrences; // counts all accesses to this member
-	uint64_t occurrences_with_locks; // counts accesses to this member with at least one lock held
+	uint64_t occurrences = 0; // counts all accesses to this member
+	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
 };
