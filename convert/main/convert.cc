@@ -199,13 +199,11 @@ static void printVersion()
 static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 {
 	auto it = functionAddresses.find(addr);
-	const char *ret;
 	if (it == functionAddresses.end()) {
-		functionAddresses[addr] = ret = cus__get_function_at_addr(cus, addr);
+		return functionAddresses[addr] = cus__get_function_at_addr(cus, addr);
 	} else {
-		ret = it->second;
+		return it->second;
 	}
-	return ret;
 }
 
 static void startTXN(unsigned long long ts, unsigned long long lockPtr)
@@ -406,6 +404,8 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 			if (class__fprintf(ret, cu, cusIterArgs->fp, type.id)) {
 				type.foundInDw = true;
 			}
+		} else {
+			cerr << "Internal error: Found struct for " << type.name << " that is no struct but tag ID " << ret->tag << endl;
 		}
 	}
 
@@ -471,8 +471,9 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	struct conf_load confLoad;
 	FILE *structsLayoutOFile;
 
-	memset(&confLoad,0,sizeof(confLoad));
+	memset(&confLoad, 0, sizeof(confLoad));
 	confLoad.get_addr_info = true;
+
 	// Load the dwarf information of every compilation unit
 	if (cus__load_file(cus, &confLoad, filename) != 0) {
 		cerr << "No debug information found in " << filename << endl;
@@ -480,20 +481,21 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	}
 
 	// Open the output file and add the header
-	structsLayoutOFile = fopen("structs_layout.csv","w+");
+	structsLayoutOFile = fopen("structs_layout.csv", "w+");
 	if (structsLayoutOFile == NULL) {
 		perror("fopen structs_layout.csv");
 		cus__delete(cus);
 		dwarves__exit();
 		return -1;
 	}
-	fprintf(structsLayoutOFile,"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
+	fprintf(structsLayoutOFile,
+		"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
 
 	// Pass the context information to the callback: types array and the outputfile
 	cusIterArgs.types = &types;
 	cusIterArgs.fp = structsLayoutOFile;
 	// Iterate through every compilation unit, and look for information about the datatypes of interest
-	cus__for_each_cu(cus, convert_cus_iterator,&cusIterArgs,NULL);
+	cus__for_each_cu(cus, convert_cus_iterator, &cusIterArgs, NULL);
 
 	fclose(structsLayoutOFile);
 
@@ -531,7 +533,7 @@ static int isGZIPFile(const char *filename) {
 		return 1;
 	} else {
 		return 0;
-	}	
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -570,7 +572,7 @@ int main(int argc, char *argv[]) {
 	if (!vmlinuxName || !blacklistName || !datatypesName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
-	
+
 	printVersion();
 	if (processSeqlock) {
 		cerr << "Enabled experimental feature 'processing of seq{lock,count}_t'" << endl;
@@ -596,6 +598,12 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
+	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
+		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
+		printUsageAndExit(argv[0]);
+	}
+
+	// Examine Linux-kernel ELF: retrieve struct definitions
 	dwarves__init(0);
 	cus = cus__new();
 	if (cus == NULL) {
@@ -603,21 +611,16 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	if (extractStructDefs(cus,vmlinuxName)) {
+	if (extractStructDefs(cus, vmlinuxName)) {
 		return EXIT_FAILURE;
 	}
 
-	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
-		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
-		printUsageAndExit(argv[0]);
-	}
-	
 
 	// This is very bad design practise!
 	// Only the fstream does have a close() method.
 	// Since the gzstream is a direct subclass of iostream, a ptr of that type
 	// cannot be stored in one common ptr variable without losing the
-	// ability to call close(). 
+	// ability to call close().
 	istream *infile;
 	igzstream *gzinfile = NULL;
 	ifstream *rawinfile = NULL;
@@ -760,7 +763,7 @@ int main(int argc, char *argv[]) {
 		} catch (exception &e) {
 			cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
 		}
-		
+
 		if (!processSeqlock && (lockType.compare("seqlock_t") == 0 || lockType.compare("seqcount_t") == 0)) {
 			continue;
 		}
