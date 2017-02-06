@@ -6,7 +6,7 @@ LD_TEXT = -e "LD\t$@"
 LD_SO_TEXT = -e "LD SHARED\t$@"
 CC_TEXT = -e "CC\t$<"
 CXX_TEXT = -e "CXX\t$<"
-DEB_TEXT= -e "DEB\t$<"
+DEP_TEXT= -e "DEP\t$<"
 
 # FIND EVERY EXISTING DEPENDENCY FILE
 ifneq (,$(wildcard $(BUILD_PATH)))
@@ -51,6 +51,7 @@ CC:=gcc
 C_FLAGS := -O3 -Wall -Werror -c -g $(INCLUDE_PATHS)
 CXX:=g++
 CXX_FLAGS:= -O3 -Wall -Werror -c -g -std=c++11 $(INCLUDE_PATHS)
+CXX_DEP_FLAGS:= -O3 -std=c++11 $(INCLUDE_PATHS)
 LD:=gcc
 LD_FLAGS :=
 LD_LIBS := -ldw -lelf -lz -lbfd
@@ -95,12 +96,12 @@ $(BUILD_PATH)/%.o: %.cc $(BUILD_PATH)/%.d
 
 # Every dependency file depends only on the corresponding source file
 $(BUILD_PATH)/%.d: %.c
-	@echo $(DEB_TEXT)
+	@echo $(DEP_TEXT)
 	@if test \( ! \( -d $(@D) \) \) ;then mkdir -p $(@D);fi
 	$(OUTPUT)$(call make-depend,$<,$(subst .d,.o,$@),$(subst .o,.d,$@))
 
 $(BUILD_PATH)/%.d: %.cc
-	@echo $(DEB_TEXT)
+	@echo $(DEP_TEXT)
 	@if test \( ! \( -d $(@D) \) \) ;then mkdir -p $(@D);fi
 	$(OUTPUT)$(call make-depend,$<,$(subst .d,.o,$@),$(subst .o,.d,$@))
 
@@ -132,6 +133,6 @@ define make-depend
         -MF $3    \
         -MP       \
         -MT $2    \
-	$(INCLUDE_PATHS) \
+	$(CXX_DEP_FLAGS) \
         $1
 endef
