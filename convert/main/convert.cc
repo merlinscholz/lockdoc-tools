@@ -145,7 +145,7 @@ static std::deque<TXN> activeTXNs;
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
-static unsigned long long bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
+static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
 /**
  * Used to pass context information to the dwarves callback.
  * Have a look at convert_cus_iterator().
@@ -421,7 +421,8 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 }
 
 // find .bss and .data sections
-static int readSections(const char *filename) {
+static int readSections(const char *filename,
+	uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize) {
 	asection *bsSection, *dataSection;
 	bfd *kernelBfd;
 
@@ -590,8 +591,8 @@ int main(int argc, char *argv[]) {
 		types.emplace_back(curTypeID++, inputLine);
 	}
 
-	// Examine Linux-kernel ELF
-	if (readSections(vmlinuxName)) {
+	// Examine Linux-kernel ELF: retrieve BSS + data segment locations
+	if (readSections(vmlinuxName, bssStart, bssSize, dataStart, dataSize)) {
 		return EXIT_FAILURE;
 	}
 
