@@ -346,9 +346,32 @@ static void type__fprintf(struct tag *type, const struct cu *cu,
 	char tbf[128];
 	//char namebf[256];
 	struct type *ctype;
+	struct tag *orig_type = type;
 
 	if (type == NULL) {
 		goto out_error;
+	}
+
+	// Try to resolve typedefs
+	// All output-related code has been removed. For those who are intereseted, have a look at type__fprintf():586-612 in the original dwarves_fprintf.c.
+	while (tag__is_typedef(orig_type)) {
+		struct tag *type_type;
+
+		ctype = tag__type(orig_type);	
+		type_type = cu__type(cu, orig_type->type);
+		
+		if (type_type == NULL || tag__has_type_loop(orig_type, type_type, NULL, 0, fp)) {
+			// Cannot resolve type definition or definition contains a loop
+			// Do not resolve the typedef, and fallback to the actual definition
+			orig_type = NULL;
+			break;
+		}
+		orig_type = type_type;
+	}
+	// Have we resolved the type and does the definition have a name?
+	// If not, use the typedef. This might be the case if the typedef is an anonymous struct/union for example.
+	if (orig_type != NULL && type__name(tag__type(orig_type), cu) != NULL) {
+		type = orig_type;
 	}
 
 	switch (type->tag) {
