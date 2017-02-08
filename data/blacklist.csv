@@ -65,3 +65,7 @@ super_block;\N;ramfs_fill_super
 super_block;\N;proc_fill_super
 super_block;\N;simple_fill_super
 super_block;\N;mqueue_fill_super
+pipe_inode_info;\N;get_pipe_inode
+pipe_inode_info;\N;create_pipe_files
+pipe_inode_info;\N;free_pipe_info
+block_device;\N;init_once
