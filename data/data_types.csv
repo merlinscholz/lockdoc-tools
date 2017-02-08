@@ -3,3 +3,6 @@ task_struct
 inode
 super_block
 backing_dev_info
+block_device
+pipe_inode_info
+cdev
