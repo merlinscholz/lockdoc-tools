@@ -114,12 +114,22 @@ static size_t __tag__id_not_found_snprintf(char *bf, size_t len, uint16_t id,
 #define tag__id_not_found_snprintf(bf, len, id) \
 	__tag__id_not_found_snprintf(bf, len, id, __func__, __LINE__)
 
-static void type__fprintf(struct tag *type, const struct cu *cu,
-			    const char *name, FILE *fp, unsigned long long id);
+static void dwarves_convert_prefix_print(FILE *fp, struct dwarves_convert_ext const *ext)
+{
+	int i;
+	for (i = 0; i < ext->next_prefix_idx; ++i) {
+		fputs(ext->name_prefixes[i], fp);
+		fputs(".", fp);
+	}
+}
+
+static bool type__fprintf(struct tag *type, const struct cu *cu,
+			    const char *name, FILE *fp, struct dwarves_convert_ext *ext,
+				const char *cm_name, uint32_t offset);
 
 static void array_type__fprintf(const struct tag *tag,
 				  const struct cu *cu, const char *name,
-				  FILE *fp, unsigned long long id)
+				  FILE *fp, struct dwarves_convert_ext *ext)
 {
 	struct array_type *at = tag__array_type(tag);
 	struct tag *type = cu__type(cu, tag->type);
@@ -130,7 +140,8 @@ static void array_type__fprintf(const struct tag *tag,
 		tag__id_not_found_fprintf(fp, tag->type);
 	}
 
-	type__fprintf(type, cu, name, fp,id);
+	// FIXME: expansion of embedded struct arrays does not work yet
+	type__fprintf(type, cu, name, fp, ext, NULL, 0);
 	for (i = 0; i < at->dimensions; ++i) {
 		if (at->is_vector) {
 			/*
@@ -340,8 +351,10 @@ const char *tag__name(const struct tag *tag, const struct cu *cu,
 	return bf;
 }
 
-static void type__fprintf(struct tag *type, const struct cu *cu,
-			    const char *name, FILE *fp, unsigned long long id)
+// returns true if it recursed into a known struct
+static bool type__fprintf(struct tag *type, const struct cu *cu,
+	const char *name, FILE *fp, struct dwarves_convert_ext *ext,
+	const char *cm_name, uint32_t offset)
 {
 	char tbf[128];
 	//char namebf[256];
@@ -374,6 +387,10 @@ static void type__fprintf(struct tag *type, const struct cu *cu,
 		type = orig_type;
 	}
 
+	if (type->tag != DW_TAG_class_type && type->tag != DW_TAG_structure_type && type->tag != DW_TAG_array_type) {
+		fprintf(fp, "%llu" DELIMITER_STRING, ext->type_id);
+	}
+
 	switch (type->tag) {
 		case DW_TAG_pointer_type:
 			if (type->type != 0) {
@@ -384,7 +401,7 @@ static void type__fprintf(struct tag *type, const struct cu *cu,
 				}
 				n = tag__has_type_loop(type, ptype, NULL, 0, fp);
 				if (n) {
-					return;
+					return false;
 				}
 				if (ptype->tag == DW_TAG_subroutine_type) {
 					ftype__fprintf(tag__ftype(ptype),
@@ -401,19 +418,30 @@ static void type__fprintf(struct tag *type, const struct cu *cu,
 			ftype__fprintf(tag__ftype(type), cu, name, 0, 0, fp);
 			break;
 		case DW_TAG_array_type:
-			array_type__fprintf(type, cu, name, fp,id);
+			array_type__fprintf(type, cu, name, fp, ext);
 			break;
 		case DW_TAG_class_type:
 		case DW_TAG_structure_type:
 			ctype = tag__type(type);
 
-			if (type__name(ctype, cu) != NULL) {
+			if (type__name(ctype, cu) != NULL && !ext->expand_type(type__name(ctype, cu))) {
+				fprintf(fp, "%llu" DELIMITER_STRING, ext->type_id);
 				fprintf(fp, "%s %s",
 						   (type->tag == DW_TAG_class_type) ? "class" : "struct",
 						   type__name(ctype, cu));
 			} else {
-				class__fprintf(tag__class(type),
-							  cu, fp,id);
+				if (ext->next_prefix_idx >= sizeof(ext->name_prefixes)/sizeof(*ext->name_prefixes)) {
+					fprintf(fp, "<ERROR RECURSION MAXDEPTH REACHED>");
+					return false;
+				}
+
+				// recurse
+				ext->name_prefixes[ext->next_prefix_idx++] = cm_name;
+				ext->offset += offset;
+				class__fprintf(tag__class(type), cu, fp, ext);
+				ext->offset -= offset;
+				ext->next_prefix_idx--;
+				return true;
 			}
 			break;
 		case DW_TAG_union_type:
@@ -435,14 +463,16 @@ static void type__fprintf(struct tag *type, const struct cu *cu,
 			}
 			break;
 		}
-	return;
+	return false;
 
 out_error:
 	fprintf(fp, "%s","<ERROR>");
+	return false;
 }
 
 static void struct_member__fprintf(struct class_member *member,
-				     struct tag *type, const struct cu *cu, FILE *fp, unsigned long long id)
+	struct tag *type, const struct cu *cu, FILE *fp,
+	struct dwarves_convert_ext *ext)
 {
 	struct class_member *pos;
 	const int size = member->byte_size;
@@ -450,16 +480,16 @@ static void struct_member__fprintf(struct class_member *member,
 	char *cm_name_temp = NULL;
 	const char *cm_name = class_member__name(member, cu), *temp, *name = cm_name;
 
-	fprintf(fp,"%llu" DELIMITER_STRING,id);
 	if (member->tag.tag == DW_TAG_inheritance) {
 		name = "<ancestor>";
 	}
 
 	if (member->is_static) { //TODO: skip
-		fprintf(fp, "static ");
-	}
+		//fprintf(fp, "static ");
 
-	type__fprintf(type, cu, name, fp,id);
+		// skip
+		return;
+	}
 
 #if 0
 	if (member->is_static) {
@@ -511,7 +541,14 @@ static void struct_member__fprintf(struct class_member *member,
 		cm_name = cm_name_temp;
 	}
 	
-	fprintf(fp,DELIMITER_STRING "%s"DELIMITER_STRING "%d"DELIMITER_STRING "%d", cm_name,offset,size);
+	if (!type__fprintf(type, cu, name, fp, ext, cm_name, offset)) {
+		fprintf(fp, DELIMITER_STRING);
+		dwarves_convert_prefix_print(fp, ext);
+		fprintf(fp,
+			"%s" DELIMITER_STRING "%d" DELIMITER_STRING "%d",
+			cm_name, offset + ext->offset, size);
+		fprintf(fp, "\n");
+	}
 	if (cm_name_temp != NULL) {
 		free(cm_name_temp);
 	}
@@ -612,7 +649,8 @@ void ftype__fprintf(const struct ftype *ftype, const struct cu *cu,
 }
 
 
-int class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id)
+int class__fprintf(void *class_, const struct cu *cu,FILE *out,
+	struct dwarves_convert_ext *ext)
 {
 	struct class *class = (struct class*)class_;
 	struct type *type = &class->type;
@@ -637,8 +675,7 @@ int class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long lo
 			continue;
 		}
 
-		struct_member__fprintf(pos, type, cu, out,id);
-		fprintf(out,"\n");
+		struct_member__fprintf(pos, type, cu, out, ext);
 	}
 	return ret;
 }

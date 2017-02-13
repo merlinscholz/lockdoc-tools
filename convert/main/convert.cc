@@ -380,10 +380,21 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	pMemAccesses->clear();
 }
 
+static bool expand_type(const char *struct_typename)
+{
+	return find_if(types.cbegin(), types.cend(),
+		[&struct_typename](const DataType& type) { return type.name == struct_typename; } )
+		!= types.cend();
+}
+
 static int convert_cus_iterator(struct cu *cu, void *cookie) {
 	uint16_t class_id;
 	struct tag *ret;
 	CusIterArgs *cusIterArgs = (CusIterArgs*)cookie;
+	struct dwarves_convert_ext dwarvesconfig = { 0 }; // initializes all members
+
+	// Setup callback
+	dwarvesconfig.expand_type = expand_type;
 
 	for (auto& type : *cusIterArgs->types) {
 		// Skip known datatypes
@@ -401,7 +412,8 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 			ret->tag == DW_TAG_interface_type ||
 			ret->tag == DW_TAG_structure_type) {
 
-			if (class__fprintf(ret, cu, cusIterArgs->fp, type.id)) {
+			dwarvesconfig.type_id = type.id;
+			if (class__fprintf(ret, cu, cusIterArgs->fp, &dwarvesconfig)) {
 				type.foundInDw = true;
 			}
 		} else {

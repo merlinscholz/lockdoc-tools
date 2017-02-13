@@ -184,6 +184,17 @@ struct conf_fprintf {
 	uint8_t	   hex_fmt:1;
 };
 
+struct dwarves_convert_ext {
+	// ID for first CSV column
+	unsigned long long type_id;
+	// callback: recurse into this struct type?
+	bool (*expand_type)(const char *struct_typename);
+	// array of prefix strings, will be concatenated with "." in dwarves_convert_prefix_print()
+	char const *name_prefixes[16];
+	unsigned next_prefix_idx;
+	// offset of current struct within enclosing struct
+	uint32_t offset;
+};
 
 struct cus *cus__new(void);
 void cus__delete(struct cus *self);
@@ -209,7 +220,8 @@ void cus__for_each_cu(struct cus *self, int (*iterator)(struct cu *cu,
 		      void *cookie,
 		      struct cu *(*filter)(struct cu *cu));
 
-int class__fprintf(void *class_, const struct cu *cu,FILE *out, unsigned long long id);
+int class__fprintf(void *class_, const struct cu *cu, FILE *out,
+	struct dwarves_convert_ext *ext);
 struct tag *cu__find_struct_by_name(const struct cu *cu, const char *name,
 				    const int include_decls, uint16_t *id);
 
