@@ -6,3 +6,4 @@ backing_dev_info
 block_device
 pipe_inode_info
 cdev
+address_space
