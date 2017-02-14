@@ -36,7 +36,7 @@ FROM
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 		LEFT JOIN blacklist bl ON bl.datatype_id = a.type AND bl.fn = ac.fn AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
 		WHERE 
-			a.type = 2 AND
+			a.type = (SELECT id FROM data_types WHERE name = 'inode') AND
 			sl.member = 'i_acl' AND
 			ac.type  IN ('r','w') AND
 			ac.fn = 'get_cached_acl' AND

@@ -15,7 +15,7 @@ INNER JOIN allocations AS a ON a.id=ls.alloc_id
 INNER JOIN accesses AS ac ON ac.id=ls.ac_id
 INNER JOIN data_types AS dt ON dt.id=a.type
 -- WHERE a.type=X
-WHERE a.id=2
+WHERE a.id = (SELECT id FROM data_types WHERE name = 'inode')
 -- GROUP BY alloc_id,locks
 -- GROUP BY alloc_id,locks,type
 -- GROUP BY alloc_id,locks,type,member
@@ -29,4 +29,4 @@ SELECT COUNT(*)
 FROM accesses As ac
 LEFT JOIN locks_held AS lh ON lh.access_id=ac.id
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
-WHERE lh.start IS NULL -- AND a.id=2;
+WHERE lh.start IS NULL -- AND a.id = (SELECT id FROM data_types WHERE name = 'inode');

@@ -33,7 +33,8 @@ FROM
 	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 	LEFT JOIN blacklist bl ON bl.datatype_id = a.type AND bl.fn = ac.fn AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
 	WHERE 
-		a.type = 2 AND  -- Put the id of your data type of interest here
+		-- Name the data type of interest here
+		a.type = (SELECT id FROM data_types WHERE name = 'inode') AND
 --		ac.type  IN ('r','w') AND -- Filter by access type
 --		sl.member IN ('i_hash') AND -- Only show results for a certain member
 		bl.fn IS NULL
