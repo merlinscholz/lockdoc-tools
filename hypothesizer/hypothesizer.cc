@@ -115,6 +115,7 @@ struct Member {
 	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
+	bool show = true; // set to false if filtered out by user parameters
 };
 
 // All members seen in the input.  The index of each element is used as a key
@@ -461,6 +462,7 @@ int main(int argc, char **argv)
 		if (accepted_datatypes.size() > 0 &&
 			accepted_datatypes.find(member.datatype) == accepted_datatypes.end()) {
 			member.clear();
+			member.show = false;
 			continue;
 		}
 
@@ -468,6 +470,7 @@ int main(int argc, char **argv)
 		if (accepted_members.size() > 0 &&
 			accepted_members.find(member.name) == accepted_members.end()) {
 			member.clear();
+			member.show = false;
 			continue;
 		}
 
@@ -506,7 +509,9 @@ int main(int argc, char **argv)
 		default: ;
 		}
 		for (const auto& member : members) {
-			print_hypotheses(member, match_threshold);
+			if (member.show) {
+				print_hypotheses(member, match_threshold);
+			}
 		}
 	}
 }
