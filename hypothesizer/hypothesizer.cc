@@ -39,7 +39,10 @@ const option::Descriptor usage[] = {
   "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
 }, {
   SORT, 0, "s", "sort", Arg::Required,
-  "-s/--sort member|combinations|hypotheses  \tSort output by datatype/member name, number of lock combinations, or number of hypotheses"
+  "-s/--sort criterion  \tSort output by criterion "
+  "\"member\" = datatype/member name, "
+  "\"combinations\" = number of lock combinations, or "
+  "\"hypotheses\" = number of hypotheses"
 }, {0,0,0,0,0,0}
 };
 
