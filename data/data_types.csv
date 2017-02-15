@@ -7,3 +7,4 @@ block_device
 pipe_inode_info
 cdev
 address_space
+bdi_writeback
