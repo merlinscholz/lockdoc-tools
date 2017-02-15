@@ -9,7 +9,7 @@
 SET SESSION group_concat_max_len = 8192;
 
 SELECT
---	type_name, -- FOR NOW: only look at inodes
+	type_name,
 	members_accessed, locks_held,
 	COUNT(*) AS occurrences
 FROM
@@ -54,8 +54,9 @@ FROM
 			  ON bl.datatype_id = a.type
 			 AND bl.fn = ac.fn
 			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+			WHERE 1
 			-- === FOR NOW: only look at inodes ===
-			WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
+			-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
 			-- ====================================
 			AND bl.fn IS NULL
 			AND ac.txn_id IS NOT NULL
@@ -102,8 +103,9 @@ FROM
 	  ON bl.datatype_id = a.type
 	 AND bl.fn = ac.fn
 	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	WHERE 1
 	-- === FOR NOW: only look at inodes ===
-	WHERE a.type = (SELECT id FROM data_types WHERE name = 'inode')
+	-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
 	-- ====================================
 	AND bl.fn IS NULL
 	AND ac.txn_id IS NULL

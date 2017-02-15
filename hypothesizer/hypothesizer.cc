@@ -21,7 +21,7 @@
 
 const double match_threshold_default = .1;
 
-enum optionIndex { UNKNOWN, HELP, THRESHOLD, MEMBER, SORT };
+enum optionIndex { UNKNOWN, HELP, THRESHOLD, DATATYPE, MEMBER, SORT };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -32,11 +32,14 @@ const option::Descriptor usage[] = {
   THRESHOLD, 0, "t", "threshold", Arg::Required,
   "-t/--threshold n  \tSet hypothesis match threshold to n% (default: 10.0)"
 }, {
+  DATATYPE, 0, "d", "datatype", Arg::Required,
+  "-d/--datatype typename  \tOnly create/test hypotheses for a specific data structure; may be used more than once"
+}, {
   MEMBER, 0, "m", "member", Arg::Required,
   "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
 }, {
   SORT, 0, "s", "sort", Arg::Required,
-  "-s/--sort member|combinations|hypotheses  \tSort output by member name, number of lock combinations, or number of hypotheses"
+  "-s/--sort member|combinations|hypotheses  \tSort output by datatype/member name, number of lock combinations, or number of hypotheses"
 }, {0,0,0,0,0,0}
 };
 
@@ -99,13 +102,14 @@ struct LockingHypothesisMatches {
 };
 
 struct Member {
-	Member(std::string name) : name(name) { }
+	Member(std::string datatype, std::string name) : datatype(datatype), name(name) { }
 	void clear()
 	{
 		name.clear();
 		combinations.clear();
 		hypotheses.clear();
 	}
+	std::string datatype;
 	std::string name;
 	uint64_t occurrences = 0; // counts all accesses to this member
 	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
@@ -121,7 +125,7 @@ std::vector<Member> members;
 // key in other data structures.
 std::vector<std::string> locks;
 
-template <typename M, typename V> 
+template <typename M, typename V>
 void map2vec(const M& m, V& v) {
 	for (const auto& elem : m) {
 		v.push_back(elem.second);
@@ -197,7 +201,8 @@ void find_hypotheses(Member& member)
 
 void print_hypotheses(const Member& member, double match_threshold)
 {
-	std::cout << "member: " << member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
+	std::cout << member.datatype << " member: "
+		<< member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
 	std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 
 	std::vector<LockingHypothesisMatches> sorted_hypotheses;
@@ -283,6 +288,11 @@ int main(int argc, char **argv)
 		match_threshold /= 100.0;
 	}
 
+	std::set<std::string> accepted_datatypes;
+	for (option::Option *o = options[DATATYPE]; o; o = o->next()) {
+		accepted_datatypes.insert(o->arg);
+	}
+
 	std::set<std::string> accepted_members;
 	for (option::Option *o = options[MEMBER]; o; o = o->next()) {
 		accepted_members.insert(o->arg);
@@ -320,8 +330,8 @@ int main(int argc, char **argv)
 	std::string inputLine, inputColumn, inputElement;
 	// total memory-access count
 	uint64_t accesscount = 0;
-	// member/lock to ID mapping, only needed temporarily during CSV parsing
-	std::map<std::string, myid_t> member_to_id;
+	// member+datatype/lock to ID mapping, only needed temporarily during CSV parsing
+	std::map<std::pair<std::string, std::string>, myid_t> member_to_id;
 	std::map<std::string, myid_t> lock_to_id;
 	// per-member lock combination to LockCombination mapping (the latter
 	// contains, among other things, the occurrence count), only needed
@@ -349,19 +359,21 @@ int main(int argc, char **argv)
 		}
 
 		// Sanity check
-		if (lineElems.size() != 3) {
+		if (lineElems.size() != 4) {
 			std::cerr << "Warning: Line " << lineCounter << " does not have the required number of columns." << std::endl;
 			continue;
 		}
 
+		std::string& datatype = lineElems[0];
+
 		// Read #occurrences
-		unsigned long long occurrences = std::stoull(lineElems[2]);
+		unsigned long long occurrences = std::stoull(lineElems[3]);
 		accesscount += occurrences;
 
 		// Split lock list along commas
 		ss.clear();
 		ss.str("");
-		ss << lineElems[1];
+		ss << lineElems[2];
 		std::vector<myid_t> locks_held;
 		while (getline(ss, inputElement, ',')) {
 			myid_t lock_id;
@@ -389,12 +401,12 @@ int main(int argc, char **argv)
 		// Split member list along commas
 		ss.clear();
 		ss.str("");
-		ss << lineElems[0];
+		ss << lineElems[1];
 		while (getline(ss, inputElement, ',')) {
 			myid_t member_id;
-			auto it = member_to_id.find(inputElement);
+			auto it = member_to_id.find(std::pair<std::string, std::string>(datatype, inputElement));
 			if (it == member_to_id.end()) {
-				members.push_back(Member(inputElement));
+				members.push_back(Member(datatype, inputElement));
 				members_combinations.resize(members_combinations.size() + 1);
 				if (members.size() - 1 > std::numeric_limits<decltype(member_id)>::max()) {
 					std::cerr << "Error: More members than myid_t can hold("
@@ -403,7 +415,7 @@ int main(int argc, char **argv)
 					return 1;
 				}
 				member_id = members.size() - 1;
-				member_to_id[inputElement] = member_id;
+				member_to_id[std::pair<std::string, std::string>(datatype, inputElement)] = member_id;
 			} else {
 				member_id = it->second;
 			}
@@ -445,6 +457,13 @@ int main(int argc, char **argv)
 	for (auto it = members.begin(); it < members.end(); ++it) {
 		Member& member = *it;
 
+		// Skip if user has specified datatypes + this one is not in the list
+		if (accepted_datatypes.size() > 0 &&
+			accepted_datatypes.find(member.datatype) == accepted_datatypes.end()) {
+			member.clear();
+			continue;
+		}
+
 		// Skip if user has specified members + this one is not in the list
 		if (accepted_members.size() > 0 &&
 			accepted_members.find(member.name) == accepted_members.end()) {
@@ -472,7 +491,7 @@ int main(int argc, char **argv)
 		case SortCriterion::MEMBER:
 			sort(members.begin(), members.end(),
 				[](const Member& a, const Member& b)
-				{ return a.name < b.name; });
+				{ return a.datatype < b.datatype || (a.datatype == b.datatype && a.name < b.name); });
 			break;
 		case SortCriterion::COMBINATIONS:
 			sort(members.begin(), members.end(),
