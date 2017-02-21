@@ -47,9 +47,9 @@ FROM
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
-			LEFT JOIN structs_layout sl
+			LEFT JOIN structs_layout_flat sl
 			  ON a.type = sl.type_id
-			 AND ac.address - a.ptr BETWEEN sl.offset AND sl.offset + sl.size - 1
+			 AND ac.address - a.ptr = sl.helper_offset
 			LEFT JOIN blacklist bl
 			  ON bl.datatype_id = a.type
 			 AND bl.fn = ac.fn
@@ -79,9 +79,9 @@ FROM
 	  ON l.embedded_in = lock_a.id
 --	LEFT JOIN data_types lock_a_dt
 --	  ON lock_a.type = lock_a_dt.id
-	LEFT JOIN structs_layout lock_member
+	LEFT JOIN structs_layout_flat lock_member
 	  ON lock_a.type = lock_member.type_id
-	 AND l.ptr - lock_a.ptr BETWEEN lock_member.offset AND lock_member.offset + lock_member.size - 1
+	 AND l.ptr - lock_a.ptr = lock_member.helper_offset
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
@@ -96,9 +96,9 @@ FROM
 	  ON ac.alloc_id = a.id
 	JOIN data_types dt
 	  ON dt.id = a.type
-	LEFT JOIN structs_layout sl
+	LEFT JOIN structs_layout_flat sl
 	  ON a.type = sl.type_id
-	 AND ac.address - a.ptr BETWEEN sl.offset AND sl.offset + sl.size - 1
+	 AND ac.address - a.ptr = sl.helper_offset
 	LEFT JOIN blacklist bl
 	  ON bl.datatype_id = a.type
 	 AND bl.fn = ac.fn
