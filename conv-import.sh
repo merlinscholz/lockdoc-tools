@@ -1,6 +1,8 @@
 #!/bin/bash
 TOOLS_PATH=""
 CONFIGFILE="convert.conf"
+# The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
+
 
 if [ ! -f ${CONFIGFILE} ];
 then
