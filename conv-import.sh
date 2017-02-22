@@ -1,5 +1,5 @@
 #!/bin/bash
-TOOLS_PATH=""
+TOOLS_PATH=`basename ${0}`
 CONFIGFILE="convert.conf"
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
 
@@ -34,7 +34,7 @@ function import_table() {
 	fi	
 }
 function usage() {
-	echo "usage: $0 <database> <path to tools repo> [ input-linecount ]" >&2
+	echo "usage: $0 <database> [ input-linecount ]" >&2
 	exit 1
 }
 
@@ -44,13 +44,6 @@ then
 	usage
 fi
 DB=$1
-shift
-
-if [ -z "$1" ];
-then
-	usage
-fi
-TOOLS_PATH=${1}
 shift
 
 if [ -z "$1" ]; then
