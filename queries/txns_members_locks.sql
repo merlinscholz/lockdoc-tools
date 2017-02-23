@@ -65,7 +65,7 @@ FROM
 
 		JOIN data_types dt
 		  ON dt.id = fac.type_id
-		GROUP BY dt.id, fac.alloc_id, fac.txn_id
+		GROUP BY fac.alloc_id, fac.txn_id, dt.id
 	) AS concatgroups
 
 	JOIN locks_held lh
@@ -86,7 +86,7 @@ FROM
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
 
-	GROUP BY concatgroups.type_id, concatgroups.alloc_id, concatgroups.txn_id
+	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.type_id
 
 	UNION ALL
 
