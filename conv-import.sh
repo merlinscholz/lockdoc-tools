@@ -1,6 +1,8 @@
 #!/bin/bash
 TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
+DATA_TYPES=${TOOLS_PATH}/data/data_types.csv
+BLACK_LIST=${TOOLS_PATH}/data/black_list.csv
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
 
 
@@ -14,6 +16,12 @@ fi
 if [ -z ${DATA} ] || [ -z ${KERNEL} ];
 then
 	echo "Vars DATA or KERNEL are not set!" >&2
+	exit 1
+fi
+
+if [ ! -f ${DATA_TYPES} ] || [ ! -f ${BLACK_LIST} ];
+then
+	echo "${DATA_TYPES} or ${BLACK_LIST} does not exist!" >&2
 	exit 1
 fi
 
@@ -76,9 +84,9 @@ done
 #GDB='cgdb --args'
 
 if echo $DATA | egrep -q '.bz2$'; then
-	$VALGRIND $GDB ${TOOLS_PATH}/convert/build/convert -t ${TOOLS_PATH}/data/data_types.csv -k $KERNEL -b ${TOOLS_PATH}/data/blacklist.csv <( eval pbzip2 -d < $DATA ${HEAD_CMD})
+	$VALGRIND $GDB ${TOOLS_PATH}/convert/build/convert -t ${DATA_TYPES} -k $KERNEL -b ${BLACK_LIST} <( eval pbzip2 -d < $DATA ${HEAD_CMD} )
 elif echo $DATA | egrep -q '.gz$'; then
-	$VALGRIND $GDB ${TOOLS_PATH}/convert/build/convert -t ${TOOLS_PATH}/data/data_types.csv -k $KERNEL -b ${TOOLS_PATH}/data/blacklist.csv <( eval gzip -d < $DATA ${HEAD_CMD})
+	$VALGRIND $GDB ${TOOLS_PATH}/convert/build/convert -t ${DATA_TYPES} -k $KERNEL -b ${BLACK_LIST} <( eval gzip -d < $DATA ${HEAD_CMD} )
 else
 	echo "no idea what to do with filename extension of $DATA" >&2
 	exit 1
