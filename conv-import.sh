@@ -2,7 +2,7 @@
 TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
 DATA_TYPES=${TOOLS_PATH}/data/data_types.csv
-BLACK_LIST=${TOOLS_PATH}/data/black_list.csv
+BLACK_LIST=${TOOLS_PATH}/data/blacklist.csv
 CONVERT=${TOOLS_PATH}/convert/build/convert
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
 
@@ -75,7 +75,17 @@ MYSQLIMPORT="mysqlimport_warnings ${DB}"
 
 # initialize DB
 mysql $DB < ${TOOLS_PATH}/queries/drop-tables.sql
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot drop tables!" >&2
+	exit 1
+fi
 mysql $DB < ${TOOLS_PATH}/queries/db-scheme.sql
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot aplly db scheme!">&2
+	exit 1
+fi
 
 # setup named pipes and start importing in the background
 for table in "${TABLES[@]}"
@@ -101,3 +111,4 @@ fi
 
 wait
 mysqloptimize $DB
+reset
