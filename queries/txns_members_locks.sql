@@ -90,6 +90,9 @@ FROM
 
 	UNION ALL
 
+	-- Memory accesses to known allocations without any locks held: We
+	-- cannot group these into TXNs, instead we assume them each in their
+	-- own TXN for the purpose of this query.
 	SELECT dt.id AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', sl.member) AS members_accessed, '' AS locks_held
 	FROM accesses ac
 	JOIN allocations a
