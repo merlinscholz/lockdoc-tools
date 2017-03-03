@@ -230,8 +230,20 @@ void print_hypotheses(const Member& member, double match_threshold)
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 
-			// show locking-order distribution
+			// sort matches
+			std::vector<std::pair<std::vector<myid_t>, uint64_t>> sorted_matches;
 			for (const auto& match : h.matches) {
+				sorted_matches.push_back(std::pair<std::vector<myid_t>, uint64_t>(match.first, match.second));
+			}
+			sort(sorted_matches.begin(), sorted_matches.end(),
+				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
+					const std::pair<std::vector<myid_t>, uint64_t>& b)
+					{
+						return a.second > b.second;
+					});
+
+			// show locking-order distribution
+			for (const auto& match : sorted_matches) {
 				std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
 					<< locks2string(match.first) << std::endl;
 			}
