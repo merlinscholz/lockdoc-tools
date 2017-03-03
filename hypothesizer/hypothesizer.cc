@@ -213,7 +213,10 @@ void print_hypotheses(const Member& member, double match_threshold)
 	map2vec(member.hypotheses, sorted_hypotheses);
 	sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
 		[](const LockingHypothesisMatches& a, const LockingHypothesisMatches& b)
-		{ return a.occurrences > b.occurrences; }); // reverse order
+		{ return a.occurrences > b.occurrences || // reverse order
+			(a.occurrences == b.occurrences &&
+			a.sorted_hypothesis.size() > b.sorted_hypothesis.size()); // more locks first
+		});
 
 	int printed = 0;
 	std::cout.precision(3);
