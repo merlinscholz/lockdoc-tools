@@ -19,9 +19,9 @@
 //
 // Input: The output of txns_members_locks.sql in the form of a CSV file.
 
-const double match_threshold_default = .1;
+const double cutoff_threshold_default = .1, nolock_threshold_default = .05;
 
-enum optionIndex { UNKNOWN, HELP, THRESHOLD, DATATYPE, MEMBER, SORT };
+enum optionIndex { UNKNOWN, HELP, CUTOFFTHRESHOLD, NOLOCKTHRESHOLD, DATATYPE, MEMBER, SORT, REPORT, BUGSQL };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -29,8 +29,11 @@ const option::Descriptor usage[] = {
 }, {
   HELP, 0, "h", "help", Arg::None, "--help  \tPrint usage and exit"
 }, {
-  THRESHOLD, 0, "t", "threshold", Arg::Required,
-  "-t/--threshold n  \tSet hypothesis match threshold to n% (default: 10.0)"
+  CUTOFFTHRESHOLD, 0, "t", "cutoff-threshold", Arg::Required,
+  "-t/--cutoff-threshold n  \tSet hypothesis cutoff threshold to n% (default: 10.0)"
+}, {
+  NOLOCKTHRESHOLD, 0, "n", "nolock-threshold", Arg::Required,
+  "-n/--nolock-threshold n  \tSet threshold for assuming that no lock is required to n% (default: 5.0)"
 }, {
   DATATYPE, 0, "d", "datatype", Arg::Required,
   "-d/--datatype typename  \tOnly create/test hypotheses for a specific data structure; may be used more than once"
@@ -43,10 +46,19 @@ const option::Descriptor usage[] = {
   "\"member\" = datatype/member name, "
   "\"combinations\" = number of lock combinations, or "
   "\"hypotheses\" = number of hypotheses"
+}, {
+  REPORT, 0, "r", "report", Arg::Required,
+  "-r/--report mode  \tGenerate report (mode: "
+  "normal = human-readable, "
+  "csv = machine-readable CSV, "
+  "csvwinner = like csv but only winning hypothesis, "
+  "doc = C source-code comment"
+  ")"
 }, {0,0,0,0,0,0}
 };
 
 enum class SortCriterion { NONE, MEMBER, COMBINATIONS, HYPOTHESES };
+enum class ReportMode { NORMAL, CSV, CSVWINNER, DOC };
 
 // ID type
 typedef uint16_t myid_t;
@@ -203,11 +215,13 @@ void find_hypotheses(Member& member)
 	}
 }
 
-void print_hypotheses(const Member& member, double match_threshold)
+void print_hypotheses(const Member& member, double cutoff_threshold, double nolock_threshold, ReportMode reportmode)
 {
-	std::cout << member.datatype << " member: "
-		<< member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
-	std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
+	if (reportmode == ReportMode::NORMAL) {
+		std::cout << member.datatype << " member: "
+			<< member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
+		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
+	}
 
 	std::vector<LockingHypothesisMatches> sorted_hypotheses;
 	map2vec(member.hypotheses, sorted_hypotheses);
@@ -218,17 +232,23 @@ void print_hypotheses(const Member& member, double match_threshold)
 			a.sorted_hypothesis.size() > b.sorted_hypothesis.size()); // more locks first
 		});
 
+	// collect all lock orders for ReportMode CSVWINNER and DOC
+	std::vector<std::pair<std::vector<myid_t>, uint64_t>> all_lock_orders;
+
 	int printed = 0;
 	std::cout.precision(3);
 	for (const auto& h : sorted_hypotheses) {
 		double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
-		if (match_fraction < match_threshold) {
+		if (match_fraction < cutoff_threshold) {
 			break;
 		}
-		if (h.matches.size() > 1) {
-			std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
-				<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+		if (h.matches.size() > 1 ||
+			reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
+			if (reportmode == ReportMode::NORMAL) {
+				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
+					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+			}
 
 			// sort matches
 			std::vector<std::pair<std::vector<myid_t>, uint64_t>> sorted_matches;
@@ -244,8 +264,21 @@ void print_hypotheses(const Member& member, double match_threshold)
 
 			// show locking-order distribution
 			for (const auto& match : sorted_matches) {
-				std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
-					<< locks2string(match.first) << std::endl;
+				if (reportmode == ReportMode::NORMAL) {
+					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
+						<< locks2string(match.first) << std::endl;
+				} else if (reportmode == ReportMode::CSV) {
+					std::cout << member.datatype << ";"
+						<< member.name << ";"
+						<< locks2string(match.first) << ";"
+						<< match.second << ";"
+						<< member.occurrences_with_locks << ";"
+						<< std::setprecision(5)
+						<< ((double) match.second / (double) member.occurrences_with_locks * 100) << ";"
+						<< "TODO\n";
+				} else if (reportmode == ReportMode::CSVWINNER) {
+					all_lock_orders.push_back(match);
+				}
 			}
 		} else {
 			// only one locking order observed, show this one right away
@@ -256,17 +289,67 @@ void print_hypotheses(const Member& member, double match_threshold)
 		printed++;
 	}
 
-	if (printed == 0) {
-		std::cout << "    (No hypothesis exceeds match threshold of " << match_threshold * 100 << "%.)" << std::endl;
+	if (printed == 0 && reportmode == ReportMode::NORMAL) {
+		std::cout << "    (No hypothesis exceeds cutoff threshold of " << cutoff_threshold * 100 << "%.)" << std::endl;
+	} else if (printed == 0 && reportmode == ReportMode::CSV) {
+		std::cout << member.datatype << ";"
+			<< member.name << ";"
+			<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO\n";
 	}
 
-	if (member.occurrences != member.occurrences_with_locks) {
+	if (member.occurrences != member.occurrences_with_locks && reportmode == ReportMode::NORMAL) {
 		std::cout << "    (Possibly accessible without locks, "
 			<< (member.occurrences - member.occurrences_with_locks)
 			<< " accesses without locks ["
 			<< (double) (member.occurrences - member.occurrences_with_locks) /
 				(double) member.occurrences * 100
 			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
+	} else if (member.occurrences != member.occurrences_with_locks && reportmode == ReportMode::CSV) {
+		std::cout << member.datatype << ";" << member.name << ";nolock;"
+			<< (member.occurrences - member.occurrences_with_locks) << ";"
+			<< member.occurrences << ";"
+			<< std::setprecision(5)
+			<< (double) (member.occurrences - member.occurrences_with_locks) /
+				(double) member.occurrences * 100 << ";"
+			<< "TODO\n";
+	}
+
+	if (reportmode == ReportMode::CSVWINNER) {
+		// accessible without locks?
+		if ((double) (member.occurrences - member.occurrences_with_locks) /
+			(double) member.occurrences >= nolock_threshold) {
+			std::cout << member.datatype << ";" << member.name << ";nolock;"
+				<< (member.occurrences - member.occurrences_with_locks) << ";"
+				<< member.occurrences << ";"
+				<< std::setprecision(5)
+				<< (double) (member.occurrences - member.occurrences_with_locks) /
+					(double) member.occurrences * 100 << ";"
+				<< "TODO" << std::endl;
+		} else {
+			sort(all_lock_orders.begin(), all_lock_orders.end(),
+				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
+					const std::pair<std::vector<myid_t>, uint64_t>& b)
+					{
+						return a.second > b.second ||
+							(a.second == b.second && a.first.size() > b.first.size());
+					});
+			if (all_lock_orders.size() == 0) {
+				std::cout << member.datatype << ";"
+					<< member.name << ";"
+					<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO"
+					<< std::endl;
+			} else {
+				auto& lo = all_lock_orders[0];
+				std::cout << member.datatype << ";"
+					<< member.name << ";"
+					<< locks2string(lo.first) << ";"
+					<< lo.second << ";"
+					<< member.occurrences_with_locks << ";"
+					<< std::setprecision(5)
+					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
+					<< "TODO" << std::endl;
+			}
+		}
 	}
 }
 
@@ -296,15 +379,26 @@ int main(int argc, char **argv)
 		return options[HELP] ? 0 : 1;
 	}
 
-	double match_threshold = match_threshold_default;
-	if (options[THRESHOLD]) {
+	double cutoff_threshold = cutoff_threshold_default;
+	if (options[CUTOFFTHRESHOLD]) {
 		try {
-			match_threshold = std::stod(options[THRESHOLD].last()->arg);
+			cutoff_threshold = std::stod(options[CUTOFFTHRESHOLD].last()->arg);
 		} catch (const std::exception& e) {
-			std::cerr << "Cannot parse threshold value " << options[THRESHOLD].last()->arg << std::endl;
+			std::cerr << "Cannot parse cutoff threshold value " << options[CUTOFFTHRESHOLD].last()->arg << std::endl;
 			return 1;
 		}
-		match_threshold /= 100.0;
+		cutoff_threshold /= 100.0;
+	}
+
+	double nolock_threshold = nolock_threshold_default;
+	if (options[NOLOCKTHRESHOLD]) {
+		try {
+			nolock_threshold = std::stod(options[NOLOCKTHRESHOLD].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse no-lock threshold value " << options[NOLOCKTHRESHOLD].last()->arg << std::endl;
+			return 1;
+		}
+		nolock_threshold /= 100.0;
 	}
 
 	std::set<std::string> accepted_datatypes;
@@ -328,6 +422,23 @@ int main(int argc, char **argv)
 			sortby = SortCriterion::HYPOTHESES;
 		} else {
 			std::cerr << "Unknown sort criterion " << criterion << std::endl;
+			return 1;
+		}
+	}
+
+	ReportMode reportmode = ReportMode::NORMAL;
+	if (options[REPORT]) {
+		std::string mode = options[REPORT].last()->arg;
+		if (mode == "normal") {
+			reportmode = ReportMode::NORMAL;
+		} else if (mode == "csv") {
+			reportmode = ReportMode::CSV;
+		} else if (mode == "csvwinner") {
+			reportmode = ReportMode::CSVWINNER;
+		} else if (mode == "doc") {
+			reportmode = ReportMode::DOC;
+		} else {
+			std::cerr << "Unknown report mode " << mode << std::endl;
 			return 1;
 		}
 	}
@@ -471,6 +582,10 @@ int main(int argc, char **argv)
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
+	if (reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
+		std::cout << "type;member;locks;occurrences;total;percentage;confidence\n";
+	}
+
 #pragma omp parallel for
 //	for (auto&& member : members) {
 	for (auto it = members.begin(); it < members.end(); ++it) {
@@ -497,7 +612,7 @@ int main(int argc, char **argv)
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, match_threshold);
+			print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode);
 
 			member.clear();
 		} else {
@@ -526,9 +641,10 @@ int main(int argc, char **argv)
 			break;
 		default: ;
 		}
+
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, match_threshold);
+				print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode);
 			}
 		}
 	}
