@@ -141,6 +141,11 @@ std::vector<Member> members;
 // key in other data structures.
 std::vector<std::string> locks;
 
+// Per data-type list of lock combinations with list of protected members
+// for ReportMode::DOC
+// data-type -> lock combination -> vector of protected members
+std::map<std::string, std::map<std::vector<myid_t>, std::vector<std::string>>> doc_map;
+
 template <typename M, typename V>
 void map2vec(const M& m, V& v) {
 	for (const auto& elem : m) {
@@ -243,7 +248,9 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 			break;
 		}
 		if (h.matches.size() > 1 ||
-			reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
+			reportmode == ReportMode::CSV ||
+			reportmode == ReportMode::CSVWINNER ||
+			reportmode == ReportMode::DOC) {
 			if (reportmode == ReportMode::NORMAL) {
 				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
 					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
@@ -276,7 +283,7 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 						<< std::setprecision(5)
 						<< ((double) match.second / (double) member.occurrences_with_locks * 100) << ";"
 						<< "TODO\n";
-				} else if (reportmode == ReportMode::CSVWINNER) {
+				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 					all_lock_orders.push_back(match);
 				}
 			}
@@ -314,17 +321,21 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 			<< "TODO\n";
 	}
 
-	if (reportmode == ReportMode::CSVWINNER) {
+	if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 		// accessible without locks?
 		if ((double) (member.occurrences - member.occurrences_with_locks) /
 			(double) member.occurrences >= nolock_threshold) {
-			std::cout << member.datatype << ";" << member.name << ";nolock;"
-				<< (member.occurrences - member.occurrences_with_locks) << ";"
-				<< member.occurrences << ";"
-				<< std::setprecision(5)
-				<< (double) (member.occurrences - member.occurrences_with_locks) /
-					(double) member.occurrences * 100 << ";"
-				<< "TODO" << std::endl;
+			if (reportmode == ReportMode::CSVWINNER) {
+				std::cout << member.datatype << ";" << member.name << ";nolock;"
+					<< (member.occurrences - member.occurrences_with_locks) << ";"
+					<< member.occurrences << ";"
+					<< std::setprecision(5)
+					<< (double) (member.occurrences - member.occurrences_with_locks) /
+						(double) member.occurrences * 100 << ";"
+					<< "TODO" << std::endl;
+			} else {
+				doc_map[member.datatype][std::vector<myid_t>()].push_back(member.name);
+			}
 		} else {
 			sort(all_lock_orders.begin(), all_lock_orders.end(),
 				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
@@ -334,21 +345,55 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 							(a.second == b.second && a.first.size() > b.first.size());
 					});
 			if (all_lock_orders.size() == 0) {
-				std::cout << member.datatype << ";"
-					<< member.name << ";"
-					<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO"
-					<< std::endl;
+				if (reportmode == ReportMode::CSVWINNER) {
+					std::cout << member.datatype << ";"
+						<< member.name << ";"
+						<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO"
+						<< std::endl;
+				} else {
+					std::cerr << "Cannot generate documentation for "
+						<< member.datatype << "::" << member.name << std::endl;
+				}
 			} else {
 				auto& lo = all_lock_orders[0];
-				std::cout << member.datatype << ";"
-					<< member.name << ";"
-					<< locks2string(lo.first) << ";"
-					<< lo.second << ";"
-					<< member.occurrences_with_locks << ";"
-					<< std::setprecision(5)
-					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
-					<< "TODO" << std::endl;
+				if (reportmode == ReportMode::CSVWINNER) {
+					std::cout << member.datatype << ";"
+						<< member.name << ";"
+						<< locks2string(lo.first) << ";"
+						<< lo.second << ";"
+						<< member.occurrences_with_locks << ";"
+						<< std::setprecision(5)
+						<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
+						<< "TODO" << std::endl;
+				} else {
+					doc_map[member.datatype][lo.first].push_back(member.name);
+				}
 			}
+		}
+	}
+}
+
+void print_doc(void)
+{
+	const char *prefix = " * ";
+	for (const auto& type : doc_map) {
+		std::cout << prefix
+			<< type.first << " locking rules:\n" << prefix << "\n";
+		for (const auto& locks : type.second) {
+			if (locks.first.size() == 0) {
+				std::cout << prefix
+					<< "No locks needed for:\n";
+			} else {
+				std::cout << prefix
+					<< locks2string(locks.first) << " protects:\n";
+			}
+
+			// access to element 0 is OK, we know there's at least one entry
+			std::cout << prefix << "  " << locks.second[0];
+			for (auto it = locks.second.cbegin() + 1; it != locks.second.cend(); ++it) {
+				std::cout << ", " << *it;
+			}
+			std::cout << "\n" << prefix << "\n";
 		}
 	}
 }
@@ -647,5 +692,11 @@ int main(int argc, char **argv)
 				print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode);
 			}
 		}
+	}
+
+	if (reportmode == ReportMode::DOC) {
+		std::cout << "/*\n";
+		print_doc();
+		std::cout << "*/\n";
 	}
 }
