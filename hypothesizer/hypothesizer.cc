@@ -54,6 +54,11 @@ const option::Descriptor usage[] = {
   "csvwinner = like csv but only winning hypothesis, "
   "doc = C source-code comment"
   ")"
+}, {
+  BUGSQL, 0, "b", "bugsql", Arg::None,
+  "-b/--bugsql  \tGenerate parameters for counterexamples.sql.sh, "
+  "which helps locating counterexamples in the kernel source code; "
+  "only effective in combination with --report normal"
 }, {0,0,0,0,0,0}
 };
 
@@ -166,11 +171,11 @@ void map2vec(const M& m, V& v) {
 	}
 }
 
-std::string locks2string(const std::vector<myid_t>& l, const std::string separator = " -> ")
+std::string locks2string(const std::vector<myid_t>& l, const std::string separator = " -> ", const std::string quote = "")
 {
 	std::stringstream ss;
 	for (auto it = l.cbegin(); it != l.cend(); ++it) {
-		ss << locks[*it];
+		ss << quote << locks[*it] << quote;
 		if (it + 1 != l.cend()) {
 			ss << separator;
 		}
@@ -233,7 +238,17 @@ void find_hypotheses(Member& member)
 	}
 }
 
-void print_hypotheses(const Member& member, double cutoff_threshold, double nolock_threshold, ReportMode reportmode)
+void print_bugsql(char const *prefix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
+{
+	std::cout << prefix << "counterexample.sql.sh "
+		<< member.datatype << " "
+		<< member.combined_name() << " "
+		<< "CEX "
+		<< (order_matters ? "SEQ " : "ANY ")
+		<< locks2string(l, " ", "'") << std::endl;
+}
+
+void print_hypotheses(const Member& member, double cutoff_threshold, double nolock_threshold, ReportMode reportmode, bool bugsql)
 {
 	if (reportmode == ReportMode::NORMAL) {
 		std::cout << member.datatype << " member: "
@@ -269,6 +284,9 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
 					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
+				if (bugsql) {
+					print_bugsql("    ", member, h.sorted_hypothesis, false);
+				}
 			}
 
 			// sort matches
@@ -288,6 +306,9 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 				if (reportmode == ReportMode::NORMAL) {
 					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
 						<< locks2string(match.first) << std::endl;
+					if (bugsql) {
+						print_bugsql("       ", member, match.first, true);
+					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
 						<< member.combined_name() << ";"
@@ -306,6 +327,9 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 			std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
+			if (bugsql) {
+				print_bugsql("    ", member, h.matches.begin()->first, true);
+			}
 		}
 		printed++;
 	}
@@ -505,6 +529,8 @@ int main(int argc, char **argv)
 		}
 	}
 
+	bool bugsql = options[BUGSQL];
+
 	const char *filename = parse.nonOption(0);
 
 	// === Load input CSV into memory ===
@@ -675,7 +701,7 @@ int main(int argc, char **argv)
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode);
+			print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode, bugsql);
 
 			member.clear();
 		} else {
@@ -709,7 +735,7 @@ int main(int argc, char **argv)
 
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode);
+				print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode, bugsql);
 			}
 		}
 	}
