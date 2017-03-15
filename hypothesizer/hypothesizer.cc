@@ -117,20 +117,33 @@ struct LockingHypothesisMatches {
 };
 
 struct Member {
-	Member(std::string datatype, std::string name) : datatype(datatype), name(name) { }
+	Member(std::string datatype, std::string combined_name) : datatype(datatype)
+	{
+		parse_name(combined_name);
+	}
 	void clear()
 	{
 		name.clear();
 		combinations.clear();
 		hypotheses.clear();
 	}
+	void parse_name(std::string combined_name)
+	{
+		accesstype = combined_name[0];
+		name = combined_name.c_str() + 2;
+	}
+	std::string combined_name() const
+	{
+		return std::string(1, accesstype) + ":" + name;
+	}
 	std::string datatype;
-	std::string name;
+	std::string name; // without r: / w: prefix (this is kept in the accesstype member)
 	uint64_t occurrences = 0; // counts all accesses to this member
 	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
 	bool show = true; // set to false if filtered out by user parameters
+	char accesstype; // r / w
 };
 
 // All members seen in the input.  The index of each element is used as a key
@@ -224,7 +237,8 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 {
 	if (reportmode == ReportMode::NORMAL) {
 		std::cout << member.datatype << " member: "
-			<< member.name << " (" << member.combinations.size() << " lock combinations)" << std::endl;
+			<< member.name << " [" << member.accesstype << "] ("
+			<< member.combinations.size() << " lock combinations)" << std::endl;
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 	}
 
@@ -276,7 +290,7 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 						<< locks2string(match.first) << std::endl;
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
-						<< member.name << ";"
+						<< member.combined_name() << ";"
 						<< locks2string(match.first) << ";"
 						<< match.second << ";"
 						<< member.occurrences_with_locks << ";"
@@ -300,7 +314,7 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 		std::cout << "    (No hypothesis exceeds cutoff threshold of " << cutoff_threshold * 100 << "%.)" << std::endl;
 	} else if (printed == 0 && reportmode == ReportMode::CSV) {
 		std::cout << member.datatype << ";"
-			<< member.name << ";"
+			<< member.combined_name() << ";"
 			<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO\n";
 	}
 
@@ -312,7 +326,7 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 				(double) member.occurrences * 100
 			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
 	} else if (member.occurrences != member.occurrences_with_locks && reportmode == ReportMode::CSV) {
-		std::cout << member.datatype << ";" << member.name << ";nolock;"
+		std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
 			<< (member.occurrences - member.occurrences_with_locks) << ";"
 			<< member.occurrences << ";"
 			<< std::setprecision(5)
@@ -326,7 +340,7 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 		if ((double) (member.occurrences - member.occurrences_with_locks) /
 			(double) member.occurrences >= nolock_threshold) {
 			if (reportmode == ReportMode::CSVWINNER) {
-				std::cout << member.datatype << ";" << member.name << ";nolock;"
+				std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
 					<< (member.occurrences - member.occurrences_with_locks) << ";"
 					<< member.occurrences << ";"
 					<< std::setprecision(5)
@@ -334,7 +348,8 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 						(double) member.occurrences * 100 << ";"
 					<< "TODO" << std::endl;
 			} else {
-				doc_map[member.datatype][std::vector<myid_t>()].push_back(member.name);
+				// TODO properly group member r/w accesses
+				doc_map[member.datatype][std::vector<myid_t>()].push_back(member.combined_name());
 			}
 		} else {
 			sort(all_lock_orders.begin(), all_lock_orders.end(),
@@ -347,18 +362,19 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 			if (all_lock_orders.size() == 0) {
 				if (reportmode == ReportMode::CSVWINNER) {
 					std::cout << member.datatype << ";"
-						<< member.name << ";"
+						<< member.combined_name() << ";"
 						<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO"
 						<< std::endl;
 				} else {
 					std::cerr << "Cannot generate documentation for "
-						<< member.datatype << "::" << member.name << std::endl;
+						<< member.datatype << "::" << member.name
+						<< " [" << member.accesstype << "]" << std::endl;
 				}
 			} else {
 				auto& lo = all_lock_orders[0];
 				if (reportmode == ReportMode::CSVWINNER) {
 					std::cout << member.datatype << ";"
-						<< member.name << ";"
+						<< member.combined_name() << ";"
 						<< locks2string(lo.first) << ";"
 						<< lo.second << ";"
 						<< member.occurrences_with_locks << ";"
@@ -366,7 +382,8 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 						<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
 						<< "TODO" << std::endl;
 				} else {
-					doc_map[member.datatype][lo.first].push_back(member.name);
+					// TODO properly group member r/w accesses
+					doc_map[member.datatype][lo.first].push_back(member.combined_name());
 				}
 			}
 		}
@@ -646,7 +663,8 @@ int main(int argc, char **argv)
 
 		// Skip if user has specified members + this one is not in the list
 		if (accepted_members.size() > 0 &&
-			accepted_members.find(member.name) == accepted_members.end()) {
+			accepted_members.find(member.name) == accepted_members.end() &&
+			accepted_members.find(member.combined_name()) == accepted_members.end()) {
 			member.clear();
 			member.show = false;
 			continue;
@@ -672,7 +690,9 @@ int main(int argc, char **argv)
 		case SortCriterion::MEMBER:
 			sort(members.begin(), members.end(),
 				[](const Member& a, const Member& b)
-				{ return a.datatype < b.datatype || (a.datatype == b.datatype && a.name < b.name); });
+				{ return a.datatype < b.datatype
+					|| (a.datatype == b.datatype && a.name < b.name)
+					|| (a.datatype == b.datatype && a.name == b.name && a.accesstype < b.accesstype); });
 			break;
 		case SortCriterion::COMBINATIONS:
 			sort(members.begin(), members.end(),
