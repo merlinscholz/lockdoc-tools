@@ -8,4 +8,10 @@ convert
 	  - den Inhalt von EBP lesen, dereferenzieren, 4 Bytes lesen, 4 addieren, dereferenzieren, 4 Bytes lesen (Rücksprungadresse auf dem Stack des Callers)
 	  - ...(jew. gucken, ob das ne gemappte Adresse ist, sonst abbrechen)
 	  -> dann ließen sich Bugs noch besser eingrenzen, weil man sieht, von wem die Fkt aufgerufen wurde, die das Problem triggert
-	- 
+
+Datenbank
+=========
+ -  ggf. mal PostgreSQL testen, ob das für unsere Queries messbar schneller ist
+ -  Spaltennamen konsistent ("type" ist als locks.type der Zugriffstyp [r/w],
+    in anderen Tabellen die Typ-ID; die wiederum heißt anderswo type_id), sonst
+    muss man beim Query-Schreiben ständig nachgucken
