@@ -19,15 +19,20 @@
 //
 // Input: The output of txns_members_locks.sql in the form of a CSV file.
 
-const double cutoff_threshold_default = .1, nolock_threshold_default = .05;
+const double accept_threshold_default = .9, cutoff_threshold_default = .1, nolock_threshold_default = .05;
 
-enum optionIndex { UNKNOWN, HELP, CUTOFFTHRESHOLD, NOLOCKTHRESHOLD, DATATYPE, MEMBER, SORT, REPORT, BUGSQL };
+enum optionIndex { UNKNOWN, HELP,
+	ACCEPTTHRESHOLD, CUTOFFTHRESHOLD, NOLOCKTHRESHOLD,
+	DATATYPE, MEMBER, SORT, REPORT, BUGSQL };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
   "Usage: hypothesizer [options] input.csv\n\nOptions:"
 }, {
   HELP, 0, "h", "help", Arg::None, "--help  \tPrint usage and exit"
+}, {
+  ACCEPTTHRESHOLD, 0, "a", "accept-threshold", Arg::Required,
+  "-a/--accept-threshold n  \tSet hypothesis accept threshold to n% (default: 90.0)"
 }, {
   CUTOFFTHRESHOLD, 0, "t", "cutoff-threshold", Arg::Required,
   "-t/--cutoff-threshold n  \tSet hypothesis cutoff threshold to n% (default: 10.0)"
@@ -248,7 +253,9 @@ void print_bugsql(char const *prefix, const Member& member, const std::vector<my
 		<< locks2string(l, " ", "'") << std::endl;
 }
 
-void print_hypotheses(const Member& member, double cutoff_threshold, double nolock_threshold, ReportMode reportmode, bool bugsql)
+void print_hypotheses(const Member& member,
+	double accept_threshold, double cutoff_threshold, double nolock_threshold,
+	ReportMode reportmode, bool bugsql)
 {
 	if (reportmode == ReportMode::NORMAL) {
 		std::cout << member.datatype << " member: "
@@ -257,6 +264,48 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 	}
 
+	// handle accesses w/o locks
+	double nolock_fraction =
+		(double) (member.occurrences - member.occurrences_with_locks) /
+		(double) member.occurrences;
+	bool nolock_is_winner = nolock_fraction >= nolock_threshold;
+	if (reportmode == ReportMode::NORMAL) {
+		std::cout << (nolock_is_winner ? '!' : ' ') << "   ";
+		if (nolock_fraction == 0) {
+			std::cout << "Unlikely to be";
+		} else if (!nolock_is_winner) {
+			std::cout << "Possibly";
+		} else {
+			std::cout << "Seemingly";
+		}
+		std::cout << " accessible without locks, "
+			<< (member.occurrences - member.occurrences_with_locks)
+			<< " accesses without locks ["
+			<< nolock_fraction * 100
+			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
+	} else if (reportmode == ReportMode::CSV ||
+		(reportmode == ReportMode::CSVWINNER && nolock_is_winner)) {
+		std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
+			<< (member.occurrences - member.occurrences_with_locks) << ";"
+			<< member.occurrences << ";"
+			<< std::setprecision(5)
+			<< (double) (member.occurrences - member.occurrences_with_locks) /
+				(double) member.occurrences * 100 << ";"
+			<< nolock_is_winner << ";"
+			<< "TODO\n";
+		// are we done already?
+		if (reportmode == ReportMode::CSVWINNER) {
+			return;
+		}
+	} else if (reportmode == ReportMode::DOC && nolock_is_winner) {
+		// TODO properly group member r/w accesses
+		doc_map[member.datatype][std::vector<myid_t>()].push_back(member.combined_name());
+		return;
+	}
+
+	// sort lock hypotheses by the number of memory accesses where each *set*
+	// of locks is held (for now disregarding the lock order, this happens
+	// within the output loop)
 	std::vector<LockingHypothesisMatches> sorted_hypotheses;
 	map2vec(member.hypotheses, sorted_hypotheses);
 	sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
@@ -269,13 +318,21 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 	// collect all lock orders for ReportMode CSVWINNER and DOC
 	std::vector<std::pair<std::vector<myid_t>, uint64_t>> all_lock_orders;
 
+	// iterate over hypotheses from best to worst
+	bool found_winner = nolock_is_winner; // have we found a winner already?
 	int printed = 0;
 	std::cout.precision(3);
 	for (const auto& h : sorted_hypotheses) {
+		// skip hypotheses below cutoff_threshold
 		double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
 		if (match_fraction < cutoff_threshold) {
 			break;
 		}
+
+		// more than one locking order within this lock set?
+		// -> show lock set, and then (indented) all observed locking orders
+		// (for the other report modes, this branch is even taken with only one
+		// locking order)
 		if (h.matches.size() > 1 ||
 			reportmode == ReportMode::CSV ||
 			reportmode == ReportMode::CSVWINNER ||
@@ -303,8 +360,17 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 
 			// show locking-order distribution
 			for (const auto& match : sorted_matches) {
+				// fraction within this lock set
+				double local_fraction = match_fraction = (double) match.second / (double) h.occurrences;
+				// fraction within all memory accesses under locks
+				match_fraction = (double) match.second / (double) member.occurrences_with_locks;
+
+				bool this_is_the_winner = !found_winner && match_fraction >= accept_threshold;
+				found_winner = found_winner || this_is_the_winner;
+
 				if (reportmode == ReportMode::NORMAL) {
-					std::cout << "       " << std::setw(5) << ((double) match.second / (double) h.occurrences * 100) << "% "
+					std::cout << (this_is_the_winner ? '!' : ' ')
+						<< "      " << std::setw(5) << local_fraction * 100 << "% "
 						<< locks2string(match.first) << std::endl;
 					if (bugsql) {
 						print_bugsql("       ", member, match.first, true);
@@ -316,7 +382,8 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 						<< match.second << ";"
 						<< member.occurrences_with_locks << ";"
 						<< std::setprecision(5)
-						<< ((double) match.second / (double) member.occurrences_with_locks * 100) << ";"
+						<< match_fraction * 100 << ";"
+						<< this_is_the_winner << ";"
 						<< "TODO\n";
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 					all_lock_orders.push_back(match);
@@ -324,7 +391,12 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 			}
 		} else {
 			// only one locking order observed, show this one right away
-			std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
+
+			bool this_is_the_winner = !found_winner && match_fraction >= accept_threshold;
+			found_winner = found_winner || this_is_the_winner;
+
+			std::cout << (this_is_the_winner ? '!' : ' ')
+				<< "   " << std::setw(5) << match_fraction * 100 << "% ("
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
 			if (bugsql) {
@@ -335,80 +407,56 @@ void print_hypotheses(const Member& member, double cutoff_threshold, double nolo
 	}
 
 	if (printed == 0 && reportmode == ReportMode::NORMAL) {
-		std::cout << "    (No hypothesis exceeds cutoff threshold of " << cutoff_threshold * 100 << "%.)" << std::endl;
+		std::cout << "    (No hypothesis with locks exceeds cutoff threshold of " << cutoff_threshold * 100 << "%.)" << std::endl;
+	} else if (printed > 0 && reportmode == ReportMode::NORMAL && !found_winner) {
+		std::cout << "    (No hypothesis with locks exceeds accept threshold of " << accept_threshold * 100 << "%.)" << std::endl;
 	} else if (printed == 0 && reportmode == ReportMode::CSV) {
 		std::cout << member.datatype << ";"
 			<< member.combined_name() << ";"
-			<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO\n";
-	}
-
-	if (member.occurrences != member.occurrences_with_locks && reportmode == ReportMode::NORMAL) {
-		std::cout << "    (Possibly accessible without locks, "
-			<< (member.occurrences - member.occurrences_with_locks)
-			<< " accesses without locks ["
-			<< (double) (member.occurrences - member.occurrences_with_locks) /
-				(double) member.occurrences * 100
-			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
-	} else if (member.occurrences != member.occurrences_with_locks && reportmode == ReportMode::CSV) {
-		std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
-			<< (member.occurrences - member.occurrences_with_locks) << ";"
-			<< member.occurrences << ";"
-			<< std::setprecision(5)
-			<< (double) (member.occurrences - member.occurrences_with_locks) /
-				(double) member.occurrences * 100 << ";"
-			<< "TODO\n";
+			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO\n";
 	}
 
 	if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
-		// accessible without locks?
-		if ((double) (member.occurrences - member.occurrences_with_locks) /
-			(double) member.occurrences >= nolock_threshold) {
+		sort(all_lock_orders.begin(), all_lock_orders.end(),
+			[](const std::pair<std::vector<myid_t>, uint64_t>& a,
+				const std::pair<std::vector<myid_t>, uint64_t>& b)
+				{
+					return a.second > b.second ||
+						(a.second == b.second && a.first.size() > b.first.size());
+				});
+		if (all_lock_orders.size() == 0) {
 			if (reportmode == ReportMode::CSVWINNER) {
-				std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
-					<< (member.occurrences - member.occurrences_with_locks) << ";"
-					<< member.occurrences << ";"
-					<< std::setprecision(5)
-					<< (double) (member.occurrences - member.occurrences_with_locks) /
-						(double) member.occurrences * 100 << ";"
-					<< "TODO" << std::endl;
+				std::cout << member.datatype << ";"
+					<< member.combined_name() << ";"
+					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO"
+					<< std::endl;
 			} else {
-				// TODO properly group member r/w accesses
-				doc_map[member.datatype][std::vector<myid_t>()].push_back(member.combined_name());
+				std::cerr << "Cannot generate documentation for "
+					<< member.datatype << "::" << member.name
+					<< " [" << member.accesstype << "]" << std::endl;
 			}
 		} else {
-			sort(all_lock_orders.begin(), all_lock_orders.end(),
-				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
-					const std::pair<std::vector<myid_t>, uint64_t>& b)
-					{
-						return a.second > b.second ||
-							(a.second == b.second && a.first.size() > b.first.size());
-					});
-			if (all_lock_orders.size() == 0) {
-				if (reportmode == ReportMode::CSVWINNER) {
-					std::cout << member.datatype << ";"
-						<< member.combined_name() << ";"
-						<< "no hypothesis exceeds cutoff threshold;0;0;0;TODO"
-						<< std::endl;
-				} else {
-					std::cerr << "Cannot generate documentation for "
-						<< member.datatype << "::" << member.name
-						<< " [" << member.accesstype << "]" << std::endl;
-				}
+			auto& lo = all_lock_orders[0];
+			double match_fraction = (double) lo.second / (double) member.occurrences_with_locks;
+			bool this_is_the_winner = match_fraction >= accept_threshold;
+			if (reportmode == ReportMode::CSVWINNER) {
+				std::cout << member.datatype << ";"
+					<< member.combined_name() << ";"
+					<< locks2string(lo.first) << ";"
+					<< lo.second << ";"
+					<< member.occurrences_with_locks << ";"
+					<< std::setprecision(5)
+					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
+					<< this_is_the_winner << ";"
+					<< "TODO" << std::endl;
+			} else if (this_is_the_winner) {
+				// TODO properly group member r/w accesses
+				doc_map[member.datatype][lo.first].push_back(member.combined_name());
 			} else {
-				auto& lo = all_lock_orders[0];
-				if (reportmode == ReportMode::CSVWINNER) {
-					std::cout << member.datatype << ";"
-						<< member.combined_name() << ";"
-						<< locks2string(lo.first) << ";"
-						<< lo.second << ";"
-						<< member.occurrences_with_locks << ";"
-						<< std::setprecision(5)
-						<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
-						<< "TODO" << std::endl;
-				} else {
-					// TODO properly group member r/w accesses
-					doc_map[member.datatype][lo.first].push_back(member.combined_name());
-				}
+				std::cerr << "Cannot generate documentation for "
+					<< member.datatype << "::" << member.name
+					<< " [" << member.accesstype << "] "
+					<< "(best locking rule does not exceed accept threshold)" << std::endl;
 			}
 		}
 	}
@@ -463,6 +511,17 @@ int main(int argc, char **argv)
 		argc == 0 || parse.nonOptionsCount() != 1) {
 		option::printUsage(std::cout, usage);
 		return options[HELP] ? 0 : 1;
+	}
+
+	double accept_threshold = accept_threshold_default;
+	if (options[ACCEPTTHRESHOLD]) {
+		try {
+			accept_threshold = std::stod(options[ACCEPTTHRESHOLD].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse accept threshold value " << options[ACCEPTTHRESHOLD].last()->arg << std::endl;
+			return 1;
+		}
+		accept_threshold /= 100.0;
 	}
 
 	double cutoff_threshold = cutoff_threshold_default;
@@ -671,7 +730,7 @@ int main(int argc, char **argv)
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
 	if (reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
-		std::cout << "type;member;locks;occurrences;total;percentage;confidence\n";
+		std::cout << "type;member;locks;occurrences;total;percentage;accepted;confidence\n";
 	}
 
 #pragma omp parallel for
@@ -701,7 +760,7 @@ int main(int argc, char **argv)
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode, bugsql);
+			print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql);
 
 			member.clear();
 		} else {
@@ -735,7 +794,7 @@ int main(int argc, char **argv)
 
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, cutoff_threshold, nolock_threshold, reportmode, bugsql);
+				print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql);
 			}
 		}
 	}
