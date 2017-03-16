@@ -285,7 +285,7 @@ void print_hypotheses(const Member& member,
 			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
 	} else if (reportmode == ReportMode::CSV ||
 		(reportmode == ReportMode::CSVWINNER && nolock_is_winner)) {
-		std::cout << member.datatype << ";" << member.combined_name() << ";nolock;"
+		std::cout << member.datatype << ";" << member.name << ";" << member.accesstype << ";nolock;"
 			<< (member.occurrences - member.occurrences_with_locks) << ";"
 			<< member.occurrences << ";"
 			<< std::setprecision(5)
@@ -377,7 +377,8 @@ void print_hypotheses(const Member& member,
 					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
-						<< member.combined_name() << ";"
+						<< member.name << ";"
+						<< member.accesstype << ";"
 						<< locks2string(match.first) << ";"
 						<< match.second << ";"
 						<< member.occurrences_with_locks << ";"
@@ -412,7 +413,8 @@ void print_hypotheses(const Member& member,
 		std::cout << "    (No hypothesis with locks exceeds accept threshold of " << accept_threshold * 100 << "%.)" << std::endl;
 	} else if (printed == 0 && reportmode == ReportMode::CSV) {
 		std::cout << member.datatype << ";"
-			<< member.combined_name() << ";"
+			<< member.name << ";"
+			<< member.accesstype << ";"
 			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO\n";
 	}
 
@@ -427,7 +429,8 @@ void print_hypotheses(const Member& member,
 		if (all_lock_orders.size() == 0) {
 			if (reportmode == ReportMode::CSVWINNER) {
 				std::cout << member.datatype << ";"
-					<< member.combined_name() << ";"
+					<< member.name << ";"
+					<< member.accesstype << ";"
 					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO"
 					<< std::endl;
 			} else {
@@ -441,7 +444,8 @@ void print_hypotheses(const Member& member,
 			bool this_is_the_winner = match_fraction >= accept_threshold;
 			if (reportmode == ReportMode::CSVWINNER) {
 				std::cout << member.datatype << ";"
-					<< member.combined_name() << ";"
+					<< member.name << ";"
+					<< member.accesstype << ";"
 					<< locks2string(lo.first) << ";"
 					<< lo.second << ";"
 					<< member.occurrences_with_locks << ";"
@@ -730,7 +734,7 @@ int main(int argc, char **argv)
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
 	if (reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
-		std::cout << "type;member;locks;occurrences;total;percentage;accepted;confidence\n";
+		std::cout << "type;member;accesstype;locks;occurrences;total;percentage;accepted;confidence\n";
 	}
 
 #pragma omp parallel for
