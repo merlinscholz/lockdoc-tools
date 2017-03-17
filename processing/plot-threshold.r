@@ -40,7 +40,7 @@ spec = matrix(c(
 opt = getopt(spec);
 
 if (is.null(opt$inputfile)) {
-  inputfname = "all_txns_members_locks_hypo_winner.csv"
+  inputfname = "all_txns_members_locks_hypo_winner2.csv"
 } else {
   inputfname = opt$inputfile
 }
@@ -60,15 +60,19 @@ if (is.null(opt$directory)) {
 raw <- read.csv(inputfname,sep=";")
 # Filter out the task_struct since it does not belong to the observed fs subsystem.
 raw <- raw[raw$type != 'task_struct',]
+raw <- cbind(raw, idx=paste(raw$accesstype,raw$member,sep=":"))
 steps <- seq(from=startThreshold,to=maxThreshold,by=stepSize)
+# Extract all unique access types
+accessTypes <- unlist(raw$accesstype)
+accessTypes <- accessTypes[!duplicated(accessTypes)]
 
 if (is.null(typeFilter)) {
   # Extract all unique data types in input data
-  types <- unlist(raw$type)
-  types <- types[!duplicated(types)]
+  dataTypes <- unlist(raw$type)
+  dataTypes <- dataTypes[!duplicated(dataTypes)]
   nameThresholds = sprintf("thresholds")
 } else {
-  types <- c(typeFilter)
+  dataTypes <- c(typeFilter)
   if (length(raw[raw$type==typeFilter,]) == 0) {
     cat(sprintf("No data found for type %s\n",typeFilter))
     quit(status=1)
@@ -76,42 +80,60 @@ if (is.null(typeFilter)) {
   nameThresholds = sprintf("thresholds-%s",typeFilter)
 }
 
-numTypes = length(types)
-# Create an empty data frame for the percentage values. Since we want numSteps for each data type, it must contain numSteps * numTypes rows.
-data <- data.frame(type=character(numSteps * numTypes),threshold=integer(numSteps * numTypes),percentage=integer(numSteps * numTypes))
-# Create a vector with numSteps * numTypes entries. Each row of numSteps rows contains the same type.
+numTypes = length(dataTypes)
+numAccessTypes = length(accessTypes)
+extractMemberName <- function(x) sub("[^_]*:","",x )  
+
+# Create an empty data frame for the percentage values. Since we want numSteps for each data type, it must contain numSteps * numTypes * numAccessTypes rows.
+data <- data.frame(datatype=character(numSteps * numTypes * numAccessTypes),accesstype=character(numSteps * numTypes * numAccessTypes),threshold=integer(numSteps * numTypes * numAccessTypes),percentage=integer(numSteps * numTypes))
+# Create a vector with numSteps * numTypes * numAccessTypes entries. Each row of numSteps * numAccessTypes rows contains the same type.
 temp <- vector()
-for (type in types) {
-  temp<-c(temp,rep(type,numSteps))
+for (dataType in dataTypes) {
+  temp<-c(temp,rep(dataType,numSteps * numAccessTypes))
 }
 # Add those rows to newly created data frame
-data[,1] <- temp
+data$datatype <- temp
+# Create a vector with numSteps * numTypes * numAccessTypes entries. Each row of numSteps rows contains the same access type.
+temp <- vector()
+for (dataType in dataTypes) {
+  for (accessType in accessTypes) {
+    temp<-c(temp,rep(accessType,numSteps))
+  }
+}
+data$accesstype <- temp
 
-for(type in types) {
-  data[data$type==type,2] <- steps
-  totalObs <- nrow(raw[raw$type==type,])
-  # Compute the percentage of accepted hypotheses for each cut-off threshold (aka. steps)
-  for(step in steps) {
-    data[data$type == type & data$threshold == step,3] <- nrow(raw[raw$type == type & raw$percentage >= step,]) / totalObs * 100
+for(dataType in dataTypes) {
+  # Compute the percentage of accepted hypotheses for each cut-off threshold (aka. steps) by access type
+  for (accessType in accessTypes) {
+    data[data$datatype == dataType & data$accesstype == accessType,3] <- steps
+    totalObs <- nrow(raw[raw$type == dataType & raw$accesstype == accessType,])
+    for(step in steps) {
+      data[data$datatype == dataType & data$accesstype == accessType & data$threshold == step,4] <- nrow(raw[raw$type == dataType & raw$accesstype == accessType & raw$percentage >= step,]) / totalObs * 100
+    }
   }
 
-  # Plot the distribution of percentages for the winner hypothesis for each member
+  # Plot the distribution of percentages for the winner hypothesis for each member, one for each access type
   # reorder(member,percentage) sorts the members by percentage in ascending order
-  plot <- ggplot(raw[raw$type == type,],aes(x=reorder(member,percentage),y=percentage,fill=occurrences)) +
+  # To create a facet plot with every single facet having an ordered x axis, a little hack as described here (http://stackoverflow.com/questions/26238687/r-reorder-facet-wrapped-x-axis-with-free-x-in-ggplot2)
+  # is necessary
+  plot <- ggplot(raw[raw$type == dataType,],aes(x=reorder(idx,percentage),y=percentage,fill=occurrences)) +
   geom_bar(stat='identity') +
   theme(axis.text.x= element_text(angle=90,hjust=1)) +
   xlab("Member") +
   ylab("Percentage") +
-  scale_fill_gradient(name="Occurrences",trans = "log")
+  scale_fill_gradient(name="Occurrences",trans = "log") +
+  facet_grid(~ accesstype, scales = "free_x") +
+  scale_x_discrete(labels=extractMemberName)
   
-  nameDist = sprintf("dist-percentages-%s",type)
+  nameDist = sprintf("dist-percentages-%s",dataType)
   mySavePlot(plot,nameDist,directory)
 }
 
-plot <- ggplot(data,aes(x=threshold,y=percentage,group=type,colour=type)) +
+plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) +
         geom_line() +
         geom_point() +
         scale_x_discrete(name="Threshold", limits=steps, breaks=steps) +
-        ggtitle(nameThresholds)
+        ggtitle(nameThresholds) + 
+        facet_grid(accesstype ~ .)
 mySavePlot(plot,nameThresholds,directory)
 
