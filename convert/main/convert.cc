@@ -402,7 +402,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 			continue;
 		}
 		// Does this compilation unit contain information on this type?
-		ret = cu__find_struct_by_name(cu, type.name.c_str(), 1, &class_id);
+		ret = cu__find_struct_by_name(cu, type.name.c_str(), 0, &class_id);
 		if (ret == NULL) {
 			continue;
 		}
@@ -626,7 +626,6 @@ int main(int argc, char *argv[]) {
 	if (extractStructDefs(cus, vmlinuxName)) {
 		return EXIT_FAILURE;
 	}
-
 
 	// This is very bad design practise!
 	// Only the fstream does have a close() method.

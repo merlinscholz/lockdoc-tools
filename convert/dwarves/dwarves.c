@@ -649,6 +649,24 @@ struct tag *cu__find_enumeration_by_sname_and_size(const struct cu *cu,
 	return NULL;
 }
 
+struct tag* resolve_typedef(const struct cu *cu, struct tag *orig_type) {
+
+	while (tag__is_typedef(orig_type)) {
+		struct tag *type_type;
+
+		type_type = cu__type(cu, orig_type->type);
+		
+		if (type_type == NULL || tag__has_type_loop(orig_type, type_type, NULL, 0, NULL)) {
+			// Cannot resolve type definition or definition contains a loop
+			// Do not resolve the typedef, and fallback to the actual definition
+			orig_type = NULL;
+			break;
+		}
+		orig_type = type_type;
+	}
+	return orig_type;
+}
+
 struct tag *cu__find_struct_by_sname(const struct cu *cu, strings_t sname,
 				     const int include_decls, uint16_t *idp)
 {
@@ -693,12 +711,19 @@ struct tag *cu__find_struct_by_name(const struct cu *cu, const char *name,
 	cu__for_each_type(cu, id, pos) {
 		struct type *type;
 
-		if (!tag__is_struct(pos))
+		if (!tag__is_typedef(pos) && !tag__is_struct(pos))
 			continue;
 
 		type = tag__type(pos);
 		const char *tname = type__name(type, cu);
 		if (tname && strcmp(tname, name) == 0) {
+			if (tag__is_typedef(pos)) {
+				pos = resolve_typedef(cu,pos);
+				if (pos == NULL) {
+					break;
+				}
+			}
+
 			if (!type->declaration)
 				goto found;
 

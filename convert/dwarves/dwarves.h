@@ -146,7 +146,7 @@ int cu__for_all_tags(struct cu *self,
 		     int (*iterator)(struct tag *tag,
 				     struct cu *cu, void *cookie),
 		     void *cookie);
-
+struct tag* resolve_typedef(const struct cu *cu, struct tag *orig_type);
 void tag__delete(struct tag *self, struct cu *cu);
 
 static inline int tag__is_enumeration(const struct tag *self)
