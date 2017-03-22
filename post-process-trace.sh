@@ -25,9 +25,6 @@ function usage() {
         exit 1
 }
 
-
-exit 0
-
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
 echo "Flatten structs layout..."
 ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
