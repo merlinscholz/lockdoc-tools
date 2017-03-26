@@ -4,6 +4,11 @@
 # 
 TOOLS_PATH=`dirname ${0}`
 
+function usage() {
+        echo "usage: $0 <database> [ pid of fail-client ]" >&2
+        exit 1
+}
+
 if [ -z ${1} ];
 then
         usage
@@ -19,11 +24,6 @@ then
 		sleep 30;
 	done
 fi
-
-function usage() {
-        echo "usage: $0 <database> [ pid of fail-client ]" >&2
-        exit 1
-}
 
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
 echo "Flatten structs layout..."
