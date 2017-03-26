@@ -78,3 +78,6 @@ block_device;\N;ramfs_fill_super
 block_device;\N;proc_fill_super
 block_device;\N;simple_fill_super
 block_device;\N;mqueue_fill_super
+journal_t;\N;jbd2_journal_init_inode
+journal_t;\N;ext4_fill_super
+journal_t;\N;ext4_init_journal_params
