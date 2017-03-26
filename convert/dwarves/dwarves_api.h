@@ -194,6 +194,8 @@ struct dwarves_convert_ext {
 	unsigned next_prefix_idx;
 	// offset of current struct within enclosing struct
 	uint32_t offset;
+	// callback: add a member's name to the global list of names, and return it's id. If it already exists, just return the id.
+	unsigned long long (*add_member_name)(const char *member_name);
 };
 
 struct cus *cus__new(void);

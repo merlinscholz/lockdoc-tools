@@ -2,8 +2,10 @@
 TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
 DATA_TYPES=${TOOLS_PATH}/data/data_types.csv
-BLACK_LIST=${TOOLS_PATH}/data/blacklist.csv
+FN_BLACK_LIST=${TOOLS_PATH}/data/function_blacklist.csv
+MEMBER_BLACK_LIST=${TOOLS_PATH}/data/member_blacklist.csv
 CONVERT=${TOOLS_PATH}/convert/build/convert
+CONV_OUTPUT=conv-out.txt
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
 
 
@@ -20,9 +22,9 @@ then
 	exit 1
 fi
 
-if [ ! -f ${DATA_TYPES} ] || [ ! -f ${BLACK_LIST} ];
+if [ ! -f ${DATA_TYPES} ] || [ ! -f ${FN_BLACK_LIST} ] || [ ! -f ${MEMBER_BLACK_LIST} ];
 then
-	echo "${DATA_TYPES} or ${BLACK_LIST} does not exist!" >&2
+	echo "${DATA_TYPES}, or ${FN_BLACK_LIST}, or ${MEMBER_BLACK_LIST} does not exist!" >&2
 	exit 1
 fi
 
@@ -34,7 +36,7 @@ fi
 
 
 DELIMITER=';'
-TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns" "blacklist")
+TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns" "function_blacklist" "member_names" "member_blacklist")
 
 function mysqlimport_warnings() {
 	mysql -vvv --show-warnings --execute="LOAD DATA LOCAL INFILE '$2' INTO TABLE ${2%%.csv.pv} FIELDS TERMINATED BY '$DELIMITER' IGNORE 1 LINES" $1
@@ -97,13 +99,13 @@ do
 	import_table ${table} &
 done
 
-#VALGRIND='valgrind --tool=callgrind'
+#VALGRIND='valgrind --leak-check=yes --show-reachable=yes'
 #GDB='cgdb --args'
 
 if echo $DATA | egrep -q '.bz2$'; then
-	$VALGRIND $GDB ${CONVERT} -t ${DATA_TYPES} -k $KERNEL -b ${BLACK_LIST} <( eval pbzip2 -d < $DATA ${HEAD_CMD} )
+	$VALGRIND $GDB ${CONVERT} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 elif echo $DATA | egrep -q '.gz$'; then
-	$VALGRIND $GDB ${CONVERT} -t ${DATA_TYPES} -k $KERNEL -b ${BLACK_LIST} <( eval gzip -d < $DATA ${HEAD_CMD} )
+	$VALGRIND $GDB ${CONVERT} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 else
 	echo "no idea what to do with filename extension of $DATA" >&2
 	exit 1

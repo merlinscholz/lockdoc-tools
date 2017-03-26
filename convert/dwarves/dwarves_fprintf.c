@@ -114,14 +114,76 @@ static size_t __tag__id_not_found_snprintf(char *bf, size_t len, uint16_t id,
 #define tag__id_not_found_snprintf(bf, len, id) \
 	__tag__id_not_found_snprintf(bf, len, id, __func__, __LINE__)
 
-static void dwarves_convert_prefix_print(FILE *fp, struct dwarves_convert_ext const *ext)
-{
-	int i;
-	for (i = 0; i < ext->next_prefix_idx; ++i) {
-		fputs(ext->name_prefixes[i], fp);
-		fputs(".", fp);
+#define MAX_STRING_LEN 10
+
+/**
+ * Adds @text to the @output string at position @pos. If more space is need, the string is resized, and the
+ * new ptr is stored in @output. 
+ * @return 0 on success, -1 otherwise
+ */
+static int print_to_string(char **output, int *size, int *pos, const char *text, bool use_sep) {
+	int retry = 0, remaining_size, n, init_size;
+	char *temp;
+	
+	// Allocate new space for the string since it is the first call (aka *output == NULL)
+	if (*output == NULL) {
+		init_size = sizeof(char) * MAX_STRING_LEN;
+		temp = malloc(init_size);
+		if (!temp) {
+			return -1;
+		}
+		*output = temp;
+		*size = init_size;
 	}
+	
+	do {
+		// Calculate the position within the string where sprintf should continue printing
+		temp = *output + *pos;
+		remaining_size = *size - *pos;
+		n = snprintf(temp,remaining_size,"%s%s",text,(use_sep ? "." : ""));
+		// Does the string fit into memory?
+		if (n >= remaining_size) {
+			// No. Resize memory, and try it again
+			*size += sizeof(char) * MAX_STRING_LEN;
+			temp = realloc(*output,*size);
+			if (!temp) {
+				return -1;
+			}
+			*output = temp;
+			retry = 1;
+		} else {
+			// Yes. Advance pos, and terminate
+			*pos += n;
+			retry = 0;
+		}
+	} while (retry);
+	
+	return 0;
 }
+
+/**
+ * Concats all prefixes and the actual member name to a string. The returned pointer has
+ * to be freed later on by the caller.
+ * @return A pointer to the created string. If an error occurred, NULL is returned.
+ */
+static char* dwarves_convert_concat_members(struct dwarves_convert_ext const *ext, const char *cm_name)
+{
+	int size = 0, pos = 0, i;
+	char *ret = NULL;
+	
+	for (i = 0; i < ext->next_prefix_idx; i++) {	
+		if (print_to_string(&ret,&size,&pos,ext->name_prefixes[i],1)) {
+			return NULL;
+		}		
+	}
+	if (print_to_string(&ret,&size,&pos,cm_name,0)) {
+		return NULL;
+	}
+	
+	return ret;
+}
+
+#undef MAX_STRING_LEN
 
 static bool type__fprintf(struct tag *type, const struct cu *cu,
 			    const char *name, FILE *fp, struct dwarves_convert_ext *ext,
@@ -351,6 +413,7 @@ const char *tag__name(const struct tag *tag, const struct cu *cu,
 	return bf;
 }
 
+// TODO: add code here
 // returns true if it recursed into a known struct
 static bool type__fprintf(struct tag *type, const struct cu *cu,
 	const char *name, FILE *fp, struct dwarves_convert_ext *ext,
@@ -464,8 +527,9 @@ static void struct_member__fprintf(struct class_member *member,
 	struct class_member *pos;
 	const int size = member->byte_size;
 	uint32_t offset = member->byte_offset;
-	char *cm_name_temp = NULL;
+	char *cm_name_temp = NULL, *full_cm_name;
 	const char *cm_name = class_member__name(member, cu), *temp, *name = cm_name;
+	unsigned long long member_name_id;
 
 	if (member->tag.tag == DW_TAG_inheritance) {
 		name = "<ancestor>";
@@ -530,10 +594,17 @@ static void struct_member__fprintf(struct class_member *member,
 	
 	if (!type__fprintf(type, cu, name, fp, ext, cm_name, offset)) {
 		fprintf(fp, DELIMITER_STRING);
-		dwarves_convert_prefix_print(fp, ext);
+		full_cm_name = dwarves_convert_concat_members(ext,cm_name);
+		if (!full_cm_name) {
+			member_name_id = ext->add_member_name("<error>");
+		} else {
+			member_name_id = ext->add_member_name(full_cm_name);
+			free(full_cm_name);
+		}
+		
 		fprintf(fp,
-			"%s" DELIMITER_STRING "%d" DELIMITER_STRING "%d",
-			cm_name, offset + ext->offset, size);
+			"%llu" DELIMITER_STRING "%d" DELIMITER_STRING "%d",
+			member_name_id, offset + ext->offset, size);
 		fprintf(fp, "\n");
 	}
 	if (cm_name_temp != NULL) {

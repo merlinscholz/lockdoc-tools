@@ -31,10 +31,12 @@ do
 done | $MYSQL
 
 $MYSQL <<EOT
+DROP TABLE IF EXISTS structs_layout_flat;
+
 CREATE TABLE IF NOT EXISTS structs_layout_flat (
 type_id int unsigned NOT NULL,
 type varchar(255) NOT NULL,
-member varchar(255) NOT NULL,
+member_id int NOT NULL,
 offset smallint unsigned NOT NULL,
 size smallint unsigned NOT NULL,
 helper_offset smallint unsigned NOT NULL,
@@ -44,7 +46,7 @@ KEY (type_id,helper_offset)
 DELETE FROM structs_layout_flat;
 
 INSERT INTO structs_layout_flat
-SELECT sl.type_id, sl.type, sl.member, sl.offset, sl.size, seq.offset
+SELECT sl.type_id, sl.type, sl.member_id, sl.offset, sl.size, seq.offset
 FROM looong_sequence seq
 JOIN structs_layout sl
   ON seq.offset BETWEEN sl.offset AND sl.offset + sl.size - 1

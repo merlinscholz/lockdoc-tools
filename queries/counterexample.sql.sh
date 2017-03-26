@@ -75,10 +75,10 @@ FROM
 		  ON sl.type_id = a.type
 		 AND sl.helper_offset = ac.address - a.ptr
 		 AND sl.member = '$MEMBER'
-		LEFT JOIN blacklist bl
-		  ON bl.datatype_id = a.type
-		 AND bl.fn = ac.fn
-		 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+		LEFT JOIN function_blacklist fn_bl
+		  ON fn_bl.datatype_id = a.type
+		 AND fn_bl.fn = ac.fn
+		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 		WHERE bl.fn IS NULL
 EOT
 if [ $MODE = CEX ]; then
@@ -107,10 +107,10 @@ cat <<EOT
 			  ON sl.type_id = a.type
 			 AND sl.helper_offset = ac.address - a.ptr
 			 AND sl.member = '$MEMBER'
-			LEFT JOIN blacklist bl
-			  ON bl.datatype_id = a.type
-			 AND bl.fn = ac.fn
-			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.datatype_id = a.type
+			 AND fn_bl.fn = ac.fn
+			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 EOT
 
 LOCKNR=1

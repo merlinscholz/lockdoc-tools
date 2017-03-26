@@ -141,6 +141,11 @@ static vector<MemAccess> lastMemAccesses;
  * insert() in finishTXN().
  */
 static std::deque<TXN> activeTXNs;
+/**
+ * A map of all member names found in all data types.
+ * The key is the name, and the value is a name's global id.
+ */
+static map<string,unsigned long long> memberNames;
 
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
@@ -177,6 +182,10 @@ static unsigned long long curAccessID = 1;
  * The next id for a new TXN.
  */
 static unsigned long long curTXNID = 1;
+/**
+ * The next id for a member name
+ */
+static unsigned long long curMemberNameID = 1;
 
 static struct cus *cus;
 
@@ -387,6 +396,21 @@ static bool expand_type(const char *struct_typename)
 		!= types.cend();
 }
 
+static unsigned long long addMemberName(const char *member_name) {
+	unsigned long long ret;
+
+	// Do we know that member name?
+	const auto it = find_if(memberNames.cbegin(), memberNames.cend(),
+		[&member_name](const pair<string, unsigned long long> &value ) { return value.first == member_name; } );
+	if (it == memberNames.cend()) {
+		ret = curMemberNameID++;
+		memberNames.emplace(member_name,ret);
+	} else {
+		ret = it->second;
+	}
+	return ret;
+}
+
 static int convert_cus_iterator(struct cu *cu, void *cookie) {
 	uint16_t class_id;
 	struct tag *ret;
@@ -395,6 +419,7 @@ static int convert_cus_iterator(struct cu *cu, void *cookie) {
 
 	// Setup callback
 	dwarvesconfig.expand_type = expand_type;
+	dwarvesconfig.add_member_name = addMemberName;
 
 	for (auto& type : *cusIterArgs->types) {
 		// Skip known datatypes
@@ -556,22 +581,25 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter, isGZ;
-	char action, param, *vmlinuxName = NULL, *blacklistName = nullptr, *datatypesName = nullptr;
+	char action, param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false;
 
-	while ((param = getopt(argc,argv,"k:b:t:svh")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svh")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
 			break;
 		case 'b':
-			blacklistName = optarg;
+			fnBlacklistName = optarg;
 			break;
 		case 't':
 			datatypesName = optarg;
 			break;
 		case 's':
 			processSeqlock = true;
+			break;
+		case 'm':
+			memberBlacklistName = optarg;
 			break;
 		case 'v':
 			printVersion();
@@ -581,7 +609,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	}
-	if (!vmlinuxName || !blacklistName || !datatypesName || optind == argc) {
+	if (!vmlinuxName || !fnBlacklistName || ! memberBlacklistName || !datatypesName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
 
@@ -657,9 +685,14 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	ifstream blacklistinfile(blacklistName);
-	if (!blacklistinfile.is_open()) {
-		cerr << "Cannot open file: " << blacklistName << endl;
+	ifstream fnBlacklistInfile(fnBlacklistName);
+	if (!fnBlacklistInfile.is_open()) {
+		cerr << "Cannot open file: " << fnBlacklistName << endl;
+		return EXIT_FAILURE;
+	}
+	ifstream memberBlacklistInfile(memberBlacklistName);
+	if (!memberBlacklistInfile.is_open()) {
+		cerr << "Cannot open file: " << memberBlacklistName << endl;
 		return EXIT_FAILURE;
 	}
 
@@ -670,7 +703,9 @@ int main(int argc, char *argv[]) {
 	ofstream locksOFile("locks.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream locksHeldOFile("locks_held.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream txnsOFile("txns.csv",std::ofstream::out | std::ofstream::trunc);
-	ofstream blacklistOFile("blacklist.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream fnblacklistOFile("function_blacklist.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream memberblacklistOFile("member_blacklist.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
@@ -693,11 +728,19 @@ int main(int argc, char *argv[]) {
 
 	txnsOFile << "id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
 
-	blacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member"
+	fnblacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member"
 		<< DELIMITER_CHAR << "fn" << endl;
+
+	memberblacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member_id" << endl;
+		
+	membernamesOFile << "id" << DELIMITER_CHAR << "member_name" << endl;
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << DELIMITER_CHAR << type.name << endl;
+	}
+	
+	for (const auto& memberName : memberNames) {
+		membernamesOFile << memberName.second << DELIMITER_CHAR << memberName.first << endl;
 	}
 
 	// Start reading the inputfile
@@ -1028,9 +1071,9 @@ int main(int argc, char *argv[]) {
 		type2id[type.name] = type.id;
 	}
 
-	// Process blacklist
+	// Process function blacklist
 	for (lineCounter = 0;
-		getline(blacklistinfile, inputLine);
+		getline(fnBlacklistInfile, inputLine);
 		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
 
 		// Skip the CSV header
@@ -1046,21 +1089,75 @@ int main(int argc, char *argv[]) {
 
 		// Sanity check
 		if (lineElems.size() != 3) {
-			cerr << "Ignoring invalid blacklist entry in line " << (lineCounter + 1)
+			cerr << "Ignoring invalid blacklist (function) entry in line " << (lineCounter + 1)
 				<< ": " << inputLine << endl;
 			continue;
 		}
 
-		auto it = type2id.find(lineElems.at(0));
-		if (it == type2id.end()) {
-			cerr << "Unknown type in blacklist line " << (lineCounter + 1)
+		auto itType = type2id.find(lineElems.at(0));
+		if (itType == type2id.end()) {
+			cerr << "Unknown type in blacklist (function) line " << (lineCounter + 1)
+				<< ": " << lineElems.at(0) << endl;
+			continue;
+		}
+		
+		string memberID;
+		if (lineElems.at(1) != "\\N") {
+			auto itMember = memberNames.find(lineElems.at(1));
+			if (itMember == memberNames.end()) {
+				cerr << "Unknown member name in blacklist (function) line " << (lineCounter + 1)
+					<< ": " << lineElems.at(1) << endl;
+				continue;
+			}
+			memberID = std::to_string(itMember->second);
+		} else {
+			memberID = lineElems.at(1);
+		}
+
+		fnblacklistOFile << itType->second << DELIMITER_CHAR
+			<< memberID << DELIMITER_CHAR
+			<< lineElems.at(2) << endl;
+	}
+
+	// Process member blacklist
+	for (lineCounter = 0;
+		getline(memberBlacklistInfile, inputLine);
+		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+
+		// Skip the CSV header
+		if (lineCounter == 0) {
+			continue;
+		}
+
+		ss << inputLine;
+		// Tokenize each line
+		while (getline(ss, token, DELIMITER_CHAR)) {
+			lineElems.push_back(token);
+		}
+
+		// Sanity check
+		if (lineElems.size() != 2) {
+			cerr << "Ignoring invalid blacklist (member) entry in line " << (lineCounter + 1)
+				<< ": " << inputLine << endl;
+			continue;
+		}
+
+		auto itType = type2id.find(lineElems.at(0));
+		if (itType == type2id.end()) {
+			cerr << "Unknown type in blacklist (member) line " << (lineCounter + 1)
 				<< ": " << lineElems.at(0) << endl;
 			continue;
 		}
 
-		blacklistOFile << it->second << DELIMITER_CHAR
-			<< lineElems.at(1) << DELIMITER_CHAR
-			<< lineElems.at(2) << endl;
+		auto itMember = memberNames.find(lineElems.at(1));
+		if (itMember == memberNames.end()) {
+			cerr << "Unknown member in blacklist (member) line " << (lineCounter + 1)
+				<< ": " << lineElems.at(1) << endl;
+			continue;
+		}
+
+		memberblacklistOFile << itType->second << DELIMITER_CHAR
+			<< itMember->second << endl;
 	}
 
 	cerr << "Finished." << endl;

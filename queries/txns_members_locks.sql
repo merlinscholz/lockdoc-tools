@@ -25,8 +25,8 @@ FROM
 --			ELSE CONCAT('EMB:', l.id, '(', l.type, ')') -- embedded in other
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -43,22 +43,28 @@ FROM
 			-- data-structure member into one; if there are reads and writes, the resulting
 			-- access is a write, otherwise a read.
 			-- NOTE: This does not fold accesses to two different allocations.
-			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, a.type AS type_id, sl.member, sl.offset, sl.size
+			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, a.type AS type_id, mn.name AS member, sl.offset, sl.size
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
 			LEFT JOIN structs_layout_flat sl
 			  ON a.type = sl.type_id
 			 AND ac.address - a.ptr = sl.helper_offset
-			LEFT JOIN blacklist bl
-			  ON bl.datatype_id = a.type
-			 AND bl.fn = ac.fn
-			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+			LEFT JOIN member_names mn
+			  ON mn.id = sl.member_id
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.datatype_id = a.type
+			 AND fn_bl.fn = ac.fn
+			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+			LEFT JOIN member_blacklist m_bl
+			  ON m_bl.datatype_id = a.type
+			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
-			-- === FOR NOW: only look at inodes ===
-			-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+			-- === FOR NOW: only look at super_blocks ===
+			 AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
 			-- ====================================
-			AND bl.fn IS NULL
+			AND fn_bl.fn IS NULL
+			AND m_bl.datatype_member_id IS NULL
 			AND ac.txn_id IS NOT NULL
 			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
 		) AS fac -- = Folded ACcesses
@@ -85,6 +91,8 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	LEFT JOIN member_names mn_lock_member
+	  ON mn_lock_member.id = lock_member.member_id
 
 	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.type_id
 
@@ -93,7 +101,7 @@ FROM
 	-- Memory accesses to known allocations without any locks held: We
 	-- cannot group these into TXNs, instead we assume them each in their
 	-- own TXN for the purpose of this query.
-	SELECT dt.id AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', sl.member) AS members_accessed, '' AS locks_held
+	SELECT dt.id AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', mn.name) AS members_accessed, '' AS locks_held
 	FROM accesses ac
 	JOIN allocations a
 	  ON ac.alloc_id = a.id
@@ -102,15 +110,21 @@ FROM
 	LEFT JOIN structs_layout_flat sl
 	  ON a.type = sl.type_id
 	 AND ac.address - a.ptr = sl.helper_offset
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	LEFT JOIN member_names mn
+	  ON mn.id = sl.member_id
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+	LEFT JOIN member_blacklist m_bl
+	  ON m_bl.datatype_id = a.type
+	 AND m_bl.datatype_member_id = sl.member_id
 	WHERE 1
-	-- === FOR NOW: only look at inodes ===
-	-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+	-- === FOR NOW: only look at super_blocks ===
+	 AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
 	-- ====================================
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
+	AND m_bl.datatype_member_id IS NULL
 	AND ac.txn_id IS NULL
 ) AS withlocks
 

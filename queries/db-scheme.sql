@@ -60,7 +60,7 @@ CREATE TABLE `txns` (				-- Transactions: sets of memory accesses between a P/V 
 CREATE TABLE `structs_layout` (
   `type_id` int(11) UNSIGNED NOT NULL,		-- Refers to the datatype to which a member belongs to
   `type` varchar(255) NOT NULL,			-- Describes the type of a member
-  `member` varchar(255) NOT NULL,		-- The name of the member
+  `member_id` int(11) UNSIGNED NOT NULL,		-- The id of the member
   `offset` smallint(11) UNSIGNED NOT NULL,	-- The offset in bytes from the beginning of a struct
   `size` smallint(11) UNSIGNED NOT NULL,	-- The size in bytes of a member
   KEY (`type_id`, `offset`)
@@ -74,14 +74,30 @@ CREATE TABLE `data_types` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 
-CREATE TABLE `blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
+CREATE TABLE `member_names` (
+  `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a member name
+  `name` varchar(255) NOT NULL,			-- A humand-readable id of a member name
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+;
+
+CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
   `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
-  `datatype_member` varchar(80) DEFAULT NULL,
+  `datatype_member_id` int(11) DEFAULT NULL,
   `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
   PRIMARY KEY (`datatype_id`,`fn`),
   KEY `fk_datatype_id` (`datatype_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
+
+CREATE TABLE `member_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
+  `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
+  `datatype_member_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`datatype_id`,`datatype_member_id`),
+  KEY `fk_datatype_id` (`datatype_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+;
+
 
 -- FIXME which of these columns may really become NULL?
 CREATE TABLE `lock_symbols` (

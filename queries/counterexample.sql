@@ -95,8 +95,8 @@ FROM
 			CASE
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -110,12 +110,13 @@ FROM
 	JOIN structs_layout_flat sl
 	  ON sl.type_id = a.type
 	 AND sl.helper_offset = ac.address - a.ptr
-	 AND sl.member = 'cgroups'
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
-
+	JOIN member_names mn
+	  ON mn.id = sl.member_id
+	 AND mn.name = 'cgroups'
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
 	LEFT JOIN locks l
@@ -131,6 +132,8 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 
 	WHERE ac.txn_id IS NULL
 	   OR ac.txn_id NOT IN
@@ -139,7 +142,7 @@ FROM
 		FROM locks_held lh
 		WHERE lh.lock_id = 16
 	)
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held
@@ -156,8 +159,8 @@ FROM
 			CASE
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -171,11 +174,13 @@ FROM
 	JOIN structs_layout_flat sl
 	  ON sl.type_id = a.type
 	 AND sl.helper_offset = ac.address - a.ptr
-	 AND sl.member = 'cgroups'
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	JOIN member_names mn
+	  ON mn.id = sl.member_id
+	 AND mn.name = 'cgroups'	 
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
@@ -192,13 +197,15 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 
 	LEFT JOIN locks_held lh_shouldbeheld
 	  ON lh_shouldbeheld.txn_id = ac.txn_id
 	 AND lh_shouldbeheld.lock_id = 16
 
 	WHERE lh_shouldbeheld.txn_id IS NULL
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held
@@ -215,8 +222,8 @@ FROM
 			CASE
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -230,11 +237,13 @@ FROM
 	JOIN structs_layout_flat sl
 	  ON sl.type_id = a.type
 	 AND sl.helper_offset = ac.address - a.ptr
-	 AND sl.member = 'i_mtime'
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	JOIN member_names mn
+	  ON mn.id = sl.member_id
+	 AND mn.name = 'i_mtime'
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
@@ -251,15 +260,19 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 
 	LEFT JOIN structs_layout_flat lock_member_sbh -- sbh = ShouldBeHeld
 	  ON lock_a.type = lock_member_sbh.type_id
 	 AND l.ptr - lock_a.ptr = lock_member_sbh.helper_offset
-	 AND lock_member_sbh.member = 'i_mutex'
+	LEFT JOIN member_names mn_lock_member_sbh
+	  ON mn_lock_member_sbh.id = lock_member_sbh.member_id
+	 AND mn_lock_member_sbh.name = 'i_mutex'
 	
 	WHERE (ac.txn_id IS NULL
 	   OR lock_member_sbh.type_id IS NULL)
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held
@@ -281,8 +294,8 @@ FROM
 			CASE
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
@@ -297,11 +310,13 @@ FROM
 	JOIN structs_layout_flat sl
 	  ON sl.type_id = a.type
 	 AND sl.helper_offset = ac.address - a.ptr
-	 AND sl.member = 'bd_invalidated'
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	JOIN member_names mn
+	  ON mn.id = sl.member_id
+	 AND mn.name = 'bd_invalidated'
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
@@ -318,15 +333,19 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 
 	LEFT JOIN structs_layout_flat lock_member_sbh -- sbh = ShouldBeHeld
 	  ON lock_a.type = lock_member_sbh.type_id
 	 AND l.ptr - lock_a.ptr = lock_member_sbh.helper_offset
-	 AND lock_member_sbh.member = 'bd_mutex'
+	LEFT JOIN member_names mn_lock_member_sbh
+	  ON mn_lock_member_sbh.id = lock_member_sbh.member_id
+	 AND mn_lock_member_sbh.name = 'bd_mutex'
 	
 	WHERE (ac.txn_id IS NULL
 	   OR lock_member_sbh.type_id IS NULL)
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held
@@ -334,7 +353,8 @@ ORDER BY instrptr, occurrences
 ;
 
 --- experimenting here
-SELECT fn, instrptr, locks_held, COUNT(*) AS occurrences
+SELECT fn, instrptr, --- locks_held,
+ COUNT(*) AS occurrences
 FROM
 (
 	SELECT ac.fn, CONCAT('0x', HEX(ac.instrptr)) AS instrptr,
@@ -342,15 +362,15 @@ FROM
 --			CASE
 --			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 --			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
---				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
---			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+--				THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+--			ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 --			END
 --			ORDER BY lh.start
 --			SEPARATOR ' -> '
 --		) AS locks_held
-	lh.txn_id AS LH_txn_id, l.id AS L_id, l.embedded_in, lock_a.id AS LOCK_A_id, lock_member.member AS LM_member
+	lh.txn_id AS LH_txn_id, l.id AS L_id, l.embedded_in, lock_a.id AS LOCK_A_id, mn_lock.name AS LM_member
 	, lh_sbh.txn_id AS LH_SBH_txn_id, l_sbh.id AS L_SBH_id, l_sbh_a.id L_SBH_A_id
-	, lock_member_sbh.member AS lock_member_sbh_member
+	, mn_lock_member_sbh.name AS lock_member_sbh_member
 	FROM accesses ac
 	JOIN allocations a
 	  ON ac.alloc_id = a.id
@@ -361,11 +381,13 @@ FROM
 	JOIN structs_layout_flat sl
 	  ON sl.type_id = a.type
 	 AND sl.helper_offset = ac.address - a.ptr
-	 AND sl.member = 'bd_invalidated'
-	LEFT JOIN blacklist bl
-	  ON bl.datatype_id = a.type
-	 AND bl.fn = ac.fn
-	 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+	JOIN member_names mn
+	  ON mn.id = sl.member_id
+	 AND mn.name = 'bd_invalidated'
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.datatype_id = a.type
+	 AND fn_bl.fn = ac.fn
+	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
@@ -382,6 +404,8 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 
  	LEFT JOIN locks_held lh_sbh -- sbh = ShouldBeHeld
  	  ON lh_sbh.txn_id = ac.txn_id
@@ -392,15 +416,17 @@ FROM
  	LEFT JOIN structs_layout_flat lock_member_sbh
  	  ON l_sbh_a.type = lock_member_sbh.type_id
  	 AND l_sbh.ptr - l_sbh_a.ptr = lock_member_sbh.helper_offset
- 	 AND lock_member_sbh.member = 'bd_mutex'
+	LEFT JOIN member_names mn_lock_member_sbh
+	  ON mn_lock_member_sbh.id = lock_member_sbh.member_id
+	 AND mn_lock_member_sbh.name = 'bd_mutex'
 	
 --	WHERE (ac.txn_id IS NULL
 --	   OR lock_member_sbh.type_id IS NULL)
 	WHERE 1
-	AND bl.fn IS NULL
+	AND fn_bl.fn IS NULL
 --	GROUP BY ac.id
 ) all_counterexamples
-GROUP BY instrptr, locks_held
+GROUP BY instrptr -- , locks_held
 ORDER BY instrptr, occurrences
 ;
 
@@ -423,8 +449,8 @@ FROM
 		CASE
 		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 		END
 		ORDER BY lh.start
 		SEPARATOR ' -> '
@@ -444,12 +470,14 @@ FROM
 		JOIN structs_layout_flat sl
 		  ON sl.type_id = a.type
 		 AND sl.helper_offset = ac.address - a.ptr
-		 AND sl.member = 'bd_invalidated'
-		LEFT JOIN blacklist bl
-		  ON bl.datatype_id = a.type
-		 AND bl.fn = ac.fn
-		 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
-		WHERE bl.fn IS NULL
+		JOIN member_names mn
+		  ON mn.id = sl.member_id
+		 AND mn.name = 'bd_invalidated'
+		LEFT JOIN function_blacklist fn_bl
+		  ON fn_bl.datatype_id = a.type
+		 AND fn_bl.fn = ac.fn
+		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+		WHERE fn_bl.fn IS NULL
 		AND ac.id NOT IN	-- either counterexample ...
 		-- AND ac.id IN		-- ... or example
 		(
@@ -464,11 +492,13 @@ FROM
 			JOIN structs_layout_flat sl
 			  ON sl.type_id = a.type
 			 AND sl.helper_offset = ac.address - a.ptr
-			 AND sl.member = 'bd_invalidated'
-			LEFT JOIN blacklist bl
-			  ON bl.datatype_id = a.type
-			 AND bl.fn = ac.fn
-			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+			JOIN member_names mn
+			  ON mn.id = sl.member_id
+			 AND mn.name = 'bd_invalidated'
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.datatype_id = a.type
+			 AND fn_bl.fn = ac.fn
+			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 			-- 1st lock
 			JOIN locks_held lh_sbh1
@@ -485,10 +515,12 @@ FROM
 			JOIN structs_layout_flat lock_member_sbh2
 			  ON l_sbh_a2.type = lock_member_sbh2.type_id
 			 AND l_sbh2.ptr - l_sbh_a2.ptr = lock_member_sbh2.helper_offset
-			 AND lock_member_sbh2.member = 'bd_mutex'
 			 AND lh_sbh2.start > lh_sbh1.start -- temporal sequence (omit if order is irrelevant)
+			JOIN member_names mn_lock_member_sbh2
+			  ON mn_lock_member_sbh2.id = lock_member_sbh2.member_id
+			 AND mn_lock_member_sbh2.name = 'bd_mutex'
 
-			WHERE bl.fn IS NULL
+			WHERE fn_bl.fn IS NULL
 		)
 	) ac
 
@@ -507,6 +539,8 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held
@@ -522,8 +556,8 @@ FROM
 		CASE
 		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in same
+		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock.name, CONCAT(mn_lock.name, '?')), ')') -- embedded in other
 		END
 		ORDER BY lh.start
 		SEPARATOR ' -> '
@@ -543,12 +577,14 @@ FROM
 		JOIN structs_layout_flat sl
 		  ON sl.type_id = a.type
 		 AND sl.helper_offset = ac.address - a.ptr
-		 AND sl.member = 'i_blocks'
-		LEFT JOIN blacklist bl
-		  ON bl.datatype_id = a.type
-		 AND bl.fn = ac.fn
-		 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
-		WHERE bl.fn IS NULL
+		JOIN member_names mn
+		  ON mn.id = sl.member_id
+		 AND mn.name = 'i_blocks'
+		LEFT JOIN function_blacklist fn_bl
+		  ON fn_bl.datatype_id = a.type
+		 AND fn_bl.fn = ac.fn
+		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+		WHERE fn_bl.fn IS NULL
 		-- AND ac.id NOT IN	-- either counterexample ...
 		AND ac.id IN		-- ... or example
 		(
@@ -563,11 +599,13 @@ FROM
 			JOIN structs_layout_flat sl
 			  ON sl.type_id = a.type
 			 AND sl.helper_offset = ac.address - a.ptr
-			 AND sl.member = 'i_blocks'
-			LEFT JOIN blacklist bl
-			  ON bl.datatype_id = a.type
-			 AND bl.fn = ac.fn
-			 AND (bl.datatype_member IS NULL OR bl.datatype_member = sl.member)
+			JOIN member_names mn
+			  ON mn.id = sl.member_id
+			 AND mn.name = 'i_blocks'
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.datatype_id = a.type
+			 AND fn_bl.fn = ac.fn
+			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 
 			-- 1st lock
 --			JOIN locks_held lh_sbh1
@@ -584,10 +622,12 @@ FROM
 			JOIN structs_layout_flat lock_member_sbh2
 			  ON l_sbh_a2.type = lock_member_sbh2.type_id
 			 AND l_sbh2.ptr - l_sbh_a2.ptr = lock_member_sbh2.helper_offset
-			 AND lock_member_sbh2.member = 'i_mutex'
 --			 AND lh_sbh2.start > lh_sbh1.start -- temporal sequence (omit if order is irrelevant)
+			JOIN member_names mn_lock_member_sbh2
+			  ON mn_lock_member_sbh2.id = lock_member_sbh2.member_id
+			 AND mn_lock_member_sbh2.name = 'i_mutex'
 
-			WHERE bl.fn IS NULL
+			WHERE fn_bl.fn IS NULL
 		)
 	) ac
 
@@ -606,6 +646,8 @@ FROM
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
+	JOIN member_names mn_lock
+	  ON mn_lock.id = lock_member.member_id
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY instrptr, locks_held

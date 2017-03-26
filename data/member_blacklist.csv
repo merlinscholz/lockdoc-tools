@@ -1,0 +1,14 @@
+datatype;datatype_member
+inode;i_private
+inode;i_fop
+inode;i_lock
+inode;i_mutex
+inode;i_data.i_mmap_mutex
+inode;i_data.private_lock
+inode;i_data.tree_lock
+journal_t;j_checkpoint_mutex
+journal_t;j_list_lock
+journal_t;j_revoke_lock
+journal_t;j_history_lock
+transaction_t;t_handle_lock
+
