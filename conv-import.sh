@@ -114,3 +114,8 @@ fi
 wait
 mysqloptimize $DB
 reset
+
+for table in "${TABLES[@]}"
+do
+	rm -f ${table}.csv ${table}.csv.pv
+done
