@@ -598,7 +598,7 @@ int main(int argc, char **argv)
 
 	// === Load input CSV into memory ===
 	// input format example:
-	// r:i_mode,r:i_opflags,r:i_uid,r:i_flags,r:i_sb,r:i_rdev  EMB:5705(i_mutex),16(rcu)       1
+	// inode	r:i_mode,r:i_opflags,r:i_uid,r:i_flags,r:i_sb,r:i_rdev  EMB:5705(i_mutex),16(rcu)       1
 	std::ifstream infile(filename);
 	if (!infile.is_open()) {
 		std::cerr << "Cannot open file: " << filename << std::endl;
