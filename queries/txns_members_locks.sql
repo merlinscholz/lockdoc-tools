@@ -61,7 +61,10 @@ FROM
 			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
 			-- === FOR NOW: only look at super_blocks ===
-			 AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+			-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+			-- ====================================
+			-- === FOR NOW: skip task_struct ===
+			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND fn_bl.fn IS NULL
 			AND m_bl.datatype_member_id IS NULL
@@ -121,7 +124,10 @@ FROM
 	 AND m_bl.datatype_member_id = sl.member_id
 	WHERE 1
 	-- === FOR NOW: only look at super_blocks ===
-	 AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+	-- AND a.type = (SELECT id FROM data_types WHERE name = 'inode')
+	-- ====================================
+	-- === FOR NOW: skip task_struct ===
+	AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 	-- ====================================
 	AND fn_bl.fn IS NULL
 	AND m_bl.datatype_member_id IS NULL
