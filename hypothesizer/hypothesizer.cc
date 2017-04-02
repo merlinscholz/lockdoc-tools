@@ -243,7 +243,7 @@ void find_hypotheses(Member& member)
 	}
 }
 
-void print_bugsql(char const *prefix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
+void print_bugsql(const std::string& prefix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
 {
 	std::cout << prefix << "counterexample.sql.sh "
 		<< member.datatype << " "
@@ -369,13 +369,12 @@ void print_hypotheses(const Member& member,
 				found_winner = found_winner || this_is_the_winner;
 
 				if (reportmode == ReportMode::NORMAL) {
-					std::cout << (this_is_the_winner ? '!' : ' ')
-						<< "      " << std::setw(5) << local_fraction * 100 << "% "
+					std::string prefix = std::string(this_is_the_winner ? "!" : " ") + "      ";
+					std::cout << prefix
+						<< std::setw(5) << local_fraction * 100 << "% "
 						<< locks2string(match.first) << std::endl;
-					if (bugsql && this_is_the_winner) {
-						print_bugsql("!      ", member, match.first, true);
-					} else if (bugsql) {
-						print_bugsql("       ", member, match.first, true);
+					if (bugsql) {
+						print_bugsql(prefix, member, match.first, true);
 					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
@@ -398,14 +397,13 @@ void print_hypotheses(const Member& member,
 			bool this_is_the_winner = !found_winner && match_fraction >= accept_threshold;
 			found_winner = found_winner || this_is_the_winner;
 
-			std::cout << (this_is_the_winner ? '!' : ' ')
-				<< "   " << std::setw(5) << match_fraction * 100 << "% ("
+			std::string prefix = std::string(this_is_the_winner ? "!" : " ") + "   ";
+			std::cout << prefix
+				<< std::setw(5) << match_fraction * 100 << "% ("
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
-			if (bugsql && this_is_the_winner) {
-				print_bugsql("!   ", member, h.matches.begin()->first, true);
-			} else if (bugsql) {
-				print_bugsql("    ", member, h.matches.begin()->first, true);
+			if (bugsql) {
+				print_bugsql(prefix, member, h.matches.begin()->first, true);
 			}
 		}
 		printed++;
