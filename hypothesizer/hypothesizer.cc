@@ -243,14 +243,14 @@ void find_hypotheses(Member& member)
 	}
 }
 
-void print_bugsql(const std::string& prefix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
+void print_bugsql(const std::string& prefix, const std::string& postfix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
 {
 	std::cout << prefix << "counterexample.sql.sh "
 		<< member.datatype << " "
 		<< member.combined_name() << " "
 		<< "CEX "
 		<< (order_matters ? "SEQ " : "ANY ")
-		<< locks2string(l, " ", "'") << std::endl;
+		<< locks2string(l, " ", "'") << postfix;
 }
 
 void print_hypotheses(const Member& member,
@@ -342,7 +342,7 @@ void print_hypotheses(const Member& member,
 					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 				if (bugsql) {
-					print_bugsql("    ", member, h.sorted_hypothesis, false);
+					print_bugsql("    ", "\n", member, h.sorted_hypothesis, false);
 				}
 			}
 
@@ -374,7 +374,7 @@ void print_hypotheses(const Member& member,
 						<< std::setw(5) << local_fraction * 100 << "% "
 						<< locks2string(match.first) << std::endl;
 					if (bugsql) {
-						print_bugsql(prefix, member, match.first, true);
+						print_bugsql(prefix, "\n", member, match.first, true);
 					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
@@ -403,7 +403,7 @@ void print_hypotheses(const Member& member,
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
 			if (bugsql) {
-				print_bugsql(prefix, member, h.matches.begin()->first, true);
+				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true);
 			}
 		}
 		printed++;
