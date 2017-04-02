@@ -63,7 +63,7 @@ const option::Descriptor usage[] = {
   BUGSQL, 0, "b", "bugsql", Arg::None,
   "-b/--bugsql  \tGenerate parameters for counterexamples.sql.sh, "
   "which helps locating counterexamples in the kernel source code; "
-  "only effective in combination with --report normal"
+  "effective in combination with --report normal, implicit with --report csv or csvwinner"
 }, {0,0,0,0,0,0}
 };
 
@@ -292,7 +292,7 @@ void print_hypotheses(const Member& member,
 			<< (double) (member.occurrences - member.occurrences_with_locks) /
 				(double) member.occurrences * 100 << ";"
 			<< nolock_is_winner << ";"
-			<< "TODO\n";
+			<< "TODO;\n";
 		// are we done already?
 		if (reportmode == ReportMode::CSVWINNER) {
 			return;
@@ -386,7 +386,8 @@ void print_hypotheses(const Member& member,
 						<< std::setprecision(5)
 						<< match_fraction * 100 << ";"
 						<< this_is_the_winner << ";"
-						<< "TODO\n";
+						<< "TODO;";
+					print_bugsql("", "\n", member, match.first, true);
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 					all_lock_orders.push_back(match);
 				}
@@ -417,7 +418,7 @@ void print_hypotheses(const Member& member,
 		std::cout << member.datatype << ";"
 			<< member.name << ";"
 			<< member.accesstype << ";"
-			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO\n";
+			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO;\n";
 	}
 
 	if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
@@ -433,7 +434,7 @@ void print_hypotheses(const Member& member,
 				std::cout << member.datatype << ";"
 					<< member.name << ";"
 					<< member.accesstype << ";"
-					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO"
+					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO;"
 					<< std::endl;
 			} else {
 				std::cerr << "Cannot generate documentation for "
@@ -454,7 +455,8 @@ void print_hypotheses(const Member& member,
 					<< std::setprecision(5)
 					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
 					<< this_is_the_winner << ";"
-					<< "TODO" << std::endl;
+					<< "TODO;";
+				print_bugsql("", "\n", member, lo.first, true);
 			} else if (this_is_the_winner) {
 				// TODO properly group member r/w accesses
 				doc_map[member.datatype][lo.first].push_back(member.combined_name());
@@ -736,7 +738,7 @@ int main(int argc, char **argv)
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
 	if (reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
-		std::cout << "type;member;accesstype;locks;occurrences;total;percentage;accepted;confidence\n";
+		std::cout << "type;member;accesstype;locks;occurrences;total;percentage;accepted;confidence;counterexample-parameters\n";
 	}
 
 #pragma omp parallel for
