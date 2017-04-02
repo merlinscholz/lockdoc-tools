@@ -53,8 +53,8 @@ FROM
 		CASE
 		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in same
-		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member.member, CONCAT(lock_member.member, '?')), ')') -- embedded in other
+			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in same
+		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
 		END
 		ORDER BY lh.start
 		SEPARATOR ' -> '
@@ -74,12 +74,14 @@ FROM
 		JOIN structs_layout_flat sl
 		  ON sl.type_id = a.type
 		 AND sl.helper_offset = ac.address - a.ptr
-		 AND sl.member = '$MEMBER'
+		JOIN member_names mn
+		  ON mn.id = sl.member_id
+		 AND mn.name = '$MEMBER'
 		LEFT JOIN function_blacklist fn_bl
 		  ON fn_bl.datatype_id = a.type
 		 AND fn_bl.fn = ac.fn
 		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
-		WHERE bl.fn IS NULL
+		WHERE fn_bl.fn IS NULL
 EOT
 if [ $MODE = CEX ]; then
 	cat <<EOT
@@ -106,7 +108,9 @@ cat <<EOT
 			JOIN structs_layout_flat sl
 			  ON sl.type_id = a.type
 			 AND sl.helper_offset = ac.address - a.ptr
-			 AND sl.member = '$MEMBER'
+			JOIN member_names mn
+			  ON mn.id = sl.member_id
+			 AND mn.name = '$MEMBER'
 			LEFT JOIN function_blacklist fn_bl
 			  ON fn_bl.datatype_id = a.type
 			 AND fn_bl.fn = ac.fn
@@ -132,7 +136,9 @@ cat <<EOT
 			JOIN structs_layout_flat lock_member_sbh${LOCKNR}
 			  ON l_sbh_a${LOCKNR}.type = lock_member_sbh${LOCKNR}.type_id
 			 AND l_sbh${LOCKNR}.ptr - l_sbh_a${LOCKNR}.ptr = lock_member_sbh${LOCKNR}.helper_offset
-			 AND lock_member_sbh${LOCKNR}.member = '$LOCKNAME'
+			JOIN member_names lock_member_name_sbh${LOCKNR}
+			  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
+			 AND lock_member_name_sbh${LOCKNR}.name = $LOCKNAME
 EOT
 
 	elif echo $LOCK | grep -q '^\(EMB:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t)
@@ -158,7 +164,7 @@ EOT
 done
 cat <<EOT
 
-			WHERE bl.fn IS NULL
+			WHERE fn_bl.fn IS NULL
 
 		)
 	) ac
@@ -175,6 +181,8 @@ cat <<EOT
 	LEFT JOIN structs_layout_flat lock_member
 	  ON lock_a.type = lock_member.type_id
 	 AND l.ptr - lock_a.ptr = lock_member.helper_offset
+	JOIN member_names lock_member_name
+	  ON lock_member_name.id = lock_member.member_id
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
