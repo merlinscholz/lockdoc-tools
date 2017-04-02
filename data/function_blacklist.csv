@@ -81,3 +81,5 @@ block_device;\N;mqueue_fill_super
 journal_t;\N;jbd2_journal_init_inode
 journal_t;\N;ext4_fill_super
 journal_t;\N;ext4_init_journal_params
+journal_t;\N;jbd2_journal_load
+journal_t;\N;load_superblock
