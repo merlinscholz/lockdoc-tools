@@ -372,7 +372,9 @@ void print_hypotheses(const Member& member,
 					std::cout << (this_is_the_winner ? '!' : ' ')
 						<< "      " << std::setw(5) << local_fraction * 100 << "% "
 						<< locks2string(match.first) << std::endl;
-					if (bugsql) {
+					if (bugsql && this_is_the_winner) {
+						print_bugsql("!      ", member, match.first, true);
+					} else if (bugsql) {
 						print_bugsql("       ", member, match.first, true);
 					}
 				} else if (reportmode == ReportMode::CSV) {
@@ -400,7 +402,9 @@ void print_hypotheses(const Member& member,
 				<< "   " << std::setw(5) << match_fraction * 100 << "% ("
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
-			if (bugsql) {
+			if (bugsql && this_is_the_winner) {
+				print_bugsql("!   ", member, h.matches.begin()->first, true);
+			} else if (bugsql) {
 				print_bugsql("    ", member, h.matches.begin()->first, true);
 			}
 		}
