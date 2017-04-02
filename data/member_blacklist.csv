@@ -13,7 +13,7 @@ journal_t;j_checkpoint_mutex
 journal_t;j_list_lock
 journal_t;j_revoke_lock
 journal_t;j_history_lock
-journal_t;j_super_block
+journal_t;j_superblock
 journal_t;j_sb_buffer
 journal_t;j_format_version
 journal_t;j_dev
@@ -44,7 +44,7 @@ block_device;bd_fsfreeze_mutex
 block_device;bd_dev
 block_device;bd_inode
 block_device;bd_super
-block_device;pd_private
+block_device;bd_private
 pipe_inode_info;mutex
 cdev;ops
 bdi_writeback;list_lock
