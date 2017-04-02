@@ -28,8 +28,4 @@ fi
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
 echo "Flatten structs layout..."
 ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
-echo "Retrieving txns members locks..."
-time mysql ${DB} < ${TOOLS_PATH}/queries/txns_members_locks.sql > all_txns_members_locks_db.csv 
-echo "Running hypothesizer..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -s member all_txns_members_locks_db.csv > all_txns_members_locks_hypo.txt
-${TOOLS_PATH}/hypothesizer/hypothesizer -r csvwinner -t 0.0 -s member all_txns_members_locks_db.csv > all_txns_members_locks_hypo_winner.csv
+${TOOLS_PATH}/run-hypothesizer.sh
