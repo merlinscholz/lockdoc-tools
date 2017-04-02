@@ -83,3 +83,5 @@ journal_t;\N;ext4_fill_super
 journal_t;\N;ext4_init_journal_params
 journal_t;\N;jbd2_journal_load
 journal_t;\N;load_superblock
+journal_t;\N;jbd2_journal_recover
+journal_t;j_commit_timer;init_timer_key
