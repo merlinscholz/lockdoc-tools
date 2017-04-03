@@ -119,7 +119,7 @@ EOT
 
 LOCKNR=1
 for LOCK in "$@"; do
-	if ! echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
+	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
 		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBSAME locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
