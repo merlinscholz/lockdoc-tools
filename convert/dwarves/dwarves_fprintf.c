@@ -438,7 +438,7 @@ static bool type__fprintf(struct tag *type, const struct cu *cu,
 	}
 
 	if (type->tag != DW_TAG_class_type && type->tag != DW_TAG_structure_type && type->tag != DW_TAG_array_type) {
-		fprintf(fp, "%llu" DELIMITER_STRING, ext->type_id);
+		fprintf(fp, "%llu%c", ext->type_id, delimiter);
 	}
 
 	switch (type->tag) {
@@ -475,7 +475,7 @@ static bool type__fprintf(struct tag *type, const struct cu *cu,
 			ctype = tag__type(type);
 
 			if (type__name(ctype, cu) != NULL && !ext->expand_type(type__name(ctype, cu))) {
-				fprintf(fp, "%llu" DELIMITER_STRING, ext->type_id);
+				fprintf(fp, "%llu%c", ext->type_id, delimiter);
 				fprintf(fp, "%s %s",
 						   (type->tag == DW_TAG_class_type) ? "class" : "struct",
 						   type__name(ctype, cu));
@@ -593,7 +593,7 @@ static void struct_member__fprintf(struct class_member *member,
 	}
 	
 	if (!type__fprintf(type, cu, name, fp, ext, cm_name, offset)) {
-		fprintf(fp, DELIMITER_STRING);
+		fprintf(fp, "%c", delimiter);
 		full_cm_name = dwarves_convert_concat_members(ext,cm_name);
 		if (!full_cm_name) {
 			member_name_id = ext->add_member_name("<error>");
@@ -603,8 +603,8 @@ static void struct_member__fprintf(struct class_member *member,
 		}
 		
 		fprintf(fp,
-			"%llu" DELIMITER_STRING "%d" DELIMITER_STRING "%d",
-			member_name_id, offset + ext->offset, size);
+			"%llu%c%d%c%d",
+			member_name_id, delimiter,  offset + ext->offset, delimiter, size);
 		fprintf(fp, "\n");
 	}
 	if (cm_name_temp != NULL) {

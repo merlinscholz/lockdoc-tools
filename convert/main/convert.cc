@@ -188,6 +188,7 @@ static unsigned long long curTXNID = 1;
 static unsigned long long curMemberNameID = 1;
 
 static struct cus *cus;
+char delimiter = DELIMITER_CHAR;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf
@@ -195,6 +196,7 @@ static void printUsageAndExit(const char *elf) {
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
+		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
 		" -h  help\n";
 	exit(EXIT_FAILURE);
 }
@@ -259,8 +261,8 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 	while (!activeTXNs.empty()) {
 		if (!SKIP_EMPTY_TXNS || activeTXNs.back().memAccessCounter > 0) {
 			// Record this TXN
-			txnsOFile << activeTXNs.back().id << DELIMITER_CHAR;
-			txnsOFile << activeTXNs.back().start << DELIMITER_CHAR;
+			txnsOFile << activeTXNs.back().id << delimiter;
+			txnsOFile << activeTXNs.back().start << delimiter;
 			txnsOFile << ts << "\n";
 
 			// Note which locks were held during this TXN by looking at all
@@ -280,11 +282,11 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 						continue;
 					}
 					locks_seen.insert(tempLock.id);
-					locksHeldOFile << dec << activeTXNs.back().id << DELIMITER_CHAR << tempLock.id << DELIMITER_CHAR;
-					locksHeldOFile << tempLockPos.start << DELIMITER_CHAR;
-					locksHeldOFile << tempLockPos.lastFile << DELIMITER_CHAR;
-					locksHeldOFile << tempLockPos.lastLine << DELIMITER_CHAR << tempLockPos.lastFn << DELIMITER_CHAR;
-					locksHeldOFile << tempLockPos.lastPreemptCount << DELIMITER_CHAR << tempLockPos.lastLockFn << "\n";
+					locksHeldOFile << dec << activeTXNs.back().id << delimiter << tempLock.id << delimiter;
+					locksHeldOFile << tempLockPos.start << delimiter;
+					locksHeldOFile << tempLockPos.lastFile << delimiter;
+					locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
+					locksHeldOFile << tempLockPos.lastPreemptCount << delimiter << tempLockPos.lastLockFn << "\n";
 				} else {
 					cerr << "TXN: Internal error, lock is part of the TXN hierarchy but not held? lockPtr = " << showbase << hex << thisTXN.lockPtr << noshowbase << endl;
 				}
@@ -367,12 +369,12 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	// write memory accesses to disk and associate them with the current TXN
 	unsigned accessCount = 0;
 	for (auto&& tempAccess : *pMemAccesses) {
-		*pMemAccessOFile << dec << tempAccess.id << DELIMITER_CHAR << tempAccess.alloc_id;
-		*pMemAccessOFile << DELIMITER_CHAR << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
-		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.ts;
-		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.action << DELIMITER_CHAR << dec << tempAccess.size;
-		*pMemAccessOFile << DELIMITER_CHAR << tempAccess.address << DELIMITER_CHAR << tempAccess.stackPtr << DELIMITER_CHAR << tempAccess.instrPtr;
-		*pMemAccessOFile << DELIMITER_CHAR << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
+		*pMemAccessOFile << dec << tempAccess.id << delimiter << tempAccess.alloc_id;
+		*pMemAccessOFile << delimiter << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
+		*pMemAccessOFile << delimiter << tempAccess.ts;
+		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
+		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stackPtr << delimiter << tempAccess.instrPtr;
+		*pMemAccessOFile << delimiter << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
 		++accessCount;
 	}
 
@@ -526,7 +528,7 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 		return -1;
 	}
 	fprintf(structsLayoutOFile,
-		"type_id" DELIMITER_STRING "type" DELIMITER_STRING "member" DELIMITER_STRING "offset" DELIMITER_STRING "size\n");
+		"type_id%ctype%cmember%coffset%csize\n",delimiter,delimiter,delimiter,delimiter);
 
 	// Pass the context information to the callback: types array and the outputfile
 	cusIterArgs.types = &types;
@@ -584,7 +586,7 @@ int main(int argc, char *argv[]) {
 	char action, param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false;
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svh")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
@@ -606,6 +608,8 @@ int main(int argc, char *argv[]) {
 			return EXIT_SUCCESS;
 		case 'h':
 			printUsageAndExit(argv[0]);
+		case 'd':
+			delimiter = *optarg;
 			break;
 		}
 	}
@@ -617,6 +621,7 @@ int main(int argc, char *argv[]) {
 	if (processSeqlock) {
 		cerr << "Enabled experimental feature 'processing of seq{lock,count}_t'" << endl;
 	}
+	cerr << "Using delimiter: " << delimiter << endl;
 
 	// Load data types
 	ifstream datatypesinfile(datatypesName);
@@ -708,39 +713,39 @@ int main(int argc, char *argv[]) {
 	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
-	datatypesOFile << "id" << DELIMITER_CHAR << "name" << endl;
+	datatypesOFile << "id" << delimiter << "name" << endl;
 
-	allocOFile << "id" << DELIMITER_CHAR << "type_id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
-	allocOFile << "size" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
+	allocOFile << "id" << delimiter << "type_id" << delimiter << "ptr" << delimiter;
+	allocOFile << "size" << delimiter << "start" << delimiter << "end" << endl;
 
-	accessOFile << "id" << DELIMITER_CHAR << "alloc_id" << DELIMITER_CHAR << "txn_id" << DELIMITER_CHAR;
-	accessOFile << "ts" << DELIMITER_CHAR;
-	accessOFile << "type" << DELIMITER_CHAR << "size" << DELIMITER_CHAR << "address" << DELIMITER_CHAR;
-	accessOFile << "stackptr" << DELIMITER_CHAR << "instrptr" << DELIMITER_CHAR << "fn" << endl;
+	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
+	accessOFile << "ts" << delimiter;
+	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
+	accessOFile << "stackptr" << delimiter << "instrptr" << delimiter << "fn" << endl;
 
-	locksOFile << "id" << DELIMITER_CHAR << "ptr" << DELIMITER_CHAR;
-	locksOFile << "embedded" << DELIMITER_CHAR << "locktype" << endl;
+	locksOFile << "id" << delimiter << "ptr" << delimiter;
+	locksOFile << "embedded" << delimiter << "locktype" << endl;
 
-	locksHeldOFile << "txn_id" << DELIMITER_CHAR << "lock_id" << DELIMITER_CHAR;
-	locksHeldOFile << "start" << DELIMITER_CHAR;
-	locksHeldOFile << "lastFile" << DELIMITER_CHAR << "lastLine" << DELIMITER_CHAR << "lastFn" << DELIMITER_CHAR;
-	locksHeldOFile << "lastPreemptCount" << DELIMITER_CHAR << "lastLockFn" << endl;
+	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
+	locksHeldOFile << "start" << delimiter;
+	locksHeldOFile << "lastFile" << delimiter << "lastLine" << delimiter << "lastFn" << delimiter;
+	locksHeldOFile << "lastPreemptCount" << delimiter << "lastLockFn" << endl;
 
-	txnsOFile << "id" << DELIMITER_CHAR << "start" << DELIMITER_CHAR << "end" << endl;
+	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 
-	fnblacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member"
-		<< DELIMITER_CHAR << "fn" << endl;
+	fnblacklistOFile << "datatype_id" << delimiter << "datatype_member"
+		<< delimiter << "fn" << endl;
 
-	memberblacklistOFile << "datatype_id" << DELIMITER_CHAR << "datatype_member_id" << endl;
+	memberblacklistOFile << "datatype_id" << delimiter << "datatype_member_id" << endl;
 		
-	membernamesOFile << "id" << DELIMITER_CHAR << "member_name" << endl;
+	membernamesOFile << "id" << delimiter << "member_name" << endl;
 
 	for (const auto& type : types) {
-		datatypesOFile << type.id << DELIMITER_CHAR << type.name << endl;
+		datatypesOFile << type.id << delimiter << type.name << endl;
 	}
 	
 	for (const auto& memberName : memberNames) {
-		membernamesOFile << memberName.second << DELIMITER_CHAR << memberName.first << endl;
+		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
 	}
 
 	// Start reading the inputfile
@@ -768,8 +773,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		ss << inputLine;
-		// Tokenize each line by DELIMITER_CHAR, and store each element in a vector
-		while (getline(ss,token,DELIMITER_CHAR)) {
+		// Tokenize each line by delimiter, and store each element in a vector
+		while (getline(ss,token,delimiter)) {
 			lineElems.push_back(token);
 		}
 
@@ -860,7 +865,7 @@ int main(int argc, char *argv[]) {
 				}
 				Allocation& tempAlloc = itAlloc->second;
 				// An allocations datatype is
-				allocOFile << tempAlloc.id << DELIMITER_CHAR << tempAlloc.idx + 1 << DELIMITER_CHAR << ptr << DELIMITER_CHAR << dec << size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << ts << "\n";
+				allocOFile << tempAlloc.id << delimiter << tempAlloc.idx + 1 << delimiter << ptr << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
 				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr < (itAlloc->first + tempAlloc.size)) {
@@ -1001,8 +1006,8 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastLockFn = lockfn;
 				tempLockPos.lastPreemptCount = preemptCount;
 
-				locksOFile << dec << tempLock.id << DELIMITER_CHAR << tempLock.ptr;
-				locksOFile << DELIMITER_CHAR << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << DELIMITER_CHAR << tempLock.lockType << "\n";
+				locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
+				locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << "\n";
 
 				// a P() suspends the current TXN and creates a new one
 				startTXN(ts, ptr);
@@ -1041,8 +1046,8 @@ int main(int argc, char *argv[]) {
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		Allocation& tempAlloc = itAlloc->second;
-		allocOFile << tempAlloc.id << DELIMITER_CHAR << types[tempAlloc.idx].id << DELIMITER_CHAR << itAlloc->first << DELIMITER_CHAR;
-		allocOFile << dec << tempAlloc.size << DELIMITER_CHAR << dec << tempAlloc.start << DELIMITER_CHAR << "\\N" << "\n";
+		allocOFile << tempAlloc.id << delimiter << types[tempAlloc.idx].id << delimiter << itAlloc->first << delimiter;
+		allocOFile << dec << tempAlloc.size << delimiter << dec << tempAlloc.start << delimiter << "\\N" << "\n";
 	}
 
 	// Flush memory writes by pretending there's a final V()
@@ -1083,7 +1088,7 @@ int main(int argc, char *argv[]) {
 
 		ss << inputLine;
 		// Tokenize each line
-		while (getline(ss, token, DELIMITER_CHAR)) {
+		while (getline(ss, token, DELIMITER_BLACKLISTS)) {
 			lineElems.push_back(token);
 		}
 
@@ -1114,8 +1119,8 @@ int main(int argc, char *argv[]) {
 			memberID = lineElems.at(1);
 		}
 
-		fnblacklistOFile << itType->second << DELIMITER_CHAR
-			<< memberID << DELIMITER_CHAR
+		fnblacklistOFile << itType->second << delimiter
+			<< memberID << delimiter
 			<< lineElems.at(2) << endl;
 	}
 
@@ -1131,7 +1136,7 @@ int main(int argc, char *argv[]) {
 
 		ss << inputLine;
 		// Tokenize each line
-		while (getline(ss, token, DELIMITER_CHAR)) {
+		while (getline(ss, token, DELIMITER_BLACKLISTS)) {
 			lineElems.push_back(token);
 		}
 
@@ -1156,7 +1161,7 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		memberblacklistOFile << itType->second << DELIMITER_CHAR
+		memberblacklistOFile << itType->second << delimiter
 			<< itMember->second << endl;
 	}
 
