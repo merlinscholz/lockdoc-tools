@@ -49,5 +49,3 @@ pipe_inode_info;mutex
 cdev;ops
 bdi_writeback;list_lock
 bdi_writeback;bdi
-
-
