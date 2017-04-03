@@ -138,7 +138,7 @@ cat <<EOT
 			 AND l_sbh${LOCKNR}.ptr - l_sbh_a${LOCKNR}.ptr = lock_member_sbh${LOCKNR}.helper_offset
 			JOIN member_names lock_member_name_sbh${LOCKNR}
 			  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
-			 AND lock_member_name_sbh${LOCKNR}.name = $LOCKNAME
+			 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 
 	elif echo $LOCK | grep -q '^\(EMB:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t)
