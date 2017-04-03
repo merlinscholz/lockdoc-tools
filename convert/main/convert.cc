@@ -191,7 +191,7 @@ static struct cus *cus;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf
-		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/blacklist.csv input.csv[.gz]\n\n"
+		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/function_blacklist.csv -m path/to/member_blacklist.csv input.csv[.gz]\n\n"
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
