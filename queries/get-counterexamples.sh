@@ -20,21 +20,27 @@ fi
 DIR=`dirname ${0}`
 INPUTFILE=${1}; shift
 DATATYPE=${1}; shift
-OUTPUTFILE=${1}; shift
+RESULTS=${1}; shift
 DATABASE=${1}; shift
 COUNTEREXAMPLE_SH="counterexample.sql.sh"
-RESULTS="counterexamples-results.txt"
+QUERY_FILE="counterexample-query-tmp.sql"
 
-echo "" > ${OUTPUTFILE}
+echo "" > ${QUERY_FILE}
+echo "" > ${RESULTS}
 
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${COUNTEREXAMPLE_SH} ${DATATYPE}" | while read cmd;
 do
 	echo "Running: ${cmd}:"
-	eval ${DIR}/$cmd >> ${OUTPUTFILE}
+	eval ${DIR}/$cmd > ${QUERY_FILE}
+	if [ ! -z ${DATABASE} ];
+	then
+		echo "Running query..."
+		mysql -t ${DATABASE} < ${QUERY_FILE} >> ${RESULTS}
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error running query from ${QUERY_FILE}" >&2
+			exit 1
+		fi
+	fi
 done;
 
-if [ ! -z ${DATABASE} ];
-then
-	echo "Running query..."
-	mysql -t ${DATABASE} < ${OUTPUTFILE} > ${RESULTS}
-fi
