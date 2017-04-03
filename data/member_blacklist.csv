@@ -28,6 +28,11 @@ journal_t;j_proc_entry
 journal_t;j_private
 journal_t;j_state_lock
 journal_t;j_barrier
+journal_t;j_wait_transaction_locked
+journal_t;j_wait_done_commit
+journal_t;j_wait_commit
+journal_t;j_wait_updates
+journal_t;j_wait_reserved
 transaction_t;t_handle_lock
 transaction_t;t_journal
 transaction_t;t_private_list
