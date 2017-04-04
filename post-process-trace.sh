@@ -28,4 +28,4 @@ fi
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
 echo "Flatten structs layout..."
 ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
-${TOOLS_PATH}/run-hypothesizer.sh
+${TOOLS_PATH}/run-hypothesizer.sh ${DB}
