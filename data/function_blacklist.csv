@@ -85,3 +85,4 @@ journal_t;\N;jbd2_journal_load
 journal_t;\N;load_superblock
 journal_t;\N;jbd2_journal_recover
 journal_t;j_commit_timer;init_timer_key
+transaction_t;\N;jbd2_get_transaction
