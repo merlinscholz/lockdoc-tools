@@ -4,6 +4,7 @@ inode;i_fop
 inode;i_lock
 inode;i_mutex
 inode;i_data.i_mmap_mutex
+inode;i_data.i_mmap_rwsem
 inode;i_data.host
 inode;i_data.private_lock
 inode;i_data.private_data
@@ -40,10 +41,13 @@ super_block;s_op
 super_block;s_umount
 super_block;s_vfs_rename_mutex
 super_block;s_type
+super_block;s_inode_list_lock
+super_block;s_inode_wblist_lock
 backing_dev_info;wb_lock
 backing_dev_info;ra_pages
 backing_dev_info;name
 backing_dev_info;dev
+backing_dev_info;wb_waitq
 block_device;bd_mutex
 block_device;bd_fsfreeze_mutex
 block_device;bd_dev
@@ -54,3 +58,4 @@ pipe_inode_info;mutex
 cdev;ops
 bdi_writeback;list_lock
 bdi_writeback;bdi
+bdi_writeback;work_lock
