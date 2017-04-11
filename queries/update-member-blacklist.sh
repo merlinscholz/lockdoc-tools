@@ -6,7 +6,7 @@
 
 if [ ${#} -lt 3 ];
 then
-	echo "usage: ${0} <database> <data type> <member name>" >&2
+	echo "usage: ${0} <database> <data type> <member name 1> [<member name 2> ...]" >&2
 	exit 1
 fi
 
