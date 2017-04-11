@@ -43,6 +43,10 @@ super_block;s_vfs_rename_mutex
 super_block;s_type
 super_block;s_inode_list_lock
 super_block;s_inode_wblist_lock
+suber_block;dq_op
+suber_block;s_qcop
+suber_block;s_export_op
+suber_block;s_fs_info
 backing_dev_info;wb_lock
 backing_dev_info;ra_pages
 backing_dev_info;name
