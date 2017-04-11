@@ -35,7 +35,7 @@ do
 	if [ ! -z ${DATABASE} ];
 	then
 		echo "Running query..."
-		mysql -t ${DATABASE} < ${QUERY_FILE} >> ${RESULTS}
+		mysql ${DATABASE} < ${QUERY_FILE} >> ${RESULTS}
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running query from ${QUERY_FILE}" >&2
