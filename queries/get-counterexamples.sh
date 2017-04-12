@@ -24,9 +24,10 @@ RESULTS=${1}; shift
 DATABASE=${1}; shift
 COUNTEREXAMPLE_SH="counterexample.sql.sh"
 QUERY_FILE="counterexample-query-tmp.sql"
+DELIMITER=";"
 
-echo "" > ${QUERY_FILE}
-echo "" > ${RESULTS}
+echo -n "" > ${QUERY_FILE}
+echo -n "" > ${RESULTS}
 
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${COUNTEREXAMPLE_SH} ${DATATYPE}" | while read cmd;
 do
@@ -35,7 +36,7 @@ do
 	if [ ! -z ${DATABASE} ];
 	then
 		echo "Running query..."
-		mysql ${DATABASE} < ${QUERY_FILE} >> ${RESULTS}
+		mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" >> ${RESULTS}
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running query from ${QUERY_FILE}" >&2
