@@ -45,7 +45,7 @@ if [ "$SANITYCHECK" != : ]; then
 fi
 
 cat <<EOT
-SELECT '${ACCESSTYPE}:${MEMBER}' AS member, fn, instrptr, locks_held, COUNT(*) AS occurrences
+SELECT '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, fn, instrptr, locks_held, COUNT(*) AS occurrences
 FROM
 (
 	SELECT ac.fn, CONCAT('0x', HEX(ac.instrptr)) AS instrptr,
