@@ -81,4 +81,14 @@ transaction_t;t_handle_count;r;EMBSAME\(t_handle_lock\)
 transaction_t;t_handle_count;w;EMBSAME\(t_handle_lock\)
 transaction_t;t_need_data_flush;r;nolock
 transaction_t;t_need_data_flush;w;nolock
+inode;i_blocks;r;EMBSAME\(i_lock\)
+inode;i_blocks;w;EMBSAME\(i_lock\)
+inode;i_bytes;r;EMBSAME\(i_lock\)
+inode;i_bytes;w;EMBSAME\(i_lock\)
+inode;i_state;r;EMBSAME\(i_lock\)
+inode;i_state;w;EMBSAME\(i_lock\)
+inode;i_hash;r;[0-9]*\(raw_spinlock_t\) -> EMBSAME\(i_lock\)
+inode;i_hash;w;[0-9]*\(raw_spinlock_t\) -> EMBSAME\(i_lock\)
+inode;i_count;r;EMBSAME\(i_lock\)
+inode;i_count;w;EMBSAME\(i_lock\)
 
