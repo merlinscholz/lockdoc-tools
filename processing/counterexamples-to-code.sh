@@ -15,11 +15,21 @@ DELIMITER=';'
 INPUT=${1}; shift
 VMLINUX=${1}; shift
 OUTPUT=${1}; shift
+COUNT=0
+
+echo -n "" > ${OUTPUT}
 
 while read line
 do
-	INSTRPTR=`echo ${line} | cut -d ${DELIMITER} -f 2`
+	if [ ${COUNT} -eq 0 ];
+	then
+		let COUNT=COUNT+1
+		continue
+	fi
+	echo $line
+	INSTRPTR=`echo ${line} | cut -d ${DELIMITER} -f 4`
 	POS=`addr2line -e ${VMLINUX} ${INSTRPTR}`
 	echo ${line}${DELIMITER}${POS} >> ${OUTPUT}
+	let COUNT=COUNT+1
 done < ${INPUT}
 
