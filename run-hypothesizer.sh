@@ -25,6 +25,6 @@ NO_LOCK_THRESHOLD=5.0
 echo "Retrieving txns members locks..."
 time mysql ${DB} < ${TOOLS_PATH}/queries/txns_members_locks.sql > ${HYPO_INPUT}
 echo "Running hypothesizer..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -s member ${HYPO_INPUT} > all_txns_members_locks_hypo.txt
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -t 0.0 -s member ${HYPO_INPUT}  > all_txns_members_locks_hypo_winner.csv
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > all_txns_members_locks_hypo.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_winner.csv
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs.txt
