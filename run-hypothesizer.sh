@@ -27,4 +27,4 @@ time mysql ${DB} < ${TOOLS_PATH}/queries/txns_members_locks.sql > ${HYPO_INPUT}
 echo "Running hypothesizer..."
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -s member ${HYPO_INPUT} > all_txns_members_locks_hypo.txt
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -t 0.0 -s member ${HYPO_INPUT}  > all_txns_members_locks_hypo_winner.csv
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs.txt
