@@ -243,14 +243,22 @@ void find_hypotheses(Member& member)
 	}
 }
 
-void print_bugsql(const std::string& prefix, const std::string& postfix, const Member& member, const std::vector<myid_t>& l, bool order_matters)
+void print_bugsql(const std::string& prefix, const std::string& postfix,
+	const Member& member, const std::vector<myid_t>& l, bool order_matters,
+	uint64_t expected_counterexamples)
 {
-	std::cout << prefix << "counterexample.sql.sh "
-		<< member.datatype << " "
-		<< member.combined_name() << " "
-		<< "CEX "
-		<< (order_matters ? "SEQ " : "ANY ")
-		<< locks2string(l, " ", "'") << postfix;
+	if (expected_counterexamples > 0) {
+		std::cout << prefix << "counterexample.sql.sh "
+			<< member.datatype << " "
+			<< member.combined_name() << " "
+			<< "CEX "
+			<< (order_matters ? "SEQ " : "ANY ")
+			<< locks2string(l, " ", "'") << postfix;
+	} else {
+		std::cout << prefix
+			<< "(no counterexamples to be expected, this hypothesis has 100% support in the observation set)"
+			<< postfix;
+	}
 }
 
 void print_hypotheses(const Member& member,
@@ -342,7 +350,8 @@ void print_hypotheses(const Member& member,
 					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 				if (bugsql) {
-					print_bugsql("    ", "\n", member, h.sorted_hypothesis, false);
+					print_bugsql("    ", "\n", member, h.sorted_hypothesis, false,
+						member.occurrences_with_locks - h.occurrences);
 				}
 			}
 
@@ -374,7 +383,8 @@ void print_hypotheses(const Member& member,
 						<< std::setw(5) << local_fraction * 100 << "% "
 						<< locks2string(match.first) << std::endl;
 					if (bugsql) {
-						print_bugsql(prefix, "\n", member, match.first, true);
+						print_bugsql(prefix, "\n", member, match.first, true,
+							member.occurrences_with_locks - match.second);
 					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
@@ -387,7 +397,8 @@ void print_hypotheses(const Member& member,
 						<< match_fraction * 100 << ";"
 						<< this_is_the_winner << ";"
 						<< "TODO;";
-					print_bugsql("", "\n", member, match.first, true);
+					print_bugsql("", "\n", member, match.first, true,
+						member.occurrences_with_locks - match.second);
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 					all_lock_orders.push_back(match);
 				}
@@ -404,7 +415,8 @@ void print_hypotheses(const Member& member,
 				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
 			if (bugsql) {
-				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true);
+				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true,
+					member.occurrences_with_locks - h.occurrences);
 			}
 		}
 		printed++;
@@ -456,7 +468,8 @@ void print_hypotheses(const Member& member,
 					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
 					<< this_is_the_winner << ";"
 					<< "TODO;";
-				print_bugsql("", "\n", member, lo.first, true);
+				print_bugsql("", "\n", member, lo.first, true,
+					member.occurrences_with_locks - lo.second);
 			} else if (this_is_the_winner) {
 				// TODO properly group member r/w accesses
 				doc_map[member.datatype][lo.first].push_back(member.combined_name());
