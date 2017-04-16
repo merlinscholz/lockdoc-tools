@@ -94,7 +94,8 @@ do
 	rm -f ${table}.csv ${table}.csv.pv
 	mkfifo ${table}.csv ${table}.csv.pv
 	if [ $table = accesses ]; then BUFSIZE=100m; else BUFSIZE=10m; fi
-	pv --buffer-size $BUFSIZE -c -r -a -b -T -l -N ${table} < ${table}.csv > ${table}.csv.pv &
+	#pv --buffer-size $BUFSIZE -c -r -a -b -T -l -N ${table} < ${table}.csv > ${table}.csv.pv &
+	cat < ${table}.csv > ${table}.csv.pv &
 	import_table ${table} &
 done
 
@@ -112,7 +113,7 @@ fi
 
 wait
 mysqloptimize $DB
-reset
+#reset
 
 for table in "${TABLES[@]}"
 do
