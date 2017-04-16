@@ -84,7 +84,7 @@ fi
 mysql $DB < ${TOOLS_PATH}/queries/db-scheme.sql
 if [ ${?} -ne 0 ];
 then
-	echo "Cannot aplly db scheme!">&2
+	echo "Cannot apply db scheme!">&2
 	exit 1
 fi
 
