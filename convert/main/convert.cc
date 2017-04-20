@@ -197,6 +197,8 @@ static void printUsageAndExit(const char *elf) {
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
 		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
+		" -u  include non-static locks with unknown allocation in output\n"
+		"     (these will be assigned to a pseudo allocation with ID 1)\n"
 		" -h  help\n";
 	exit(EXIT_FAILURE);
 }
@@ -584,9 +586,10 @@ int main(int argc, char *argv[]) {
 	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter, isGZ;
 	char action, param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
-	bool processSeqlock = false;
+	bool processSeqlock = false, includeAllLocks = false;
+	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:u")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
@@ -599,6 +602,9 @@ int main(int argc, char *argv[]) {
 			break;
 		case 's':
 			processSeqlock = true;
+			break;
+		case 'u':
+			includeAllLocks = true;
 			break;
 		case 'm':
 			memberBlacklistName = optarg;
@@ -746,6 +752,13 @@ int main(int argc, char *argv[]) {
 	
 	for (const auto& memberName : memberNames) {
 		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
+	}
+
+	if (includeAllLocks) {
+		// create pseudo alloc for locks we don't know the alloc they belong to
+		pseudoAllocID = curAllocID++;
+		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
+		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
 	}
 
 	// Start reading the inputfile
@@ -972,6 +985,13 @@ int main(int argc, char *argv[]) {
 #ifdef VERBOSE
 						cout << "Found static lock: " << showbase << hex << ptr << noshowbase << endl;
 #endif
+					} else if (includeAllLocks) {
+						// non-static lock, but we don't known the allocation it belongs to
+#ifdef VERBOSE
+						cout << "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation: "
+							<< showbase << hex << ptr << noshowbase << endl;
+#endif
+						allocation_id = pseudoAllocID;
 					} else {
 #ifdef VERBOSE
 						cerr << "Lock at address " << showbase << hex << ptr << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT << endl;
