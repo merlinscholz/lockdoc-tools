@@ -9,6 +9,7 @@ convert
 	  - den Inhalt von EBP lesen, dereferenzieren, 4 Bytes lesen, 4 addieren, dereferenzieren, 4 Bytes lesen (Rücksprungadresse auf dem Stack des Callers)
 	  - ...(jew. gucken, ob das ne gemappte Adresse ist, sonst abbrechen)
 	  -> dann ließen sich Bugs noch besser eingrenzen, weil man sieht, von wem die Fkt aufgerufen wurde, die das Problem triggert
+	 - automatisch alle Member vom atomic_t/atomic64_t ignorieren
 
 Datenbank
 =========
