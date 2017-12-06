@@ -1,0 +1,44 @@
+VM
+==
+
+- VM heißt lockdebugging32 auf virtuos
+- Per Default startet die VM einen Benchmark, damit man nach dem wegkopieren sofort mit FAIL loslegen kann.
+  Daher muss man, möchte man ins Failsafe starten, ziemlich schnell auf der graphischen VM-Konsole die Pfeiltasten drücken. :-)
+- Bootloader ist LILO (warum auch immer; hab' den Grund vergessen; es gab aber einen)
+- Default-Eintrag steht in /etc/lilo.conf; Update mit update-lilo
+- Einträge spielgen Konfig wieder, z.B. 'bench-4-10-noc' --> Führt Benchmark auf Kernel 4.10, der ohne Coccinelle instrumentiert wurde, aus
+- Der Benchmark wird über den Kernel-Parameter init gestartet: init=/home/al/run-bench.sh
+- Der Benchmark selbst wird über die Serielle von BOCHS erfragt, siehe run-bench.sh
+- IP kommt vom DHCP, dürfte aber auf längere Sicht 129.217.43.92 sein.
+- Kernel liegen unter /opt/kernel/linux-32-lockdebugging-{3-16,4-10}
+
+Kernel
+======
+
+- Repo: /fs/staff/al/repos/lockdebugging/linux
+- Branches: lockdebugging-{3-16,4-10}
+- Default Config liegt in root-Verzeichnis: config-lockdebugging bzw. default-config
+- Nach einem neu Bauen des Kernels:
+	* installieren: make install (modules_install is nicht nötig, da es ein statischer Kernel ist)
+	* VMLINUX sichern: scp vmlinux ios:/fs/scratch/al/coccinelle/tools/data/vmlinux-4-10-nococci-20170402 (vmlinux-<Kernel-Version>-<mit oder ohne Coccinelle>-<Datum>)
+
+Datenbanken
+===========
+
+- Namensschema: lockdebugging_<Benchmark>_<Kernel-Version>_<mit oder ohne Cocci>
+- Die Daten für die Moriks dürften aus lockdebugging_mixed_fs_4_10_nococci oder lockdebugging_mixed_fs_3_16_nococci stammen. Ich vermute stark, dass ich die 4.10er Daten genommen habe.
+
+Groundtruth
+===========
+
+- Infos dazu finden sich in https://repos.cs.uni-dortmund.de/essvn/papers/trunk/17/sosp/notes/{inode,probleme}.txt
+- Darin finden sich auch Codestellen, wo die Infos her sind. Für die Inode findet man viele Infos in http://elixir.free-electrons.com/linux/v4.10/source/include/linux/fs.h#L553.
+  Für die anderen Datenstrukturen muss man oft den Code und deren Verwendung lesen.
+- Im Tools-Repo unter data/ findet sich die aktuelle Darstellung der Wahrheit: groundtruth.csv
+- Für transaction_t (aka struct transaction_s): http://elixir.free-electrons.com/linux/v4.10/source/include/linux/jbd2.h#L543
+- Für journal_t (aka struct journal_s): http://elixir.free-electrons.com/linux/v4.10/source/include/linux/jbd2.h#L795
+
+Fail
+====
+
+- ../bin/fail-client -Wf,--benchmark=mixed_fs -Wf,--port=<port> -q -f <bochsrc> 2>&1 | tee out.txt
