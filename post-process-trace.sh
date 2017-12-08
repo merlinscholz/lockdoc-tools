@@ -28,4 +28,6 @@ fi
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
 echo "Flatten structs layout..."
 ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
+echo "Deleting accesses to atomic members..."
+${TOOLS_PATH}/queries/del-atomic-from-trace.sh
 ${TOOLS_PATH}/run-hypothesizer.sh ${DB}
