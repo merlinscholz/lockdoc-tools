@@ -15,7 +15,7 @@ DB=${1}
 MYSQL="mysql $DB"
 
 $MYSQL <<EOT
-DELETE accesses
+DELETE ac
 FROM accesses AS ac
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
 INNER JOIN data_types AS dt ON dt.id=a.type
@@ -25,7 +25,7 @@ LEFT JOIN structs_layout_flat sl
 LEFT JOIN member_names AS mn
   ON mn.id = sl.member_id
 WHERE
-	sl.type like "%atomic_t%" or sl.type like "%atomic64_t*";
+	sl.type like "%atomic_t%" or sl.type like "%atomic64_t*"
 EOT
 
 

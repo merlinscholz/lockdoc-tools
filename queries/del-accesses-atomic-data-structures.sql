@@ -6,7 +6,7 @@
 --	mn.name AS sl_member,
 --	sl.member_id AS sl_member_id,
 --	COUNT(*) AS count
-DELETE accesses
+DELETE ac
 FROM accesses AS ac
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
 INNER JOIN data_types AS dt ON dt.id=a.type
