@@ -16,8 +16,4 @@ LEFT JOIN structs_layout_flat sl
 LEFT JOIN member_names AS mn
   ON mn.id = sl.member_id
 WHERE
-	sl.type like "%atomic_t%" or sl.type like "%atomic64_t*"
-GROUP BY
-	a.type, sl.member_id
-ORDER BY
-	count DESC;
+	sl.type like "%atomic_t%" or sl.type like "%atomic64_t*";
