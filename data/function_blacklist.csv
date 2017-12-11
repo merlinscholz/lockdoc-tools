@@ -85,4 +85,8 @@ journal_t;\N;jbd2_journal_load
 journal_t;\N;load_superblock
 journal_t;\N;jbd2_journal_recover
 journal_t;j_commit_timer;init_timer_key
+journal_t;\N;jbd2_journal_init_revoke
+journal_t;\N;jbd2_stats_proc_init
+journal_t;\N;jbd2_journal_init_dev
 transaction_t;\N;jbd2_get_transaction
+transaction_t;\N;start_this_handle
