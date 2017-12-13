@@ -1,6 +1,7 @@
 SELECT
 	ac_type,
 	ac_fn,
+	hex(ac_instr_ptr),
 	sl_member,
 	COUNT(*) AS num
 FROM
@@ -10,6 +11,7 @@ FROM
 		ac.txn_id AS ac_txn_id,
 		ac.type AS ac_type,
 		ac.fn AS ac_fn,
+		ac.instrPtr AS ac_instr_ptr,
 		mn.name AS sl_member,
 		sl.member_id AS sl_member_id
 	FROM accesses AS ac
@@ -42,5 +44,5 @@ LEFT JOIN structs_layout_flat sl2
 LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
  WHERE
 	lh.start IS NULL
-GROUP BY ac_type, sl_member_id, ac_fn
-ORDER BY ac_type, sl_member_id, ac_fn, num DESC;
+GROUP BY ac_type, sl_member_id, ac_fn, ac_instr_ptr
+ORDER BY ac_type, sl_member_id, ac_fn, ac_instr_ptr, num DESC;
