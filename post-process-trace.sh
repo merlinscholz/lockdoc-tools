@@ -26,8 +26,28 @@ then
 fi
 
 ${TOOLS_PATH}/conv-import.sh ${DB} -1
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot convert and import trace!">&2 
+	exit 1
+fi 
 echo "Flatten structs layout..."
 ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot flatten structs layout!">&2 
+	exit 1
+fi 
 echo "Deleting accesses to atomic members..."
 ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot delete atomic members!">&2 
+	exit 1
+fi 
 ${TOOLS_PATH}/run-hypothesizer.sh ${DB}
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot run hypothesizer!">&2 
+	exit 1
+fi 
