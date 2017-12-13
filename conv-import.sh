@@ -32,6 +32,12 @@ then
 	exit 1
 fi
 
+if [ ! -z ${CONVERT_BINARY} ];
+then
+	echo "Using different convert binary: ${CONVERT_BINARY}"
+	CONVERT=${CONVERT_BINARY}
+fi
+
 if [ ! -f ${CONVERT} ];
 then
 	echo "${CONVERT} does not exist!" >&2
