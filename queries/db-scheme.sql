@@ -98,22 +98,3 @@ CREATE TABLE `member_blacklist` (			-- A per datatype list of blacklisted functi
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 
-
--- FIXME which of these columns may really become NULL?
-CREATE TABLE `lock_symbols` (
-  `ac_id` int(11) UNSIGNED DEFAULT NULL,
-  `alloc_id` int(11) UNSIGNED NOT NULL,
-  `type` enum('r','w') DEFAULT NULL,
-  `data_type` int(11) UNSIGNED DEFAULT NULL,
-  `locks` varchar(255) DEFAULT NULL,
-  `lock_types` varchar(255) DEFAULT NULL,
-  `embedded_in_type` varchar(255) DEFAULT NULL,
-  `embedded_in_same` varchar(255) DEFAULT NULL,
-  `offset` tinyint(11) DEFAULT NULL,
-  `size` tinyint(11) DEFAULT NULL,
-  `member` varchar(255) DEFAULT NULL,
-  `pos` varchar(400) DEFAULT NULL,
-  `preemptcount` varchar(255) DEFAULT NULL,
-  `ac_fn` varchar(255) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8
-;
