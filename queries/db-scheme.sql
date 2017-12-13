@@ -85,7 +85,7 @@ CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted func
   `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
   `datatype_member_id` int(11) DEFAULT NULL,
   `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
-  PRIMARY KEY (`datatype_id`,`fn`),
+  PRIMARY KEY (`datatype_id`,`datatype_member_id`,`fn`),
   KEY `fk_datatype_id` (`datatype_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
