@@ -9,8 +9,9 @@ SELECT
 		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
 		WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
 		WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+		WHEN lh.lastPreemptCount IS NULL THEN 'nolock'
 		ELSE 'unknown'
-	END AS context,
+	END AS context, lh.lastPreemptCount AS preemptCount,
 	COUNT(*) AS num
 FROM
 (
@@ -30,7 +31,9 @@ FROM
 	FROM accesses AS ac
 	INNER JOIN allocations AS a ON a.id=ac.alloc_id
 	INNER JOIN data_types AS dt ON dt.id=a.type
-	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+	LEFT JOIN structs_layout_flat sl
+	  ON a.type = sl.type_id
+	 AND ac.address - a.ptr = sl.helper_offset
 	LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 	LEFT JOIN function_blacklist fn_bl
 	  ON fn_bl.datatype_id = a.type
@@ -38,9 +41,9 @@ FROM
 	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 	WHERE 
 		-- Name the data type of interest here
-		a.type = (SELECT id FROM data_types WHERE name = 'inode') AND
---		ac.type  IN ('r','w') AND -- Filter by access type
---		sl.member IN ('i_hash') AND -- Only show results for a certain member
+		a.type = (SELECT id FROM data_types WHERE name = 'transaction_t') AND
+		ac.type  IN ('w') AND -- Filter by access type
+--		sl.member_id IN (SELECT id FROM member_names WHERE name in ('t_tid')) AND -- Only show results for a certain member
 		fn_bl.fn IS NULL
 	GROUP BY ac.id -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
 ) s
