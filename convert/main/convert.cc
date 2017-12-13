@@ -50,7 +50,7 @@ struct LockPos {
 	int lastLine;												// Position within the file where the lock has been acquired for the last time
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
-	string lastLockFn;											// Lock function used the last time
+//	string lastLockFn;											// Lock function used the last time
 	int lastPreemptCount;										// Value of preemptcount() after the lock has been acquired
 
 };
@@ -100,6 +100,7 @@ struct MemAccess {
 	unsigned long long address;									// Accessed address
 	unsigned long long stackPtr;								// Stack pointer
 	unsigned long long instrPtr;								// Instruction pointer
+	unsigned long long preemptCount;								// __preempt_count
 };
 
 /**
@@ -208,6 +209,16 @@ static void printVersion()
 	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
 }
 
+// returns stringified var if cond is false, or "NULL" if cond is true
+template <typename T>
+static inline std::string sql_null_if(T var, bool cond)
+{
+	if (!cond) {
+		return std::to_string(var);
+	}
+	return "\\N";
+}
+
 // caching wrapper around cus__get_function_at_addr
 static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 {
@@ -288,7 +299,7 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 					locksHeldOFile << tempLockPos.start << delimiter;
 					locksHeldOFile << tempLockPos.lastFile << delimiter;
 					locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
-					locksHeldOFile << tempLockPos.lastPreemptCount << delimiter << tempLockPos.lastLockFn << "\n";
+					locksHeldOFile << tempLockPos.lastPreemptCount << "\n";
 				} else {
 					cerr << "TXN: Internal error, lock is part of the TXN hierarchy but not held? lockPtr = " << showbase << hex << thisTXN.lockPtr << noshowbase << endl;
 				}
@@ -376,6 +387,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stackPtr << delimiter << tempAccess.instrPtr;
+		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1);
 		*pMemAccessOFile << delimiter << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
 		++accessCount;
 	}
@@ -543,16 +555,6 @@ static int extractStructDefs(struct cus *cus, const char *filename) {
 	return 0;
 }
 
-// returns stringified var if cond is false, or "NULL" if cond is true
-template <typename T>
-static inline std::string sql_null_if(T var, bool cond)
-{
-	if (!cond) {
-		return std::to_string(var);
-	}
-	return "\\N";
-}
-
 static int isGZIPFile(const char *filename) {
 	int fd, bytes;
 	unsigned char buffer[2];
@@ -579,11 +581,11 @@ static int isGZIPFile(const char *filename) {
 
 int main(int argc, char *argv[]) {
 	stringstream ss;
-	string inputLine, token, typeStr, file, fn, lockfn, lockType;
+	string inputLine, token, typeStr, file, fn, lockType;
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
-	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCountLock = 0xaa, preemptCountAC = 0xbb;
 	int lineCounter, isGZ;
 	char action, param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false;
@@ -727,7 +729,7 @@ int main(int argc, char *argv[]) {
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
 	accessOFile << "ts" << delimiter;
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
-	accessOFile << "stackptr" << delimiter << "instrptr" << delimiter << "fn" << endl;
+	accessOFile << "stackptr" << delimiter << "instrptr" << delimiter << "preemptcount" << delimiter << "fn" << endl;
 
 	locksOFile << "id" << delimiter << "ptr" << delimiter;
 	locksOFile << "embedded" << delimiter << "locktype" << endl;
@@ -735,7 +737,7 @@ int main(int argc, char *argv[]) {
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
 	locksHeldOFile << "lastFile" << delimiter << "lastLine" << delimiter << "lastFn" << delimiter;
-	locksHeldOFile << "lastPreemptCount" << delimiter << "lastLockFn" << endl;
+	locksHeldOFile << "lastPreemptCount" << endl;
 
 	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 
@@ -817,19 +819,23 @@ int main(int argc, char *argv[]) {
 				line = 42;
 			}
 			fn = lineElems.at(7);
-			lockfn = lineElems.at(8);
-			lockType = lineElems.at(9);
+			lockType = lineElems.at(8);
+			if (lineElems.at(9).compare("NULL") != 0) {
+				preemptCountLock = std::stoull(lineElems.at(9),NULL,16);
+			}
 			if (lineElems.at(10).compare("NULL") != 0) {
-				preemptCount = std::stoull(lineElems.at(10),NULL,16);
+				address = std::stoull(lineElems.at(10),NULL,16);
 			}
 			if (lineElems.at(11).compare("NULL") != 0) {
-				address = std::stoull(lineElems.at(11),NULL,16);
+				instrPtr = std::stoull(lineElems.at(11),NULL,16);
 			}
 			if (lineElems.at(12).compare("NULL") != 0) {
-				instrPtr = std::stoull(lineElems.at(12),NULL,16);
+				stackPtr = std::stoull(lineElems.at(12),NULL,16);
 			}
 			if (lineElems.at(13).compare("NULL") != 0) {
-				stackPtr = std::stoull(lineElems.at(13),NULL,16);
+				preemptCountAC = std::stoull(lineElems.at(13),NULL,16);
+			} else {
+				preemptCountAC = -1;
 			}
 
 		} catch (exception &e) {
@@ -929,8 +935,7 @@ int main(int argc, char *argv[]) {
 						tempLockPos.lastLine = line;
 						tempLockPos.lastFile = file;
 						tempLockPos.lastFn = fn;
-						tempLockPos.lastLockFn = lockfn;
-						tempLockPos.lastPreemptCount = preemptCount;
+						tempLockPos.lastPreemptCount = preemptCountLock;
 
 						// a P() suspends the current TXN and creates a new one
 						startTXN(ts, ptr);
@@ -1023,8 +1028,7 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastLine = line;
 				tempLockPos.lastFile = file;
 				tempLockPos.lastFn = fn;
-				tempLockPos.lastLockFn = lockfn;
-				tempLockPos.lastPreemptCount = preemptCount;
+				tempLockPos.lastPreemptCount = preemptCountLock;
 
 				locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
 				locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << "\n";
@@ -1057,6 +1061,7 @@ int main(int argc, char *argv[]) {
 				tempAccess.address = address;
 				tempAccess.stackPtr = stackPtr;
 				tempAccess.instrPtr = instrPtr;
+				tempAccess.preemptCount = preemptCountAC;
 				break;
 				}
 		}

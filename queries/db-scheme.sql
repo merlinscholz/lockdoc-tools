@@ -8,6 +8,7 @@ CREATE TABLE `accesses` (
   `address` int(11) UNSIGNED NOT NULL,		-- The start address of this access
   `stackptr` int(11) UNSIGNED NOT NULL,		-- stack pointer
   `instrptr` int(11) UNSIGNED NOT NULL,		-- current instruction pointer when the access happened
+  `preemptcount` int(11) UNSIGNED DEFAULT NULL,		-- current __preempt_count pointer when the access happened
   `fn` varchar(255) DEFAULT NULL,		-- The function name (aka resolved instruction pointer)
   PRIMARY KEY (`id`),
   KEY `fk_alloc_id` (`alloc_id`)
@@ -43,7 +44,6 @@ CREATE TABLE `locks_held` (			-- Normally, there are several entries for one TXN
   `lastLine` int(11) UNSIGNED DEFAULT NULL,	-- Last line 
   `lastFn` varchar(255) DEFAULT NULL,		-- Last function where the lock has been acquired from
   `lastPreemptCount` int(11) UNSIGNED DEFAULT NULL,	-- Value of preemptcount() after the lock has been acquired
-  `lastLockFn` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`lock_id`,`txn_id`),
   KEY `fk_txn_id` (`txn_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
