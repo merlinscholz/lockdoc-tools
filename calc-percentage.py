@@ -72,7 +72,7 @@ if __name__ == '__main__':
 		else:
 			LOGGER.debug('Key "%s" not found', key)
 			dataTypeResults['notfound'] = dataTypeResults['notfound'] + 1
-	LOGGER.debug('Read %d locking predictions from "%s"', len(groundtruthDict), resultsCSV)
+	LOGGER.debug('Read %d locking predictions from "%s"', count, resultsCSV)
 
 	if args.machine_output:
 		print('datatype' + separator + 'count' + separator + 'positive' + separator + 'negative' + separator + 'notfound' + separator + 'percentage')
