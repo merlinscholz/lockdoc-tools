@@ -70,10 +70,10 @@ if __name__ == '__main__':
 			if re.match(RO_MEMBER_STRING, locks['comment']):
 				dataTypeResults['count'] = dataTypeResults['count'] + 1
 				if line['locks'] == 'nolock' and (line['type'], line['member'], 'w') not in results:
-					LOGGER.debug('Match for key "%s" found: Is a ro member (%s).', key, locks['comment'])
+					LOGGER.debug('Match for key "%s" found: Is a ro member (comment:%s, prediction: %s, no writes: %s).', key, locks['comment'], line['locks'] == 'nolock', (line['type'], line['member'], 'w') not in results)
 					dataTypeResults['positive'] = dataTypeResults['positive'] + 1
 				else:
-					LOGGER.debug('No match for key "%s" found: Is NOT a ro member.', key)
+					LOGGER.debug('No match for key "%s" found: Is NOT a ro member(comment:%s, prediction: %s, no writes: %s).', key, locks['comment'], line['locks'] == 'nolock', (line['type'], line['member'], 'w') not in results)
 					dataTypeResults['negative'] = dataTypeResults['negative'] + 1
 			else:
 				LOGGER.debug('Key "%s" should not be a ro member.', key)
