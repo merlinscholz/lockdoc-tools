@@ -98,7 +98,7 @@ struct MemAccess {
 	char action;												// Access type: r or w
 	int size;													// Size of memory access
 	unsigned long long address;									// Accessed address
-	unsigned long long stackPtr;								// Stack pointer
+	unsigned long long stacktrace_id;								// Stack pointer
 	unsigned long long instrPtr;								// Instruction pointer
 	unsigned long long preemptCount;								// __preempt_count
 };
@@ -147,6 +147,11 @@ static std::deque<TXN> activeTXNs;
  * The key is the name, and the value is a name's global id.
  */
 static map<string,unsigned long long> memberNames;
+/**
+ * A map of all stacktraces found in all data types.
+ * The key is the stacktrace, and the value is a stacktrace's global id.
+ */
+static map<string,unsigned long long> stacktraces;
 
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
@@ -187,6 +192,10 @@ static unsigned long long curTXNID = 1;
  * The next id for a member name
  */
 static unsigned long long curMemberNameID = 1;
+/**
+ * The next id for a stacktrace
+ */
+static unsigned long long curStacktraceID = 1;
 
 static struct cus *cus;
 char delimiter = DELIMITER_CHAR;
@@ -386,7 +395,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
-		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stackPtr << delimiter << tempAccess.instrPtr;
+		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id << delimiter << tempAccess.instrPtr;
 		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1);
 		*pMemAccessOFile << delimiter << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
 		++accessCount;
@@ -421,6 +430,23 @@ static unsigned long long addMemberName(const char *member_name) {
 	if (it == memberNames.cend()) {
 		ret = curMemberNameID++;
 		memberNames.emplace(member_name,ret);
+	} else {
+		ret = it->second;
+	}
+	return ret;
+}
+
+static unsigned long long addStacktrace(std::string stacktrace) {
+	unsigned long long ret;
+
+	// Remove the last character since it always is a comma.
+	stacktrace.pop_back();
+	// Do we know that member name?
+	const auto it = find_if(stacktraces.cbegin(), stacktraces.cend(),
+		[&stacktrace](const pair<string, unsigned long long> &value ) { return value.first == stacktrace; } );
+	if (it == stacktraces.cend()) {
+		ret = curStacktraceID++;
+		stacktraces.emplace(stacktrace,ret);
 	} else {
 		ret = it->second;
 	}
@@ -581,13 +607,13 @@ static int isGZIPFile(const char *filename) {
 
 int main(int argc, char *argv[]) {
 	stringstream ss;
-	string inputLine, token, typeStr, file, fn, lockType;
+	string inputLine, token, typeStr, file, fn, lockType, stacktrace;
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
-	unsigned long long ts = 0, ptr, size = 0, line = 0, address = 0x4711, stackPtr = 0x1337, instrPtr = 0xc0ffee, preemptCountLock = 0xaa, preemptCountAC = 0xbb;
+	unsigned long long ts = 0, ptr = 0x1337, size = 4711, line = 1337, address = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	int lineCounter, isGZ;
-	char action, param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
+	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
@@ -719,6 +745,7 @@ int main(int argc, char *argv[]) {
 	ofstream fnblacklistOFile("function_blacklist.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream memberblacklistOFile("member_blacklist.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream stacktracesOFile("stacktraces.csv",std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << delimiter << "name" << endl;
@@ -729,7 +756,7 @@ int main(int argc, char *argv[]) {
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
 	accessOFile << "ts" << delimiter;
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
-	accessOFile << "stackptr" << delimiter << "instrptr" << delimiter << "preemptcount" << delimiter << "fn" << endl;
+	accessOFile << "stacktrace_id" << delimiter << "instrptr" << delimiter << "preemptcount" << delimiter << "fn" << endl;
 
 	locksOFile << "id" << delimiter << "ptr" << delimiter;
 	locksOFile << "embedded" << delimiter << "locktype" << endl;
@@ -747,6 +774,8 @@ int main(int argc, char *argv[]) {
 	memberblacklistOFile << "datatype_id" << delimiter << "datatype_member_id" << endl;
 		
 	membernamesOFile << "id" << delimiter << "member_name" << endl;
+	
+	stacktracesOFile << "id" << delimiter << "stacktrace" << endl;
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
@@ -795,49 +824,51 @@ int main(int argc, char *argv[]) {
 
 		// Parse each element
 		ts = std::stoull(lineElems.at(0));
-		if (lineElems.size() != MAX_COLUMNS) {
+		/*if (lineElems.size() != MAX_COLUMNS) {
 			cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
 			return EXIT_FAILURE;
-		}
+		}*/
+		ptr = 0x1337, size = 4711, line = 1337, address = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+		lockType = file = stacktrace = fn = "empty";
 		try {
 			action = lineElems.at(1).at(0);
-			typeStr = lineElems.at(2);
-			if (lineElems.at(3).compare("NULL") != 0) {
-				ptr = std::stoull(lineElems.at(3),NULL,16);
-			} else {
-				ptr = 0;
+			switch (action) {
+			case 'a':
+			case 'f':
+				{
+					typeStr = lineElems.at(2);
+					ptr = std::stoull(lineElems.at(3),NULL,16);
+					size = std::stoull(lineElems.at(4));
+					break;
+				}
+			case 'p':
+			case 'v':
+				{
+					typeStr = lineElems.at(2);
+					ptr = std::stoull(lineElems.at(3),NULL,16);
+					file = lineElems.at(5);
+					line = std::stoull(lineElems.at(6));
+					fn = lineElems.at(7);
+					lockType = lineElems.at(8);
+					preemptCount = std::stoull(lineElems.at(9),NULL,16);
+					break;
+				}
+			case 'r':
+			case 'w':
+				{
+					ptr = std::stoull(lineElems.at(2),NULL,16);
+					size = std::stoull(lineElems.at(3));
+					address = std::stoull(lineElems.at(4),NULL,16);
+					instrPtr = std::stoull(lineElems.at(5),NULL,16);
+					stacktrace = lineElems.at(6);
+					if (lineElems.at(7).compare("NULL") != 0) {
+						preemptCount = std::stoull(lineElems.at(7),NULL,16);
+					} else {
+						preemptCount = -1;
+					}
+					break;
+				}
 			}
-			if (lineElems.at(4).compare("NULL") != 0) {
-				size = std::stoull(lineElems.at(4));
-			} else {
-				size = 0;
-			}
-			file = lineElems.at(5);
-			if (lineElems.at(6).compare("NULL") != 0) {
-				line = std::stoull(lineElems.at(6));
-			} else {
-				line = 42;
-			}
-			fn = lineElems.at(7);
-			lockType = lineElems.at(8);
-			if (lineElems.at(9).compare("NULL") != 0) {
-				preemptCountLock = std::stoull(lineElems.at(9),NULL,16);
-			}
-			if (lineElems.at(10).compare("NULL") != 0) {
-				address = std::stoull(lineElems.at(10),NULL,16);
-			}
-			if (lineElems.at(11).compare("NULL") != 0) {
-				instrPtr = std::stoull(lineElems.at(11),NULL,16);
-			}
-			if (lineElems.at(12).compare("NULL") != 0) {
-				stackPtr = std::stoull(lineElems.at(12),NULL,16);
-			}
-			if (lineElems.at(13).compare("NULL") != 0) {
-				preemptCountAC = std::stoull(lineElems.at(13),NULL,16);
-			} else {
-				preemptCountAC = -1;
-			}
-
 		} catch (exception &e) {
 			cerr << "Exception occurred (ts="<< ts << "): " << e.what() << endl;
 		}
@@ -941,7 +972,7 @@ int main(int argc, char *argv[]) {
 						tempLockPos.lastLine = line;
 						tempLockPos.lastFile = file;
 						tempLockPos.lastFn = fn;
-						tempLockPos.lastPreemptCount = preemptCountLock;
+						tempLockPos.lastPreemptCount = preemptCount;
 
 						// a P() suspends the current TXN and creates a new one
 						startTXN(ts, ptr);
@@ -1034,7 +1065,7 @@ int main(int argc, char *argv[]) {
 				tempLockPos.lastLine = line;
 				tempLockPos.lastFile = file;
 				tempLockPos.lastFn = fn;
-				tempLockPos.lastPreemptCount = preemptCountLock;
+				tempLockPos.lastPreemptCount = preemptCount;
 
 				locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
 				locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << "\n";
@@ -1065,9 +1096,9 @@ int main(int argc, char *argv[]) {
 				tempAccess.action = action;
 				tempAccess.size = size;
 				tempAccess.address = address;
-				tempAccess.stackPtr = stackPtr;
+				tempAccess.stacktrace_id = addStacktrace(stacktrace);
 				tempAccess.instrPtr = instrPtr;
-				tempAccess.preemptCount = preemptCountAC;
+				tempAccess.preemptCount = preemptCount;
 				break;
 				}
 		}
@@ -1196,6 +1227,10 @@ int main(int argc, char *argv[]) {
 			<< itMember->second << endl;
 	}
 
+	for (const auto& stacktrace : stacktraces) {
+		stacktracesOFile << stacktrace.second << delimiter << stacktrace.first << endl;
+	}
+	
 	cerr << "Finished." << endl;
 
 	return EXIT_SUCCESS;

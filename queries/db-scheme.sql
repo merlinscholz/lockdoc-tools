@@ -6,7 +6,7 @@ CREATE TABLE `accesses` (
   `type` enum('r','w') NOT NULL,		-- Defines the event type, read vs. write access
   `size` tinyint(11) UNSIGNED NOT NULL,		-- How many bytes were written?
   `address` int(11) UNSIGNED NOT NULL,		-- The start address of this access
-  `stackptr` int(11) UNSIGNED NOT NULL,		-- stack pointer
+  `stacktrace_id` int(11) UNSIGNED NOT NULL,		-- References a stacktrace
   `instrptr` int(11) UNSIGNED NOT NULL,		-- current instruction pointer when the access happened
   `preemptcount` int(11) UNSIGNED DEFAULT NULL,		-- current __preempt_count pointer when the access happened
   `fn` varchar(255) DEFAULT NULL,		-- The function name (aka resolved instruction pointer)
@@ -77,6 +77,13 @@ CREATE TABLE `data_types` (
 CREATE TABLE `member_names` (
   `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a member name
   `name` varchar(255) NOT NULL,			-- A humand-readable id of a member name
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+;
+
+CREATE TABLE `stacktraces` (
+  `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a stacktrace
+  `stacktrace` varchar(255) NOT NULL,			-- The actual stacktrace
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
