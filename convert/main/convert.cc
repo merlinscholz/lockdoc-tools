@@ -873,6 +873,9 @@ int main(int argc, char *argv[]) {
 				tempAlloc.start = ts;
 				tempAlloc.idx = datatype_idx;
 				tempAlloc.size = size;
+#ifdef VERBOSE
+				cerr << "Added allocation at " << showbase << hex << ptr << noshowbase << dec << ", Type:" << typeStr << ", Size:" << size << endl;
+#endif
 				break;
 				}
 		case 'f':
@@ -902,6 +905,9 @@ int main(int argc, char *argv[]) {
 				}
 
 				activeAllocs.erase(itAlloc);
+#ifdef VERBOSE
+				cerr << "Removed allocation at " << showbase << hex << ptr << noshowbase << dec << ", Type:" << typeStr << ", Size:" << size << endl;
+#endif
 				break;
 				}
 		case 'v':
