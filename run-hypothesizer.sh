@@ -19,13 +19,19 @@ fi
 DB=$1
 shift
 
-HYPO_INPUT=all_txns_members_locks_db.csv 
+HYPO_INPUT_NOSTACK=all_txns_members_locks_db_nostack.csv 
+HYPO_INPUT_STACK=all_txns_members_locks_db_stack.csv 
 NO_LOCK_THRESHOLD=5.0
 
 echo "Retrieving txns members locks..."
-time mysql ${DB} < ${TOOLS_PATH}/queries/txns_members_locks.sql > ${HYPO_INPUT}
+time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh nostack | mysql ${DB} > ${HYPO_INPUT_NOSTACK}"
+time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh stack | mysql ${DB} > ${HYPO_INPUT_STACK}"
 echo "Running hypothesizer..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > all_txns_members_locks_hypo.txt        &
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_winner.csv &
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs.txt   &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_nostack.txt        &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_winner_nostack.csv &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_bugs_nostack.txt   &
+wait
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_stack.txt        &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_winner_stack.csv &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_bugs_stack.txt   &
 wait
