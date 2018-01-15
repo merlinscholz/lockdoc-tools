@@ -83,7 +83,7 @@ CREATE TABLE `member_names` (
 
 CREATE TABLE `stacktraces` (
   `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a stacktrace
-  `stacktrace` varchar(255) NOT NULL,			-- The actual stacktrace
+  `stacktrace` varchar(400) NOT NULL,			-- The actual stacktrace
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
