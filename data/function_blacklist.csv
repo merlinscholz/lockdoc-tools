@@ -51,6 +51,8 @@ inode;\N;debugfs_mknod
 inode;\N;proc_pid_make_inode
 inode;\N;init_special_inode
 inode;\N;mount_pseudo_xattr
+inode;\N;proc_setup_thread_self
+inode;\N;debugfs_create_dir
 super_block;\N;ext4_fill_super
 super_block;\N;inode_init_always
 super_block;\N;jbd2_journal_init_inode
