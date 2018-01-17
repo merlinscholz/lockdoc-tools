@@ -78,7 +78,7 @@ def main():
 	# Fetach *all* stacktraces, and count them.
 	# For now, we also include stacktrace which might be ignored due to 
 	# blacklists.
-	query = 'SELECT st.stacktrace, COUNT(*)\
+	query = 'SELECT ac.instrptr, st.stacktrace, COUNT(*)\
 			 FROM accesses AS ac \
 			 INNER JOIN stacktraces AS st ON ac.stacktrace_id = st.id\
 			 JOIN allocations a\
@@ -92,7 +92,7 @@ def main():
 			  {member}\
 			  {datatype}\
 			  {accesstype}\
-			 GROUP BY ac.stacktrace_id;'.format(member=memberfilter,datatype=datatypefilter,accesstype=accesstypefilter)
+			 GROUP BY ac.stacktrace_id, ac.instrptr;'.format(member=memberfilter,datatype=datatypefilter,accesstype=accesstypefilter)
 
 	db = MySQLdb.connect(host,user,password,database)
 	cursor = db.cursor()
@@ -102,18 +102,20 @@ def main():
 		results = cursor.fetchall()
 		for row in results:
 			i = 0
-			traceElems = row[0].split(',')
+			traceElems = row[1].split(',')
+			# Insert the instruction pointer
+			traceElems.insert(0,row[0])
 			length = len(traceElems)
-			LOGGER.debug("%s --> %s", str(traceElems), str(row[1]))
+			LOGGER.debug("%s --> %s", str(traceElems), str(row[2]))
 			# Convert the stacktrace into edges
 			# Each returnaddress will be used twice except the first and very last one.
 			for i in range(0,length - 2):
 				key = (traceElems[i + 1],traceElems[i])
 				# If we've seen this edge before, accumulate the count.
 				if key in edges:
-					edges[key] += row[1]
+					edges[key] += row[2]
 				else:
-					edges[key] = row[1]
+					edges[key] = row[2]
 				LOGGER.debug("%s --> %s", str(key), str(edges[key]))
 	except Exception as e:
 		print 'Error: ' + str(e)
