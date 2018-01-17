@@ -24,7 +24,7 @@ logging.basicConfig()
 LOGGER = logging.getLogger(__name__)  
 
 def addrToFn(vmlinux, addr):
-	cmd = ['addr2line', '-s', '-f', '-e', vmlinux, addr]
+	cmd = ['addr2line', '-s', '-f', '-e', vmlinux, str(addr)]
 	addrProcess = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 	out, err = addrProcess.communicate()
 	if addrProcess.returncode != 0:
