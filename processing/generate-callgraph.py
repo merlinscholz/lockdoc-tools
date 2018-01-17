@@ -3,7 +3,7 @@
 # This script generates a complete callgraph for one particular trace donated by the database name.
 # Each edge is labeled with number of calls made by the source node.
 # The script might be called like this:
-# ./generate-callgraph.py --host manos --database lockdebugging_mixed_fs_al --vmlinux ../vmlinux-4-10-nococci-20171226-g8b231ad --user <user> --password <pw>
+# ./generate-callgraph.py --host manos --database lockdebugging_mixed_fs_al --vmlinux ../vmlinux-4-10-nococci-20171226-g8b231ad --user <user> --password <pw> | dot -Tsvg -o foo.svg
 
 # ToDo
 # - Find root nodes
