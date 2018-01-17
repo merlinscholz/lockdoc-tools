@@ -14,6 +14,20 @@ then
 fi
 
 MODE=${MODE:-nostack}
+shift
+DATATYPE=${1}
+shift
+MEMBER=${1}
+
+if [ ! -z ${DATATYPE} ];
+then
+	DATATYPE_FILTER="AND a.type = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
+fi
+
+if [ ! -z ${MEMBER} ];
+then
+	MEMBER_FILTER="AND mn.id = (SELECT id FROM member_names WHERE name = '${MEMBER}')"
+fi
 
 if [ ${MODE} == "nostack" ];
 then
@@ -81,10 +95,8 @@ FROM
 			  ON m_bl.datatype_id = a.type
 			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
-			-- === FOR NOW: only look at super_blocks ===
-			-- AND a.type = (SELECT id FROM data_types WHERE name = 'journal_t')
-			-- AND mn.id = (SELECT id FROM member_names WHERE name = 'j_free')
-			-- ====================================
+			${DATATYPE_FILTER}
+			${MEMBER_FILTER}
 			-- === FOR NOW: skip task_struct ===
 			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
@@ -145,10 +157,8 @@ FROM
 	  ON m_bl.datatype_id = a.type
 	 AND m_bl.datatype_member_id = sl.member_id
 	WHERE 1
-	-- === FOR NOW: only look at super_blocks ===
-	-- AND a.type = (SELECT id FROM data_types WHERE name = 'journal_t')
-	-- AND mn.id = (SELECT id FROM member_names WHERE name = 'j_free')
-	-- ====================================
+	${DATATYPE_FILTER}
+	${MEMBER_FILTER}
 	-- === FOR NOW: skip task_struct ===
 	AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 	-- ====================================
