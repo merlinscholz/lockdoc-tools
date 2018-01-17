@@ -78,7 +78,7 @@ def main():
 	# Fetach *all* stacktraces, and count them.
 	# For now, we also include stacktrace which might be ignored due to 
 	# blacklists.
-	query = 'SELECT ac.instrptr, st.stacktrace, COUNT(*)\
+	query = 'SELECT CONCAT(\'0x\',LOWER(HEX(ac.instrptr))), st.stacktrace, COUNT(*)\
 			 FROM accesses AS ac \
 			 INNER JOIN stacktraces AS st ON ac.stacktrace_id = st.id\
 			 JOIN allocations a\
