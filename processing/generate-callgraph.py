@@ -46,6 +46,9 @@ def main():
         parser.add_argument('-d', '--database', help='The database to perform the query on', required=True)
         parser.add_argument('-u', '--user', help='The user used to login', required=True)
         parser.add_argument('-p', '--password', help='The user used to login', required=True)
+        parser.add_argument('-s', '--struct', help='Filter by struct', action='store')
+        parser.add_argument('-m', '--member', help='Filter by member', action='store')
+        parser.add_argument('-t', '--accesstype', help='Filter by access type', action='store')
         parser.add_argument('-e', '--vmlinux', help='Path to a vmlinux.', required=True) # -v is already in use by verbose
         args = parser.parse_args()                  
 
@@ -59,13 +62,37 @@ def main():
 	vmlinux = args.vmlinux
 	user = args.user
 	password = args.password
+	if args.member:
+		memberfilter="AND mn.id = (SELECT id FROM member_names WHERE name = '" + args.member + "')"
+	else:
+		memberfilter=""
+	if args.struct:
+		datatypefilter="AND a.type = (SELECT id FROM data_types WHERE name = '" + args.struct + "')"
+	else:
+		datatypefilter=""
+	if args.accesstype:
+		accesstypefilter="AND ac.type = '" + args.accesstype + "'"
+	else:
+		accesstypefilter=""
 	
 	# Fetach *all* stacktraces, and count them.
 	# For now, we also include stacktrace which might be ignored due to 
 	# blacklists.
-	query = 'SELECT st.stacktrace, COUNT(*) FROM accesses AS ac \
+	query = 'SELECT st.stacktrace, COUNT(*)\
+			 FROM accesses AS ac \
 			 INNER JOIN stacktraces AS st ON ac.stacktrace_id = st.id\
-			 GROUP BY ac.stacktrace_id;'
+			 JOIN allocations a\
+			  ON ac.alloc_id = a.id\
+			 LEFT JOIN structs_layout_flat sl\
+			  ON a.type = sl.type_id\
+			  AND ac.address - a.ptr = sl.helper_offset\
+			 LEFT JOIN member_names mn\
+			  ON mn.id = sl.member_id\
+			 WHERE 1\
+			  {member}\
+			  {datatype}\
+			  {accesstype}\
+			 GROUP BY ac.stacktrace_id;'.format(member=memberfilter,datatype=datatypefilter,accesstype=accesstypefilter)
 
 	db = MySQLdb.connect(host,user,password,database)
 	cursor = db.cursor()
