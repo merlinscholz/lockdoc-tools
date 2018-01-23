@@ -23,8 +23,9 @@ HYPO_INPUT_NOSTACK=all_txns_members_locks_db_nostack.csv
 HYPO_INPUT_STACK=all_txns_members_locks_db_stack.csv 
 NO_LOCK_THRESHOLD=5.0
 
-echo "Retrieving txns members locks..."
+echo "Retrieving txns members locks (nostack)..."
 time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh nostack | mysql ${DB} > ${HYPO_INPUT_NOSTACK}"
+echo "Retrieving txns members locks (stack)..."
 time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh stack | mysql ${DB} > ${HYPO_INPUT_STACK}"
 echo "Running hypothesizer..."
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_nostack.txt        &
