@@ -69,19 +69,19 @@ let get_first_last_commitid dir =
 
 (* time =~ 5 minute *)
 let get_linux_gits () = 
-  Common.command2 "git clone git://git.kernel.org/pub/scm/linux/kernel/git/davej/history.git history-dave";
+  Common.command2 "git clone git://repo.or.cz/davej-history.git history-dave";
   Common.command2 "git clone git://git.kernel.org/pub/scm/linux/kernel/git/tglx/history.git history-tglx";
-  Common.command2 "git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git history-torvalds";
+  Common.command2 "git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git history-torvalds";
   ()
 
 let get_extra_files () = 
-  Common.command2 "wget http://www.kernel.org/pub/linux/kernel/Historic/linux-0.01.tar.bz2";
-  Common.command2 "wget http://www.kernel.org/pub/linux/kernel/v2.4/old-test-kernels/prerelease-to-final.bz2";
+  Common.command2 "wget http://www.kernel.org/pub/linux/kernel/Historic/linux-0.01.tar.gz";
+  Common.command2 "wget http://www.kernel.org/pub/linux/kernel/v2.4/old-test-kernels/prerelease-to-final.gz";
   ()
 
 let untar_extra_files () =
-  Common.command2 "bunzip2 prerelease-to-final.bz2";
-  Common.command2 "tar xvjf linux-0.01.tar.bz2";
+  Common.command2 "gunzip prerelease-to-final.gz";
+  Common.command2 "tar xvaf linux-0.01.tar.gz";
   Common.command2 "mv linux linux-0.01";
   ()
 
@@ -388,7 +388,7 @@ let cleaning_files () =
     "rm -rf history-tglx-first";
     "rm -rf history-torvalds-first";
     "rm -rf linux-0.01";
-    "rm -f linux-0.01.tar.bz2";
+    "rm -f linux-0.01.tar.gz";
     "rm -f prerelease-to-final";
     "rm -f history-dave-adjust.sh";
     "rm -f history-dave-annotated-last.log";
