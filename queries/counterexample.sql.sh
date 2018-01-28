@@ -55,6 +55,7 @@ FROM
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
 			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in same
 		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
+--		ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
 		END
 		ORDER BY lh.start
 		SEPARATOR ' -> '
@@ -118,6 +119,7 @@ cat <<EOT
 EOT
 
 LOCKNR=1
+LAST_EMBOTHER=0
 for LOCK in "$@"; do
 	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
 		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
@@ -149,6 +151,34 @@ EOT
 			  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
 			 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
 EOT
+	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
+		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
+			echo "error: cannot (yet) deal with EMBOTHER locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
+			exit 1
+		fi
+cat <<EOT
+			-- lock #$LOCKNR
+			JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
+			  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
+			JOIN locks l_sbh${LOCKNR}
+			  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
+			  AND l_sbh${LOCKNR}.embedded_in != a.id
+			JOIN allocations l_sbh_a${LOCKNR}
+			  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
+			JOIN structs_layout_flat lock_member_sbh${LOCKNR}
+			  ON l_sbh_a${LOCKNR}.type = lock_member_sbh${LOCKNR}.type_id
+			 AND l_sbh${LOCKNR}.ptr - l_sbh_a${LOCKNR}.ptr = lock_member_sbh${LOCKNR}.helper_offset
+			JOIN member_names lock_member_name_sbh${LOCKNR}
+			  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
+			 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
+EOT
+	if [ $LAST_EMBOTHER -gt 0 ]; then
+		cat <<EOT
+--			 AND lh_sbh${LOCKNR}.start > lh_sbh${LAST_EMBOTHER}.start -- temporal sequence
+EOT
+	fi
+	LAST_EMBOTHER=$LOCKNR
 	else
 		echo "error: unknown lock type $LOCK" >&2
 		exit 1
