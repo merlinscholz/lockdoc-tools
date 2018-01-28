@@ -11,6 +11,9 @@ VM
 - Der Benchmark selbst wird über die Serielle von BOCHS erfragt, siehe run-bench.sh
 - IP kommt vom DHCP, dürfte aber auf längere Sicht 129.217.43.92 sein.
 - Kernel liegen unter /opt/kernel/linux-32-lockdebugging-{3-16,4-10}
+- Benchmark besteht u.a. aus Benchmarks des Linux Test Projects (https://github.com/linux-test-project/ltp.git)
+	+ fs-bench-test2.sh wurde verändert (--> siehe ltp-lockdebug.patch)
+	+ Installation nach /opt/kernel/ltp-bin/
 
 Kernel
 ======
