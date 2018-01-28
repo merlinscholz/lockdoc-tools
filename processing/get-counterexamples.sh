@@ -58,7 +58,7 @@ do
 		let COUNT=COUNT+1
 		continue
 	fi
-	echo $line
+#	echo $line
 	INSTRPTR=`echo ${line} | cut -d ${DELIMITER} -f 4`
 	POS=`addr2line -e ${VMLINUX} ${INSTRPTR}`
 	echo ${line}${DELIMITER}${POS} >> ${OUTPUT}
