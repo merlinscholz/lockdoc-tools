@@ -1,5 +1,6 @@
 #!/bin/bash 
 # A.Lochmann 2018
+# Queries written by H. Schirmeier 2017
 # 
 # This script generates a query that will fetch the input for the hypothesizer from the database.
 # The query used to be in queries/txn-members-locks.sql. That file is now outdated. It's been left for
