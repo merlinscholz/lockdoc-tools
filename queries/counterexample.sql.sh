@@ -173,12 +173,12 @@ cat <<EOT
 			  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
 			 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
-	if [ $LAST_EMBOTHER -gt 0 ]; then
-		cat <<EOT
---			 AND lh_sbh${LOCKNR}.start > lh_sbh${LAST_EMBOTHER}.start -- temporal sequence
+		if [ $LAST_EMBOTHER -gt 0 ]; then
+			cat <<EOT
+			 AND lh_sbh${LOCKNR}.start > lh_sbh${LAST_EMBOTHER}.start -- ensure the same EMBOTHER lock gets joined just once
 EOT
-	fi
-	LAST_EMBOTHER=$LOCKNR
+		fi
+		LAST_EMBOTHER=$LOCKNR
 	else
 		echo "error: unknown lock type $LOCK" >&2
 		exit 1
