@@ -32,7 +32,14 @@ DELIMITER=";"
 echo -n "" > ${QUERY_FILE}
 echo -n "" > ${RESULTS}
 
-grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${COUNTEREXAMPLE_SH} ${DATATYPE}" | while read cmd;
+if [ ${DATATYPE} == "any" ];
+then
+	GREP_REGEX=""
+else
+	GREP_REGEX="${COUNTEREXAMPLE_SH} ${DATATYPE}"
+fi
+
+grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
 do
 	echo "Running: ${cmd}:"
 	eval ${DIR}/../queries/$cmd > ${QUERY_FILE}
