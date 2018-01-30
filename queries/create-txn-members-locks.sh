@@ -60,9 +60,9 @@ FROM
 --			ELSE CONCAT('EMB:', l.id, '(', l.type, ')') -- embedded in other
 			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -192,9 +192,9 @@ FROM
 				CASE
 				WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
 				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = fac.alloc_id
-					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
-				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
---				ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
+				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+--				ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
 				END
 				ORDER BY lh.start
 			) AS locks_held
