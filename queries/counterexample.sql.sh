@@ -122,7 +122,8 @@ LOCKNR=1
 LAST_EMBOTHER=0
 for LOCK in "$@"; do
 	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
+#		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\))$/\1/')		
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBSAME locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -152,7 +153,8 @@ EOT
 			 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
+#		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\))$/\1/')		
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBOTHER locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
