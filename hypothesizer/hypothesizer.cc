@@ -111,9 +111,21 @@ struct LockCombination {
 	std::vector<myid_t> lock_order(const std::vector<myid_t>& l) const
 	{
 		std::vector<myid_t> ret;
+		std::vector<myid_t> l_copy = l; // modifiable copy
 		for (const auto mylock : locks_held) {
-			if (find(l.cbegin(), l.cend(), mylock) != l.cend()) {
+			auto it = find(l_copy.begin(), l_copy.end(), mylock);
+			if (it != l_copy.end()) {
 				ret.push_back(mylock);
+
+				// Make sure a specific lock is only presented once.  This
+				// prevents an (ordered) input of "LOCK_X" presenting a special
+				// case of "LOCK_X -> LOCK_X" in case this lock is held
+				// multiple times in this combination (which can happen quite
+				// often with EMBOTHER).
+				l_copy.erase(it);
+				if (l_copy.empty()) {
+					break;
+				}
 			}
 		}
 		return ret;
