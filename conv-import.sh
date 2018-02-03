@@ -60,10 +60,11 @@ function import_table() {
 	else
 		echo "DELETE FROM ${1}" | ${MYSQL}
 		${MYSQLIMPORT} ${1}.csv.pv
-	fi	
+	fi
 }
 function usage() {
 	echo "usage: $0 <database> [ input-linecount ]" >&2
+	echo "   or: $0 --nodb     [ input-linecount ]" >&2
 	exit 1
 }
 
@@ -72,45 +73,55 @@ if [ -z "$1" ];
 then
 	usage
 fi
-DB=$1
+USE_DB=true
+if [ "$1" = --nodb ]; then
+	USE_DB=false
+	DB=
+else
+	DB=$1
+fi
 shift
 
 if [ -z "$1" ]; then
 	HEAD_CMD="| head -n 1000000"
 elif [ "$1" -eq -1 ]; then
 	HEAD_CMD=""
+	shift
 else
 	HEAD_CMD="| head -n $1"
+	shift
 fi
 
 MYSQL="mysql -vvv ${DB}"
 #MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 -v ${DB}"
 MYSQLIMPORT="mysqlimport_warnings ${DB}"
 
-# initialize DB
-mysql $DB < ${TOOLS_PATH}/queries/drop-tables.sql
-if [ ${?} -ne 0 ];
-then
-	echo "Cannot drop tables!" >&2
-	exit 1
-fi
-mysql $DB < ${DB_SCHEME}
-if [ ${?} -ne 0 ];
-then
-	echo "Cannot apply db scheme!">&2
-	exit 1
-fi
+if [ $USE_DB = true ]; then
+	# initialize DB
+	mysql $DB < ${TOOLS_PATH}/queries/drop-tables.sql
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot drop tables!" >&2
+		exit 1
+	fi
+	mysql $DB < ${DB_SCHEME}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot apply db scheme!">&2
+		exit 1
+	fi
 
-# setup named pipes and start importing in the background
-for table in "${TABLES[@]}"
-do
-	rm -f ${table}.csv ${table}.csv.pv
-	mkfifo ${table}.csv ${table}.csv.pv
-	if [ $table = accesses ]; then BUFSIZE=100m; else BUFSIZE=10m; fi
-	#pv --buffer-size $BUFSIZE -c -r -a -b -T -l -N ${table} < ${table}.csv > ${table}.csv.pv &
-	cat < ${table}.csv > ${table}.csv.pv &
-	import_table ${table} &
-done
+	# setup named pipes and start importing in the background
+	for table in "${TABLES[@]}"
+	do
+		rm -f ${table}.csv ${table}.csv.pv
+		mkfifo ${table}.csv ${table}.csv.pv
+		if [ $table = accesses ]; then BUFSIZE=100m; else BUFSIZE=10m; fi
+		#pv --buffer-size $BUFSIZE -c -r -a -b -T -l -N ${table} < ${table}.csv > ${table}.csv.pv &
+		cat < ${table}.csv > ${table}.csv.pv &
+		import_table ${table} &
+	done
+fi
 
 #VALGRIND='valgrind --leak-check=yes --show-reachable=yes'
 #GDB='cgdb --args'
@@ -124,11 +135,13 @@ else
 	exit 1
 fi
 
-wait
-mysqloptimize $DB
-#reset
+if [ $USE_DB = true ]; then
+	wait
+	mysqloptimize $DB
+	#reset
 
-for table in "${TABLES[@]}"
-do
-	rm -f ${table}.csv ${table}.csv.pv
-done
+	for table in "${TABLES[@]}"
+	do
+		rm -f ${table}.csv ${table}.csv.pv
+	done
+fi
