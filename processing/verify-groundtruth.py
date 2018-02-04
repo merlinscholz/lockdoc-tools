@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # A.Lochmann 2018
-# This script takes the groundtruth.csv and the output of the hypothesizer as input.
-# It counts how many of the locking rules found in groundtruth.csv have
+# This script takes the ground-truth.csv and the output of the hypothesizer as input.
+# It counts how many of the locking rules found in ground-truth.csv have
 # a) 100% support, b) <100% support but are accepted, or c) <100% support and not accepted.
 # A detailed descript of what is counted can be found in line 108 ff.
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 	#		full [int] (Amount of locking rules with a support of 100%)
 	#		winner [int] (Amount of locking rules with a support less than 100% but accepted by the hypothesizer)
 	#		found [int] (Amount of locking rules that are found in our dataset but have a support less than 100% and are not accepted)
-	#		notfound [int] (Amount of locking rules that are not found in our dataset at all; notfound + count is the total amount of locking rules for a particular datatype in groundtruth.csv)
+	#		notfound [int] (Amount of locking rules that are not found in our dataset at all; notfound + count is the total amount of locking rules for a particular datatype in ground-truth.csv)
 	#		members [dict]
 	# 			layout of dictionary members
 	#				key: (member,accesstype)
