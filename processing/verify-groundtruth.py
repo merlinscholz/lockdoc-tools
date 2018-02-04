@@ -109,6 +109,7 @@ if __name__ == '__main__':
 	#		winner [int] (Amount of locking rules with a support less than 100% but accepted by the hypothesizer)
 	#		found [int] (Amount of locking rules that are found in our dataset but have a support less than 100% and are not accepted)
 	#		notfound [int] (Amount of locking rules that are not found in our dataset at all; notfound + count is the total amount of locking rules for a particular datatype in ground-truth.csv)
+	#		noobservations [int] (Amount of locking rules we don't have at least one observation for)
 	#		members [dict]
 	# 			layout of dictionary members
 	#				key: (member,accesstype)
@@ -122,6 +123,7 @@ if __name__ == '__main__':
 	# 'journal_t' -> 'count': 19,
 	#				 'found': 4,
 	#				 'full': 15,
+	#				 'noobservations': 2
 	#				 'member':
 	#						('j_barrier_count', 'w') -> 'color': 'green'
 	#													'lockingrule': 'EMBSAME\\(journal_t:j_state_lock\\)',
@@ -138,7 +140,7 @@ if __name__ == '__main__':
 			continue
 		datatype = key[0]
 		if datatype not in resultsDict:
-			resultsEntry = {'count': 0, 'full': 0, 'winner': 0, 'found': 0, 'notfound': 0, 'members': dict()}
+			resultsEntry = {'count': 0, 'full': 0, 'winner': 0, 'found': 0, 'notfound': 0, 'noobservations': 0, 'members': dict()}
 			resultsDict[datatype] = resultsEntry
 		else:
 			resultsEntry = resultsDict[datatype]
@@ -174,16 +176,22 @@ if __name__ == '__main__':
 				resultsEntry['notfound'] += 1
 				LOGGER.debug('SEARCHRULE: Lock combination %s not found for %s', lockingRule, key)
 		else:
+			resultsEntry['noobservations'] += 1
 			LOGGER.debug('Key %s not found in hypothesisDict', key)
 
 	if args.machine_output:
 			print('Machine-readable output is still broken!')
 			sys.exit(1)
 	for datatype, resultsEntry in resultsDict.iteritems():
-		
 		print('%s:' % datatype)
-		print('\tcount: %3d,\tfull: %3d (%3.2f%%)\twinner: %3d (%3.2f%%)' % (resultsEntry['count'], resultsEntry['full'], calcPercentage(resultsEntry['count'], resultsEntry['full']), resultsEntry['winner'], calcPercentage(resultsEntry['count'], resultsEntry['winner'])))
-		print('\tfound: %3d (%3.2f%%)\tnotfound: %3d' % (resultsEntry['found'], calcPercentage(resultsEntry['count'], resultsEntry['found']), resultsEntry['notfound']))
+		print('\tcount: %3d,\tfull: %3d (%3.2f%%)\twinner: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)'
+			% (resultsEntry['count'], resultsEntry['full'], calcPercentage(resultsEntry['count'], resultsEntry['full']),
+			 resultsEntry['winner'], calcPercentage(resultsEntry['count'], resultsEntry['winner']),
+			 resultsEntry['found'], calcPercentage(resultsEntry['count'], resultsEntry['found'])))
+		print('\tnotfound: %3d\tnoobservations: %3d'
+			% (resultsEntry['notfound'], resultsEntry['noobservations']))
+		print('\tmatches: %3.2f%% [count / (count + notfound + noobservations)]' %
+			 calcPercentage(resultsEntry['count'] + resultsEntry['notfound'] + resultsEntry['noobservations'],resultsEntry['count']))
 
 	#pprint(resultsDict)
 
