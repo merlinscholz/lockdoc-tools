@@ -5,6 +5,7 @@
 # It counts how many of the locking rules found in ground-truth.csv have
 # a) 100% support, b) <100% support but are accepted, or c) <100% support and not accepted.
 # A detailed descript of what is counted can be found in line 108 ff.
+# ./processing/verify-groundtruth.py ground-truth.csv all_txns_members_locks_hypo_nostack.csv
 
 import sys
 import csv
