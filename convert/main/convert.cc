@@ -54,7 +54,7 @@ struct LockPos {
 	string lastFile;											// Last file from where the lock has been acquired
 	string lastFn;												// Last caller
 //	string lastLockFn;											// Lock function used the last time
-	int lastPreemptCount;										// Value of preemptcount() after the lock has been acquired
+	unsigned long long lastPreemptCount;						// Value of preemptcount() after the lock has been acquired
 
 };
 
