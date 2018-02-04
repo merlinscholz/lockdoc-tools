@@ -56,6 +56,8 @@ if __name__ == '__main__':
 	# example: (transaction_t,t_cpprev,w) -> 'EMBOTHER\(journal_t:j_list_lock\)'
 	for line in tempReader:
 		key = toKey(line['datatype'], line['member'] ,line['accesstype'])
+		if key in groundtruthDict:
+			LOGGER.error('Key %s does already exist in groundtruthDict', key)
 		groundtruthDict[key] = line['rule']
 	tempFile.close()
 	LOGGER.debug('Read %d locking rules from "%s"', len(groundtruthDict), groundtruthCSV)
@@ -144,37 +146,41 @@ if __name__ == '__main__':
 			resultsDict[datatype] = resultsEntry
 		else:
 			resultsEntry = resultsDict[datatype]
+		# Do we have at least one hypothesis for the current tuple (datatype,member,accesstype)?
 		if key in hypothesisDict:
 			locksHeldDict = hypothesisDict[key]['locks']
 			matchFound = False
+			resultsEntry['count'] += 1
+			# Iterate over the complete dictionary of possible lock combinations.
+			# '$key in $dict' syntax does *not* do the job, because locksHeld is a regex.
+			# We therefore need to use re.match().
 			for locksHeld, locksHeldEntry in locksHeldDict.iteritems():
 				LOGGER.debug('SEARCHRULE: Checking %s and %s',lockingRule,locksHeld)
 				if re.match('^' + lockingRule + '$',locksHeld):
 					matchFound = True
 					LOGGER.debug('SEARCHRULE: %s matches %s', lockingRule, locksHeld)
-					membersDict = resultsEntry['members']
-					membersDictKey = (key[1], key[2])
-					resultsEntry['count'] += 1
 					if locksHeldEntry['percentage'] == 100:
 						resultsEntry['full'] += 1
 						_color = 'green'
-					elif locksHeldEntry['percentage'] < 100 and locksHeldEntry['accepted'] == 1:
-						resultsEntry['winner'] += 1
-						_color = 'yellow'
 					else:
 						resultsEntry['found'] += 1
-						_color = 'red'
-					if membersDictKey not in membersDict:
-						membersDict[membersDictKey] = {'results': locksHeldEntry, 'lockingrule': lockingRule,'color': _color}
-					else:
-						LOGGER.error('Found another matching rule (%s) for %s in datatype ', lockingRule, membersKey, key[0])
+						_color = 'yellow'
+					_locksHeldEntry = locksHeldEntry
 					LOGGER.debug('Added new entry for key %s and locking rule %s: %s\n %s', key, lockingRule, resultsEntry, locksHeldEntry)
 					break
 				else:
 					LOGGER.debug('SEARCHRULE: No match %s and %s',lockingRule,locksHeld)
 			if not matchFound:
 				resultsEntry['notfound'] += 1
+				_color = 'red'
+				_locksHeldEntry = None
 				LOGGER.debug('SEARCHRULE: Lock combination %s not found for %s', lockingRule, key)
+			membersDict = resultsEntry['members']
+			membersDictKey = (key[1], key[2])
+			if membersDictKey not in membersDict:
+				membersDict[membersDictKey] = {'results': _locksHeldEntry, 'lockingrule': lockingRule,'color': _color}
+			else:
+				LOGGER.error('Found another matching rule (%s) for %s in datatype ', lockingRule, membersKey, key[0])
 		else:
 			resultsEntry['noobservations'] += 1
 			LOGGER.debug('Key %s not found in hypothesisDict', key)
@@ -184,17 +190,13 @@ if __name__ == '__main__':
 			sys.exit(1)
 	for datatype, resultsEntry in resultsDict.iteritems():
 		print('%s:' % datatype)
-		print('\tcount: %3d,\tfull: %3d (%3.2f%%)\twinner: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)'
-			% (resultsEntry['count'], resultsEntry['full'], calcPercentage(resultsEntry['count'], resultsEntry['full']),
-			 resultsEntry['winner'], calcPercentage(resultsEntry['count'], resultsEntry['winner']),
-			 resultsEntry['found'], calcPercentage(resultsEntry['count'], resultsEntry['found'])))
-		print('\tnotfound: %3d\tnoobservations: %3d'
-			% (resultsEntry['notfound'], resultsEntry['noobservations']))
-		print('\tmatches: %3.2f%% [count / (count + notfound + noobservations)]' %
-			 calcPercentage(resultsEntry['count'] + resultsEntry['notfound'] + resultsEntry['noobservations'],resultsEntry['count']))
-
-	#pprint(resultsDict)
-
-
+		total = resultsEntry['count']
+		print('\ttotal: %3d (%3.2f %%),\tfull: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)\tnotfound: %3d (%3.2f%%)'
+			% (total, calcPercentage(total + resultsEntry['noobservations'], total), 
+			 resultsEntry['full'], calcPercentage(total, resultsEntry['full']),
+			 resultsEntry['found'], calcPercentage(total, resultsEntry['found']),
+			 resultsEntry['notfound'], calcPercentage(total, resultsEntry['notfound'])))
+		print('\tnoobservations: %3d\t#documented rules: %d'
+			% (resultsEntry['noobservations'], total + resultsEntry['noobservations']))
 
 
