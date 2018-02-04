@@ -6,7 +6,7 @@
 # a) 100% support, b) <100% support but are accepted, or c) <100% support and not accepted.
 # A detailed descript of what is counted can be found in line 108 ff.
 # ./processing/verify-groundtruth.py ground-truth.csv all_txns_members_locks_hypo_nostack.csv
-
+from __future__ import print_function
 import sys
 import csv
 import re
@@ -31,7 +31,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
 	parser.add_argument('-w', '--writes-only', action='store_true', help='Only count the predictions for write accesses')
-	parser.add_argument('-m', '--machine-output', action='store_true', help='Produce a machine-readable output')
+	parser.add_argument('-m', '--machine-output', choices=['summary','detailed'], help='Produce a machine-readable output. Its value should either be ')
+	parser.add_argument('-s', '--struct', help='Filter by struct', action='store', nargs='*')
 	parser.add_argument('gtruthcsv', help='Input file containing the ground truth')
 	parser.add_argument('hypothesisCSVcsv', help='Input file containing preditions made by the hypothesizer')
 	args = parser.parse_args()
@@ -117,7 +118,7 @@ if __name__ == '__main__':
 	#				key: (member,accesstype)
 	#				value: dictionary with the following keys: 
 	#					color [string] (For later use; signaling the status of this documented locking rule)
-	#					lockringrule [string] (The actual locking rule)
+	#					lockingrule [string] (The actual locking rule)
 	#					results [dict]
 	#						layout of dictionray results
 	#							occurrences [int], total [int], percentage [float], accepted [int], confidence [float], counterexamples [string]
@@ -185,18 +186,39 @@ if __name__ == '__main__':
 			resultsEntry['noobservations'] += 1
 			LOGGER.debug('Key %s not found in hypothesisDict', key)
 
-	if args.machine_output:
-			print('Machine-readable output is still broken!')
-			sys.exit(1)
+	if args.machine_output == 'summary':
+		print('datatype,numrules,noobservations,observations,full,found,notfound')
+	elif args.machine_output == 'summary':
+		print('datatype,member,accesstype,lockingrule,percentage,color')
 	for datatype, resultsEntry in resultsDict.iteritems():
-		print('%s:' % datatype)
-		total = resultsEntry['count']
-		print('\ttotal: %3d (%3.2f %%),\tfull: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)\tnotfound: %3d (%3.2f%%)'
-			% (total, calcPercentage(total + resultsEntry['noobservations'], total), 
-			 resultsEntry['full'], calcPercentage(total, resultsEntry['full']),
-			 resultsEntry['found'], calcPercentage(total, resultsEntry['found']),
-			 resultsEntry['notfound'], calcPercentage(total, resultsEntry['notfound'])))
-		print('\tnoobservations: %3d\t#documented rules: %d'
-			% (resultsEntry['noobservations'], total + resultsEntry['noobservations']))
-
+		if datatype not in args.struct:
+			continue
+		if args.machine_output == 'summary':
+			print('%s,%d,%d,%d,%d,%d,%d' %
+				(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
+				 resultsEntry['noobservations'], resultsEntry['count'],
+				 resultsEntry['full'], resultsEntry['found'],
+				 resultsEntry['notfound']))
+		elif args.machine_output == 'detailed':
+			membersDict = resultsEntry['members']
+			for key, memberEntry in membersDict.iteritems():
+			# key = (member,accesstype)
+				print('%s,%s,%s,%s,' %
+					(datatype, key[0], key[1],
+					 memberEntry['lockingrule']), end='' )
+				if memberEntry['results'] is None:
+					print('0.0', end='')
+				else:
+					print('%3.2f' % (memberEntry['results']['percentage']), end='')
+				print(',%s' % memberEntry['color'])
+		else:
+			print('%s:' % datatype)
+			total = resultsEntry['count']
+			print('\tobservations: %3d (%3.2f %%),\tfull: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)\tnotfound: %3d (%3.2f%%)'
+				% (total, calcPercentage(total + resultsEntry['noobservations'], total),
+				 resultsEntry['full'], calcPercentage(total, resultsEntry['full']),
+				 resultsEntry['found'], calcPercentage(total, resultsEntry['found']),
+				 resultsEntry['notfound'], calcPercentage(total, resultsEntry['notfound'])))
+			print('\tnoobservations: %3d\t#documented rules: %d'
+				% (resultsEntry['noobservations'], total + resultsEntry['noobservations']))
 
