@@ -22,7 +22,10 @@
 #include "gzstream/gzstream.h"
 
 #define PSEUDOLOCK_ADDR_RCU		0x42
-#define IS_MULTILVL_LOCK(x)	((x).ptr == PSEUDOLOCK_ADDR_RCU)
+#define PSEUDOLOCK_ADDR_SOFTIRQ	0x43
+#define PSEUDOLOCK_ADDR_HARDIRQ	0x44
+#define IS_MULTILVL_LOCK(x)		((x).ptr == PSEUDOLOCK_ADDR_RCU)
+#define IS_STATIC_LOCK_ADDR(x)	((x) == PSEUDOLOCK_ADDR_RCU || (x) == PSEUDOLOCK_ADDR_SOFTIRQ || (x) == PSEUDOLOCK_ADDR_HARDIRQ)
 
 /**
  * Authors: Alexander Lochmann, Horst Schirmeier
@@ -205,6 +208,7 @@ static void printUsageAndExit(const char *elf) {
 		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/function_blacklist.csv -m path/to/member_blacklist.csv input.csv[.gz]\n\n"
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
+		" -p  enable processing of hardirq/softirq levels from preempt_count as two pseudo locks\n"
 		" -v  show version\n"
 		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
 		" -u  include non-static locks with unknown allocation in output\n"
@@ -438,7 +442,9 @@ static void handlePV(
 		}
 	}
 	if (allocation_id == 0) {
-		if ((ptr >= bssStart && ptr < bssStart + bssSize) || ( ptr >= dataStart && ptr < dataStart + dataSize) || (typeStr.compare("static") == 0 && ptr == PSEUDOLOCK_ADDR_RCU)) {
+		if ((ptr >= bssStart && ptr < bssStart + bssSize) ||
+			(ptr >= dataStart && ptr < dataStart + dataSize) ||
+			(typeStr.compare("static") == 0 && IS_STATIC_LOCK_ADDR(ptr))) {
 			// static lock which resides either in the bss segment or in the data segment
 			// or global static lock aka rcu lock
 #ifdef VERBOSE
@@ -489,6 +495,70 @@ static void handlePV(
 
 	// a P() suspends the current TXN and creates a new one
 	startTXN(ts, ptr);
+}
+
+/* taken from Linux 4.10 include/linux/preempt.h */
+#define PREEMPT_BITS	8
+#define SOFTIRQ_BITS	8
+#define HARDIRQ_BITS	4
+#define NMI_BITS		1
+
+#define PREEMPT_SHIFT	0
+#define SOFTIRQ_SHIFT	(PREEMPT_SHIFT + PREEMPT_BITS)
+#define HARDIRQ_SHIFT	(SOFTIRQ_SHIFT + SOFTIRQ_BITS)
+#define NMI_SHIFT		(HARDIRQ_SHIFT + HARDIRQ_BITS)
+
+#define __IRQ_MASK(x)	((1UL << (x))-1)
+
+#define PREEMPT_MASK	(__IRQ_MASK(PREEMPT_BITS) << PREEMPT_SHIFT)
+#define SOFTIRQ_MASK	(__IRQ_MASK(SOFTIRQ_BITS) << SOFTIRQ_SHIFT)
+#define HARDIRQ_MASK	(__IRQ_MASK(HARDIRQ_BITS) << HARDIRQ_SHIFT)
+
+static void handlePreemptCountChange(
+	bool enabled, unsigned long long prev, unsigned long long cur,
+	unsigned long long ts,
+	string const& file,
+	unsigned long long line,
+	string const& fn,
+	string const& typeStr,
+	string const& lockType,
+	unsigned long long preemptCount,
+	bool includeAllLocks,
+	unsigned long long pseudoAllocID,
+	ofstream& locksOFile,
+	ofstream& txnsOFile,
+	ofstream& locksHeldOFile
+	)
+{
+	if (!enabled) {
+		return;
+	}
+
+	bool
+		prev_softirq = !!(prev & SOFTIRQ_MASK),
+		 cur_softirq = !!( cur & SOFTIRQ_MASK),
+		prev_hardirq = !!(prev & HARDIRQ_MASK),
+		 cur_hardirq = !!( cur & HARDIRQ_MASK);
+
+	if (!prev_softirq && cur_softirq) {
+		/* P(softirq_pseudo_lock) */
+		handlePV('p', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
+			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+	} else if (prev_softirq && !cur_softirq) {
+		/* V(softirq_pseudo_lock) */
+		handlePV('v', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
+			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+	}
+
+	if (!prev_hardirq && cur_hardirq) {
+		/* P(hardirq_pseudo_lock) */
+		handlePV('p', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
+			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+	} else if (prev_hardirq && !cur_hardirq) {
+		/* V(hardirq_pseudo_lock) */
+		handlePV('v', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
+			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+	}
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
@@ -760,12 +830,13 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,Lock>::iterator itLock, itTemp;
 	unsigned long long ts = 0, ptr = 0x1337, size = 4711, line = 1337, address = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+	unsigned long long prevPreemptCount = 0, curPreemptCount = 0;
 	int lineCounter, isGZ;
 	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
-	bool processSeqlock = false, includeAllLocks = false;
+	bool processSeqlock = false, includeAllLocks = false, processPreemptCount = false;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:u")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:up")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
@@ -781,6 +852,9 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'u':
 			includeAllLocks = true;
+			break;
+		case 'p':
+			processPreemptCount = true;
 			break;
 		case 'm':
 			memberBlacklistName = optarg;
@@ -998,7 +1072,13 @@ int main(int argc, char *argv[]) {
 					line = std::stoull(lineElems.at(6));
 					fn = lineElems.at(7);
 					lockType = lineElems.at(8);
-					preemptCount = std::stoull(lineElems.at(9),NULL,16);
+					prevPreemptCount = curPreemptCount;
+					curPreemptCount =
+						preemptCount = std::stoull(lineElems.at(9),NULL,16);
+					handlePreemptCountChange(
+						processPreemptCount, prevPreemptCount, curPreemptCount,
+						ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
+						locksOFile, txnsOFile,locksHeldOFile);
 					break;
 				}
 			case 'r':
@@ -1010,7 +1090,13 @@ int main(int argc, char *argv[]) {
 					instrPtr = std::stoull(lineElems.at(5),NULL,16);
 					stacktrace = lineElems.at(6);
 					if (lineElems.at(7).compare("NULL") != 0) {
-						preemptCount = std::stoull(lineElems.at(7),NULL,16);
+						prevPreemptCount = curPreemptCount;
+						curPreemptCount =
+							preemptCount = std::stoull(lineElems.at(7),NULL,16);
+						handlePreemptCountChange(
+							processPreemptCount, prevPreemptCount, curPreemptCount,
+							ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
+							locksOFile, txnsOFile,locksHeldOFile);
 					} else {
 						preemptCount = -1;
 					}
