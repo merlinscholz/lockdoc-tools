@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # A.Lochmann 2018
 # This script takes the ground-truth.csv and the output of the hypothesizer as input.
+# The hypothesizer has to be run with cutoff threshold set to 0.0, and report mode to csv.
 # It counts how many of the locking rules found in ground-truth.csv have
 # a) 100% support, b) <100% support but are accepted, or c) <100% support and not accepted.
 # A detailed descript of what is counted can be found in line 108 ff.
