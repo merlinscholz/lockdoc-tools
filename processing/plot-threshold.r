@@ -16,7 +16,7 @@ mySavePlot <- function(plot, name, directory=NULL) {
   } else {
     if (!file.exists(directory)) {
       cat(sprintf("Creating directory %s ...\n",directory))
-      dir.create(directory)
+      dir.create(directory, recursive = T)
     }
     fname = sprintf("%s/%s.pdf",directory,name)
   }
@@ -42,7 +42,7 @@ spec = matrix(c(
 opt = getopt(spec);
 
 if (is.null(opt$inputfile)) {
-  inputfname = "all_txns_members_locks_hypo_winner.csv"
+  inputfname = "all_txns_members_locks_hypo_winner_nostack.csv"
 } else {
   inputfname = opt$inputfile
 }
@@ -135,27 +135,33 @@ for(dataType in dataTypes) {
   # To create a facet plot with every single facet having an ordered x axis, a little hack, as described here (http://stackoverflow.com/questions/26238687/r-reorder-facet-wrapped-x-axis-with-free-x-in-ggplot2),
   # is necessary
   # Furthermore, it draws a line for the mean value of each access type, and draws a rectangle to mark rejected members.
+  foo <- data.frame(acceptanceThreshold=c(acceptanceThreshold))
   plot <- ggplot() +
-  geom_rect(data=rejectRange,xmin=0,ymin=0,ymax=100,fill='red',alpha=0.1,mapping=aes(xmax=last_member)) +
+#  geom_rect(data=rejectRange,xmin=0,ymin=0,ymax=100,fill='red',alpha=0.1,mapping=aes(xmax=last_member)) +
   geom_bar(data=raw[raw$type == dataType,],mapping=aes(x=reorder(idx,percentage),y=percentage,fill=occurrences),stat='identity') +
-  theme(axis.text.x= element_text(angle=90,hjust=1)) +
+  theme(axis.text.x= element_blank()) + #element_text(angle=90,hjust=1)) +
   xlab("Member") +
-  ylab("Percentage") +
-  scale_fill_gradient(name="Occurrences",trans = "log") +
+  ylab("Support") +
+  scale_fill_gradient(name="Observations",trans = "log", breaks=c(min(raw[raw$type == dataType,]$occurrences),max(raw[raw$type == dataType,]$occurrences))) +
   facet_grid(~ accesstype, scales = "free_x") +
-  scale_x_discrete(labels=extractMemberName) + 
+#  scale_x_discrete(labels=extractMemberName) + 
+  scale_x_discrete() +
   geom_hline(data=means,aes(yintercept = percentage_mean,linetype=factor(round(percentage_mean,2))),show.legend = T) +
-  scale_linetype_discrete(name = "Mean")
+  scale_linetype_discrete(name = "Mean") +
+  geom_hline(data=foo,mapping=aes(yintercept=acceptanceThreshold, color='red'), show.legend = T) +
+  scale_color_discrete(labels=c(acceptanceThreshold), name='Threshold')
   
   nameDist = sprintf("dist-percentages-%s",dataType)
   mySavePlot(plot,nameDist,directory)
 }
 
-plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) +
+plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) + 
+        ylab('Support') +
+        labs(colour='Data Type') +
         geom_line() +
         geom_point() +
         scale_x_discrete(name="Threshold", limits=steps, breaks=steps) +
-        ggtitle(nameThresholds) + 
+#        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
 mySavePlot(plot,nameThresholds,directory)
 
