@@ -33,6 +33,7 @@ if __name__ == '__main__':
 	parser.add_argument('-w', '--writes-only', action='store_true', help='Only count the predictions for write accesses')
 	parser.add_argument('-m', '--machine-output', choices=['summary','detailed'], help='Produce a machine-readable output. Its value should either be ')
 	parser.add_argument('-s', '--struct', help='Filter by struct', action='store', nargs='*')
+	parser.add_argument('-p', '--percentage', action='store_true', help='Print relative values instead of absolute ones (Only effective in conjunction with --machine-output summary)')
 	parser.add_argument('gtruthcsv', help='Input file containing the ground truth')
 	parser.add_argument('hypothesisCSVcsv', help='Input file containing preditions made by the hypothesizer')
 	args = parser.parse_args()
@@ -191,14 +192,21 @@ if __name__ == '__main__':
 	elif args.machine_output == 'summary':
 		print('datatype,member,accesstype,lockingrule,percentage,color')
 	for datatype, resultsEntry in resultsDict.iteritems():
-		if datatype not in args.struct:
+		if args.struct is not None and datatype not in args.struct:
 			continue
 		if args.machine_output == 'summary':
-			print('%s,%d,%d,%d,%d,%d,%d' %
-				(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
-				 resultsEntry['noobservations'], resultsEntry['count'],
-				 resultsEntry['full'], resultsEntry['found'],
-				 resultsEntry['notfound']))
+			if args.percentage:
+				print('%s,%d,%d,%d,%3.2f,%3.2f,%3.2f' %
+					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
+					 resultsEntry['noobservations'], resultsEntry['count'],
+					 calcPercentage(resultsEntry['count'], resultsEntry['full']), calcPercentage(resultsEntry['count'], resultsEntry['found']),
+					 calcPercentage(resultsEntry['count'], resultsEntry['notfound'])))
+			else:
+				print('%s,%d,%d,%d,%d,%d,%d' %
+					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
+					 resultsEntry['noobservations'], resultsEntry['count'],
+					 resultsEntry['full'], resultsEntry['found'],
+					 resultsEntry['notfound']))
 		elif args.machine_output == 'detailed':
 			membersDict = resultsEntry['members']
 			for key, memberEntry in membersDict.iteritems():
