@@ -1,15 +1,10 @@
+Aufzeichnung
+===========
+	- Umgang mit wait_queue_t aus journal_t ändern (aktuell ignoriert)
+
 convert
 =======
 	- Separate Tabelle mit Abbildung von Adresse auf Funktion bzw. auf Datei und Zeile in eine eigene Tabelle schieben
-	- Stacktrace aufzeichnen:
-	  Wichtig: Kernel-Konfig anpassen, so dass die Framepoint *immer* eincompiliert werden
-	  "statt ESP (wofür?) könntest du im Experiment quasi nen kleinen Stacktrace mit aufzeichnen, also:
-	  - den Trigger-EIP (der den Speicherzugriff ausgelöst hat),
-	  - den Inhalt von EBP lesen, 4 addieren, dereferenzieren, 4 Bytes lesen (Rücksprungadresse)
-	  - den Inhalt von EBP lesen, dereferenzieren, 4 Bytes lesen, 4 addieren, dereferenzieren, 4 Bytes lesen (Rücksprungadresse auf dem Stack des Callers)
-	  - ...(jew. gucken, ob das ne gemappte Adresse ist, sonst abbrechen)
-	  -> dann ließen sich Bugs noch besser eingrenzen, weil man sieht, von wem die Fkt aufgerufen wurde, die das Problem triggert
-	 - automatisch alle Member vom atomic_t/atomic64_t ignorieren
 
 Datenbank
 =========
