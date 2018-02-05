@@ -156,11 +156,11 @@ for(dataType in dataTypes) {
 }
 
 plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) + 
-        ylab('Support') +
+        ylab('Percentage of accepted hypothesis') +
         labs(colour='Data Type') +
         geom_line() +
         geom_point() +
-        scale_x_discrete(name="Threshold", limits=steps, breaks=steps) +
+        scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=steps) +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
 mySavePlot(plot,nameThresholds,directory)
