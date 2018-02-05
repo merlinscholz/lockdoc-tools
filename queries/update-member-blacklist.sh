@@ -13,7 +13,6 @@ fi
 
 DATABASES=${1}
 DATA_TYPE=${2}
-MYSQL="mysql ${DB}"
 COUNT=1
 IFS=','
 
@@ -26,7 +25,7 @@ do
 	do
 		MEMBER_NAME=${!COUNT}
 		echo "   Blacklisting: ${DATA_TYPE}.${MEMBER_NAME}"
-		${MYSQL} <<EOT
+mysql ${db} <<EOT
 select id into @dtid from data_types where name = '${DATA_TYPE}';
 select id into @mnid from member_names where name = '${MEMBER_NAME}';
 insert into member_blacklist values (@dtid,@mnid);
