@@ -18,6 +18,9 @@
 // set of observations/lock combinations.
 //
 // Input: The output of txns_members_locks.sql in the form of a CSV file.
+//
+// Note: It is possible to limit the number of used threads by setting the
+// OMP_NUM_THREADS environment variable.
 
 const double accept_threshold_default = .9, cutoff_threshold_default = .1, nolock_threshold_default = .05;
 
