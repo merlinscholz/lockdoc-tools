@@ -312,8 +312,14 @@ void print_hypotheses(const Member& member,
 			<< (member.occurrences - member.occurrences_with_locks) << ";"
 			<< member.occurrences << ";"
 			<< std::setprecision(5)
-			<< (double) (member.occurrences - member.occurrences_with_locks) /
-				(double) member.occurrences * 100 << ";"
+//			<< (double) (member.occurrences - member.occurrences_with_locks) /
+//				(double) member.occurrences * 100 << ";"
+
+		// This is NOT the percentage of accesses without locks, but assumes
+		// that *all* observed lock combinations by definition comply with
+		// "nolock".  This is a temporary(?) quick-fix for the USENIX paper.
+			<< 100.0
+
 			<< nolock_is_winner << ";"
 			<< "TODO;\n";
 		// are we done already?
