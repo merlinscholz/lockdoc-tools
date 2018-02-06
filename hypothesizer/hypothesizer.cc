@@ -318,7 +318,7 @@ void print_hypotheses(const Member& member,
 		// This is NOT the percentage of accesses without locks, but assumes
 		// that *all* observed lock combinations by definition comply with
 		// "nolock".  This is a temporary(?) quick-fix for the USENIX paper.
-			<< 100.0
+			<< 100.0 << ";"
 
 			<< nolock_is_winner << ";"
 			<< "TODO;\n";
