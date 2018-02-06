@@ -45,10 +45,10 @@ if [ "$SANITYCHECK" != : ]; then
 fi
 
 cat <<EOT
-SELECT '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, fn, instrptr, locks_held, COUNT(*) AS occurrences
+SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, fn, instrptr, stacktrace_id, locks_held, COUNT(*) AS occurrences
 FROM
 (
-	SELECT ac.fn, CONCAT('0x', HEX(ac.instrptr)) AS instrptr,
+	SELECT ac.fn, CONCAT('0x', HEX(ac.instrptr)) AS instrptr, stacktrace_id,
 	GROUP_CONCAT(
 		CASE
 		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
@@ -64,7 +64,7 @@ FROM
 	FROM
 
 	(
-		SELECT ac.id, ac.txn_id, ac.alloc_id, ac.fn, ac.instrptr
+		SELECT ac.id, ac.txn_id, ac.alloc_id, ac.fn, ac.instrptr, ac.stacktrace_id
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id

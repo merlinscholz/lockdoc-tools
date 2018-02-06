@@ -39,6 +39,7 @@ else
 	GREP_REGEX="${COUNTEREXAMPLE_SH} ${DATATYPE}"
 fi
 
+COUNT=0
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
 do
 	echo "Running: ${cmd}:"
@@ -46,13 +47,19 @@ do
 	if [ ! -z ${DATABASE} ];
 	then
 		echo "Running query..."
-		mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" >> ${RESULTS}
+		if [ ${COUNT} -gt 0 ];
+		then 
+			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" | sed '/data_type;member;accesstype;fn;instrptr;stacktrace_id;locks_held;occurrences/d' >> ${RESULTS}
+		else
+			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" >> ${RESULTS}
+		fi
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running query from ${QUERY_FILE}" >&2
 			exit 1
 		fi
 	fi
+	let COUNT=COUNT+1
 done;
 rm "${QUERY_FILE}"
 
@@ -63,10 +70,11 @@ do
 	if [ ${COUNT} -eq 0 ];
 	then
 		let COUNT=COUNT+1
+		echo ${line}${DELIMITER}"fileline" >> ${OUTPUT}
 		continue
 	fi
 #	echo $line
-	INSTRPTR=`echo ${line} | cut -d ${DELIMITER} -f 4`
+	INSTRPTR=`echo ${line} | cut -d ${DELIMITER} -f 5`
 	POS=`addr2line -e ${VMLINUX} ${INSTRPTR}`
 	echo ${line}${DELIMITER}${POS} >> ${OUTPUT}
 	let COUNT=COUNT+1
