@@ -31,8 +31,10 @@ echo "Running hypothesizer..."
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_nostack.txt        &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_winner_nostack.csv &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_bugs_nostack.txt   &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT_NOSTACK} > all_txns_members_locks_hypo_nostack.csv   &
 wait
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_stack.txt        &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_winner_stack.csv &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_bugs_stack.txt   &
+${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT_STACK} > all_txns_members_locks_hypo_stack.csv &
 wait
