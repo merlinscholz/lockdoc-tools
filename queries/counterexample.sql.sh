@@ -213,14 +213,14 @@ cat <<EOT
 	LEFT JOIN structs_layout_flat lock_member
 	  ON lock_a.type = lock_member.type_id
 	 AND l.ptr - lock_a.ptr = lock_member.helper_offset
-	JOIN member_names lock_member_name
+	LEFT JOIN member_names lock_member_name
 	  ON lock_member_name.id = lock_member.member_id
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.ptr - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
 	GROUP BY ac.id
 ) all_counterexamples
-GROUP BY instrptr, locks_held
-ORDER BY instrptr, occurrences
+GROUP BY instrptr, stacktrace_id, locks_held
+ORDER BY instrptr, stacktrace_id, occurrences
 ;
 EOT
