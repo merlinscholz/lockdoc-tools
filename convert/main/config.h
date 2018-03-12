@@ -10,6 +10,7 @@
 //#define VERBOSE
 //#define DEBUG_DATASTRUCTURE_GROWTH
 #define PRINT_CONTEXT " (action=" << action << ",type=" << typeStr << ",ts=" << dec << ts << ")"
+#define PRINT_CONTEXT_LOCK " (action=" << action << ",type=" << lockMember << ",ts=" << dec << ts << ")"
 
 extern char delimiter;
 
