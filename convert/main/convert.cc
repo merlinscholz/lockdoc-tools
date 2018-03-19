@@ -264,6 +264,14 @@ static void dumpTXNs(const std::deque<TXN>& txns)
 }
 #endif
 
+/**
+ * Releases a lock, and finishes the corresponding TXN.
+ *
+ * @param ts             Current timestamp
+ * @param lockPtr        Lock to be released
+ * @param txnsOFile      ofstream for txns.csv
+ * @param locksHeldOFile ofstream for locks_held.csv
+ */
 static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
 {
 	// We have to differentiate two cases:
