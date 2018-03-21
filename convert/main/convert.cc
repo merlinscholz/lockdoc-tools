@@ -863,6 +863,8 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'p':
 			processPreemptCount = true;
+			cerr << "Processing of preempt count is currently broken!" << endl;
+			return EXIT_FAILURE;
 			break;
 		case 'm':
 			memberBlacklistName = optarg;
