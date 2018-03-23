@@ -45,20 +45,20 @@ if [ "$SANITYCHECK" != : ]; then
 fi
 
 cat <<EOT
-SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, fn, instrptr, stacktrace_id, locks_held, COUNT(*) AS occurrences
+SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, instrptr, stacktrace, locks_held
 FROM
 (
-	SELECT ac.fn, CONCAT('0x', HEX(ac.instrptr)) AS instrptr, stacktrace_id,
+	SELECT CONCAT('0x', HEX(ac.instrptr)) AS instrptr, stacktrace_id, strace.stacktrace AS stacktrace, 
 	GROUP_CONCAT(
 		CASE
-		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
+		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in same
-		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
+			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in same
+		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other
 --		ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
 		END
 		ORDER BY lh.start
-		SEPARATOR ' -> '
+		SEPARATOR ','
 	) AS locks_held
 
 	FROM
@@ -200,12 +200,15 @@ cat <<EOT
 
 		)
 	) ac
+			
+	LEFT JOIN stacktraces strace
+	  ON strace.id = ac.stacktrace_id
 
 	LEFT JOIN locks_held lh
 	  ON lh.txn_id = ac.txn_id
 	LEFT JOIN locks l
 	  ON l.id = lh.lock_id
-			
+
 	-- find out more about each held lock (allocation -> structs_layout
 	-- member or contained-in member in case of a complex member)
 	LEFT JOIN allocations lock_a
@@ -220,7 +223,7 @@ cat <<EOT
 	-- else                                      => the lock is contained in this member, exact name unknown
 	GROUP BY ac.id
 ) all_counterexamples
-GROUP BY instrptr, stacktrace_id, locks_held
-ORDER BY instrptr, stacktrace_id, occurrences
+GROUP BY data_type, member, accesstype, instrptr, locks_held, stacktrace_id
+ORDER BY data_type, member, accesstype, instrptr, stacktrace_id, occurrences
 ;
 EOT
