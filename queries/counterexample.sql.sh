@@ -224,6 +224,6 @@ cat <<EOT
 	GROUP BY ac.id
 ) all_counterexamples
 GROUP BY data_type, member, accesstype, instrptr, locks_held, stacktrace_id
-ORDER BY data_type, member, accesstype, instrptr, stacktrace_id, occurrences
+ORDER BY data_type, member, accesstype, instrptr, locks_held, stacktrace_id, occurrences
 ;
 EOT
