@@ -1,0 +1,4 @@
+Project Repo: https://github.com/free-electrons/elixir
+Local Repo: /fs/data/www/lockdebug/elixir
+Cronjob: A cronjob updates the kernel repo as well as the exlixir database at 1 O'clock (update-elixir.sh)
+The paths are hardcoded in update-elixir.sh.
