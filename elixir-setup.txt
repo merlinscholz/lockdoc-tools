@@ -2,3 +2,19 @@ Project Repo: https://github.com/free-electrons/elixir
 Local Repo: /fs/data/www/lockdebug/elixir
 Cronjob: A cronjob updates the kernel repo as well as the exlixir database at 1 O'clock (update-elixir.sh)
 The paths are hardcoded in update-elixir.sh.
+To limit the elixir database to our tags, the script.sh of elixir has been modified as follows:
+diff --git a/script.sh b/script.sh
+index 29cd68f..0b926da 100755
+--- a/script.sh
++++ b/script.sh
+@@ -52,6 +52,7 @@ case $cmd in
+     list-tags)
+         tags=$(
+             git tag |
++           grep "^lockdebug-" |
+             version_dir |
+             sed 's/$/.0/' |
+             sort -V |
+
+Otherwise, exlisir will index *every* tag it finds, e.g., someone accidentally pushes all Linux tags to our repo.
+By the way, this is the intended way of doing it. The readme tells us so: "For that reason, you may want to tweak the script (for example, by limiting the number of tags with a "head") in order to test the update and query commands." (https://github.com/free-electrons/elixir/blob/master/README.md)
