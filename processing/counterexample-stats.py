@@ -50,7 +50,7 @@ if __name__ == '__main__':
             cexEntry['count'] += 1
             if line['member'] not in cexEntry['members']:
                 cexEntry['members'][line['member']] = 1
-            locKey = (line['instrptr'], line['stacktrace_id'])
+            locKey = (line['instrptr'], line['stacktrace'])
             if locKey not in cexEntry['locations']:
                 cexEntry['locations'][locKey] = 1
 
