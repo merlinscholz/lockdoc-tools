@@ -94,7 +94,6 @@ if __name__ == '__main__':
 
 	tempFile = open(cexCSV,'rb')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
-	count = 0
 	print("""<html>
 <head>
 <style>
@@ -169,12 +168,14 @@ tr.line_heading {
 <body>
 	<table>
 		<tr>
-			<!--<th>Data Type</th><th>Member</th><th>Access Type</th>--><th>Occurrences</th><th>Locks Held<br/>(first&nbsp;&rarr;&nbsp;most recent)</th><th>Stacktrace<br/>(top-down)</th>
+			<!--<th>Data Type</th><th>Member</th><th>Access Type</th>--><th>ID</th><th>Occurrences</th><th>Locks Held<br/>(first&nbsp;&rarr;&nbsp;most recent)</th><th>Stacktrace<br/>(top-down)</th>
 
 		</tr>""")
 	
 	lineCounter = 0
 	lastKey = None
+	cexID = 1
+	hypothesisID = 0
 	for line in tempReader:
 		key = (line['data_type'], line['member'], line['accesstype'])
 		if key not in hypothesesDict:
@@ -184,6 +185,7 @@ tr.line_heading {
 			hypothesesEntry = hypothesesDict[key]
 		# Print a header for each tuple of (data_type, member, accesstype)
 		if lastKey != key:
+			hypothesisID = hypothesisID + 1
 			print('		<tr class="line_heading">')
 			# The header contains information about the accessed member like
 			# the access type or the locking rule.
@@ -191,9 +193,10 @@ tr.line_heading {
 			# E.g.: 94.6% (19069 out of 20155 mem accesses under locks): EMBOTHER(inode:i_rwsem)			
 			locksHeldKey = hypothesesEntry['locks'].keys()[0]
 			locksHeldEntry = hypothesesEntry['locks'][locksHeldKey]
-			print('<td colspan="4"><b>%s</b> access to <b>%s.%s</b> is proteced by <b>%s</b><br/>' % ('Read' if line['accesstype'] == 'r' else 'Write', line['data_type'], line['member'], locksHeldKey), end='')
+			print('<td colspan="5"><b>Hypothesis %d</b>: <b>%s</b> access to <b>%s.%s</b> is proteced by <b>%s</b><br/>' % (hypothesisID, 'Read' if line['accesstype'] == 'r' else 'Write', line['data_type'], line['member'], locksHeldKey), end='')
 			print('<b>%2.2f%%</b> (%d out of %d mem accesses under locks)</td>' % (locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total']))
 			print('		</tr>')
+			cexID = 1
 		lastKey = key
 		
 		if lineCounter % 2 == 0:
@@ -201,7 +204,7 @@ tr.line_heading {
 		else:
 			lineStyle = 'class="line_b"'
 		print('		<tr %s>' % lineStyle)
-		print('			<!--<td>%s</td><td>%s</td><td>%s</td>--><td>%s</td>' %(line['data_type'], line['member'], line['accesstype'], line['occurrences']), end='')
+		print('			<!--<td>%s</td><td>%s</td><td>%s</td>--><td>%d.%d</td><td>%s</td>' %(line['data_type'], line['member'], line['accesstype'], hypothesisID, cexID, line['occurrences']), end='')
 		print('<td>', end='')
 		
 		# Split locks_held
@@ -250,6 +253,7 @@ tr.line_heading {
 		print('</td>')
 		print('		</tr>')
 		lineCounter = lineCounter + 1
+		cexID = cexID + 1
 
 	print("""	</table>
 <script type='text/javascript'>
