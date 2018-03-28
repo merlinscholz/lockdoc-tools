@@ -44,6 +44,7 @@ CREATE TABLE `locks_held` (			-- Normally, there are several entries for one TXN
   `lastLine` int(11) UNSIGNED DEFAULT NULL,	-- Last line 
   `lastFn` varchar(255) DEFAULT NULL,		-- Last function where the lock has been acquired from
   `lastPreemptCount` int(11) UNSIGNED DEFAULT NULL,	-- Value of preemptcount() after the lock has been acquired
+  `lastIRQSync` enum('LOCK_NONE', 'LOCK_IRQ', 'LOCK_IRQ_NESTED', 'LOCK_BH') NOT NULL,		-- Denotes the irq synchronization used
   PRIMARY KEY (`lock_id`,`txn_id`),
   KEY `fk_txn_id` (`txn_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8

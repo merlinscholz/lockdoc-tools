@@ -16,6 +16,7 @@
 #include <sys/types.h>
 
 #include "config.h"
+#include "log_event.h"
 #include "git_version.h"
 
 #include "dwarves_api.h"
@@ -55,6 +56,7 @@ struct LockPos {
 	string lastFn;												// Last caller
 //	string lastLockFn;											// Lock function used the last time
 	unsigned long long lastPreemptCount;						// Value of preemptcount() after the lock has been acquired
+	enum IRQ_SYNC lastIRQSync;									// IRQ synchronization used
 
 };
 
@@ -320,7 +322,9 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 					locksHeldOFile << tempLockPos.start << delimiter;
 					locksHeldOFile << tempLockPos.lastFile << delimiter;
 					locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
-					locksHeldOFile << tempLockPos.lastPreemptCount << "\n";
+					locksHeldOFile << tempLockPos.lastPreemptCount << delimiter << (tempLockPos.lastIRQSync + 1) << "\n";
+					// Add one to tempLockPos.lastIRQSync, because MySQL enums start at 1. Zero has a special meaning.
+					// https://dev.mysql.com/doc/refman/5.7/en/enum.html#enum-indexes
 				} else {
 					cerr << "TXN: Internal error, lock is part of the TXN hierarchy but not held? lockPtr = " << showbase << hex << thisTXN.lockPtr << noshowbase << endl;
 				}
@@ -366,6 +370,7 @@ static void handlePV(
 	string const& lockMember,
 	string const& lockType,
 	unsigned long long preemptCount,
+	enum IRQ_SYNC irqSync,
 	bool includeAllLocks,
 	unsigned long long pseudoAllocID,
 	ofstream& locksOFile,
@@ -402,6 +407,7 @@ static void handlePV(
 			tempLockPos.lastFile = file;
 			tempLockPos.lastFn = fn;
 			tempLockPos.lastPreemptCount = preemptCount;
+			tempLockPos.lastIRQSync = irqSync;
 
 			// a P() suspends the current TXN and creates a new one
 			startTXN(ts, lockAddress);
@@ -497,6 +503,7 @@ static void handlePV(
 	tempLockPos.lastFile = file;
 	tempLockPos.lastFn = fn;
 	tempLockPos.lastPreemptCount = preemptCount;
+	tempLockPos.lastIRQSync = irqSync;
 
 	locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
 	locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << "\n";
@@ -551,21 +558,21 @@ static void handlePreemptCountChange(
 	if (!prev_softirq && cur_softirq) {
 		/* P(softirq_pseudo_lock) */
 		handlePV('p', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	} else if (prev_softirq && !cur_softirq) {
 		/* V(softirq_pseudo_lock) */
 		handlePV('v', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	}
 
 	if (!prev_hardirq && cur_hardirq) {
 		/* P(hardirq_pseudo_lock) */
 		handlePV('p', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	} else if (prev_hardirq && !cur_hardirq) {
 		/* V(hardirq_pseudo_lock) */
 		handlePV('v', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	}
 }
 
@@ -842,6 +849,7 @@ int main(int argc, char *argv[]) {
 	int lineCounter, isGZ;
 	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false, processPreemptCount = false;
+	enum IRQ_SYNC irqSync = LOCK_NONE;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
 	while ((param = getopt(argc,argv,"k:b:m:t:svhd:up")) != -1) {
@@ -996,7 +1004,7 @@ int main(int argc, char *argv[]) {
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
 	locksHeldOFile << "lastFile" << delimiter << "lastLine" << delimiter << "lastFn" << delimiter;
-	locksHeldOFile << "lastPreemptCount" << endl;
+	locksHeldOFile << "lastPreemptCount" << delimiter << "lastIRQSync" << endl;
 
 	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 
@@ -1076,6 +1084,7 @@ int main(int argc, char *argv[]) {
 			case 'p':
 			case 'v':
 				{
+					int temp;
 					lockMember = lineElems.at(6);
 					address = std::stoull(lineElems.at(2),NULL,16);
 					file = lineElems.at(7);
@@ -1085,6 +1094,28 @@ int main(int argc, char *argv[]) {
 					prevPreemptCount = curPreemptCount;
 					curPreemptCount =
 						preemptCount = std::stoull(lineElems.at(11),NULL,16);
+					temp = std::stoi(lineElems.at(12),NULL,10);
+					switch(temp) {
+						case LOCK_NONE:
+							irqSync = LOCK_NONE;
+							break;
+						
+						case LOCK_IRQ:
+							irqSync = LOCK_IRQ;
+							break;
+						
+						case LOCK_IRQ_NESTED:
+							irqSync = LOCK_IRQ_NESTED;
+							break;
+						
+						case LOCK_BH:
+							irqSync = LOCK_BH;
+							break;
+						
+						default:
+							cerr << "Line (ts=" << ts << ") contains invalid value for irq_sync" << endl;
+							return EXIT_FAILURE;
+					}
 					handlePreemptCountChange(
 						processPreemptCount, prevPreemptCount, curPreemptCount,
 						ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
@@ -1188,7 +1219,7 @@ int main(int argc, char *argv[]) {
 		case 'v':
 		case 'p':
 			handlePV(action, ts, address, file, line, fn, lockMember, lockType,
-				preemptCount, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+				preemptCount, irqSync, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 			break;
 		case 'w':
 		case 'r':
