@@ -21,8 +21,11 @@ if [ $# -lt 5 ]; then
 	LOCKCONNECTOR  ANY = Arbitrary lock order in observation, SEQ = Lock order in this exact sequence
 	LOCK1, ...     Locks as shown by the hypothesizer tool (e.g., EMBSAME(i_mutex))
 
+	If the environment variable USE_EMBOTHER is 1, the results simply show EMBOTHER() instead of EMB:XXX().
 	example:
 	$0 block_device r:bd_invalidated CEX SEQ 'EMB:5779(foo)' 'EMBSAME(bd_mutex)'
+	or
+	USE_EMBOTHER=1 $0 block_device r:bd_invalidated CEX SEQ 'EMB:5779(foo)' 'EMBSAME(bd_mutex)'
 
 	(Use hypothesizer --bugsql to automatically generate parameter lists
 	for this script, and pipe its output, e.g., to "mysql -t" or "mysql -b".)
@@ -44,6 +47,15 @@ if [ "$SANITYCHECK" != : ]; then
 	exit 1
 fi
 
+EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
+if [ -n ${USE_EMBOTHER} ];
+then
+	if [ ${USE_EMBOTHER} -gt 0 ];
+	then
+		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
+	fi
+fi
+
 cat <<EOT
 SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, instrptr, stacktrace, locks_held
 FROM
@@ -54,8 +66,7 @@ FROM
 		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
 			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in same
-		ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other
---		ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')') -- embedded in other
+			${EMBOTHER_SQL}
 		END
 		ORDER BY lh.start
 		SEPARATOR ','

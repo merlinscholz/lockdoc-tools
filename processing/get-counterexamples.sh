@@ -13,7 +13,7 @@ if [ ${#} -lt 3 ]; then
 	DATATYPE        data type
 	OUTPUTFILE      Output file
 	DATABASE        the database where to execute the query
-	VMLINUX         The vmlinux image to resolve the instruction pointers to code positions
+	[USE_EMBOTHER]  1 if the results should simply show EMBOTHER() instead of EMB:XXX()
 	EOT
 	exit 1
 fi
@@ -23,7 +23,7 @@ INPUTFILE=${1}; shift
 DATATYPE=${1}; shift
 OUTPUT=${1}; shift
 DATABASE=${1}; shift
-VMLINUX=${1}; shift
+USE_EMBOTHER_PARAM=${1}; shift
 COUNTEREXAMPLE_SH="counterexample.sql.sh"
 QUERY_FILE=$(mktemp /tmp/counter-examples-sql.XXXXXX)
 DELIMITER=";"
@@ -37,6 +37,8 @@ then
 else
 	GREP_REGEX="${COUNTEREXAMPLE_SH} ${DATATYPE}"
 fi
+
+export USE_EMBOTHER=${USE_EMBOTHER_PARAM} 
 
 COUNT=0
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
