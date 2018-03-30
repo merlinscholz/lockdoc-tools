@@ -100,7 +100,9 @@ if __name__ == '__main__':
 body {
 	font-family: monospace;
 }
-
+h1, h2 {
+	text-align: center;
+}
 table {
 	margin-left: auto;
 	margin-right: auto;
@@ -166,6 +168,26 @@ tr.line_heading {
 </style>
 </head>
 <body>
+	<h1>Counterexamples</h1>
+	<h2>Legend</h2>
+	<table>
+		<tr>
+			<td>EMBSAME(x:y)</td><td>While accessing a member of struct <k>x</k>, the lock <k>y</k> of the same instance was held.<td></td>
+		</tr>
+		<tr>
+			<td>EMOTHER(x:y)</td><td>While accessing a member of struct <k>x</k>, the lock <k>y</k> of another instance of <k>x</k> was held.</td>
+		</tr>
+		<tr>
+			<td>EMB:x(y:z)</td><td>While accessing a member of struct <k>y</k>, the lock <k>z</k> of another instance with id <k>x</k> was held.</td>
+		</tr>
+		<tr>
+			<td>x(y)</td><td>A global lock of type <k>y</k> was held. It has the id <k>x</k>.</td>
+		</tr>
+		<tr>
+			<td>x:y(z)</td><td>The global <k>x</k> lock of type <k>z</k> was held. It has the id <k>y</k>.</td>
+		</tr>
+	</table>
+	<h2>Results</h2>
 	<table>
 		<tr>
 			<!--<th>Data Type</th><th>Member</th><th>Access Type</th>--><th>ID</th><th>Occurrences</th><th>Locks Held<br/>(first&nbsp;&rarr;&nbsp;most recent)</th><th>Stacktrace<br/>(top-down)</th>
