@@ -172,13 +172,13 @@ tr.line_heading {
 	<h2>Legend</h2>
 	<table>
 		<tr>
-			<td>EMBSAME(x:y)</td><td>While accessing a member of struct <k>x</k>, the lock <k>y</k> of the same instance was held.<td></td>
+			<td>EMBSAME(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of the same instance was held.<td></td>
 		</tr>
 		<tr>
-			<td>EMOTHER(x:y)</td><td>While accessing a member of struct <k>x</k>, the lock <k>y</k> of another instance of <k>x</k> was held.</td>
+			<td>EMOTHER(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of another instance of <k>x</k> was held.</td>
 		</tr>
 		<tr>
-			<td>EMB:x(y:z)</td><td>While accessing a member of struct <k>y</k>, the lock <k>z</k> of another instance with id <k>x</k> was held.</td>
+			<td>EMB:x(y:z)</td><td>While accessing a member of an instance of struct <k>y</k>, the lock <k>z</k> of another instance with id <k>x</k> was held.</td>
 		</tr>
 		<tr>
 			<td>x(y)</td><td>A global lock of type <k>y</k> was held. It has the id <k>x</k>.</td>
