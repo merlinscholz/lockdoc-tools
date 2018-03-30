@@ -234,6 +234,15 @@ static inline std::string sql_null_if(T var, bool cond)
 	return "\\N";
 }
 
+template <>
+inline std::string sql_null_if<const char*>(const char *var, bool cond)
+{
+    if (!cond) {
+        return std::string(var);
+    }   
+    return "\\N";
+}
+
 // caching wrapper around cus__get_function_at_addr
 static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 {
@@ -243,6 +252,50 @@ static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 	} else {
 		return it->second;
 	}
+}
+
+struct lockVarSearch {
+	const char *lockVarName;
+	uint64_t addr;
+};
+
+static int findGlobalLockVar(struct cu *cu, void *cookie) {
+	uint32_t i;
+	struct tag *pos;
+	struct lockVarSearch *lockVar = (struct lockVarSearch*)cookie;
+
+	cu__for_each_variable(cu, i, pos) {
+		struct variable *var = tag__variable(pos);
+		
+		// Ensure that this definition has valid location information.
+		// The address and the size of a DW_AT_variable definition is valid
+		// if DW_AT_location and DW_OP_addr are present.
+		// --> var->location is equal LOCATION_GLOBAL.
+		// For more information look dwarf__location@dwarf_loader.c:572
+		if (var->location != LOCATION_GLOBAL) {
+			// No valid location information. Skip this DW_AT_variable.
+			continue;
+		}
+		if (!var->declaration && // Is this a variable definition (--> !declaration)?
+			var->name != 0 && // Does this DW_AT_variable have a name?
+			lockVar->addr >= var->ip.addr && lockVar->addr < (var->ip.addr + tag__size(pos, cu))) {
+			lockVar->lockVarName = variable__name(var, cu);
+#ifdef VERBOSE
+			cerr << hex << showbase << "addr: " << var->ip.addr << ", size:" << dec << tag__size(pos, cu) << ", " << lockVar->lockName << endl;
+#endif
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static const char* getGlobalLockVar(struct cus *cus, uint64_t addr) {
+	struct lockVarSearch lockVar = { 0 };
+	lockVar.addr = addr;
+
+	cus__for_each_cu(cus, findGlobalLockVar, &lockVar, NULL);
+
+	return lockVar.lockVarName;
 }
 
 static void startTXN(unsigned long long ts, unsigned long long lockPtr)
@@ -446,6 +499,7 @@ static void handlePV(
 
 	// categorize currently unknown lock
 	unsigned allocation_id = 0;
+	const char *lockVarName = NULL;
 	// A lock which probably resides in one of the observed allocations. If not, check if it is a global lock
 	// This way, locks which reside in global structs are recognized as 'embedded in'.
 	auto itAlloc = activeAllocs.upper_bound(lockAddress);
@@ -464,6 +518,11 @@ static void handlePV(
 #ifdef VERBOSE
 			cout << "Found static lock: " << showbase << hex << lockAddress << noshowbase << PRINT_CONTEXT_LOCK << endl;
 #endif
+			// Try to resolve what the name of this lock is
+			// This also catches cases where the lock resides inside another data structure.
+			if (lockMember.compare("static") != 0) {
+				lockVarName = getGlobalLockVar(cus,lockAddress);
+			}
 		} else if (includeAllLocks) {
 			// non-static lock, but we don't known the allocation it belongs to
 #ifdef VERBOSE
@@ -506,7 +565,8 @@ static void handlePV(
 	tempLockPos.lastIRQSync = irqSync;
 
 	locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
-	locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << "\n";
+	locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << delimiter;
+	locksOFile << sql_null_if(lockVarName, lockVarName == NULL) << "\n";
 
 	// a P() suspends the current TXN and creates a new one
 	startTXN(ts, lockAddress);
@@ -999,7 +1059,8 @@ int main(int argc, char *argv[]) {
 	accessOFile << "stacktrace_id" << delimiter << "instrptr" << delimiter << "preemptcount" << delimiter << "fn" << endl;
 
 	locksOFile << "id" << delimiter << "ptr" << delimiter;
-	locksOFile << "embedded" << delimiter << "locktype" << endl;
+	locksOFile << "embedded" << delimiter << "locktype" << delimiter;
+	locksOFile << "lock_var_name" << endl;
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;

@@ -63,7 +63,10 @@ FROM
 	SELECT CONCAT('0x', HEX(ac.instrptr)) AS instrptr, stacktrace_id, strace.stacktrace AS stacktrace, 
 	GROUP_CONCAT(
 		CASE
-		WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation)
+		WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
+			THEN CONCAT(l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* no name available)
+		WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
+			THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* a name is available)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
 			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in same
 			${EMBOTHER_SQL}
@@ -155,7 +158,7 @@ cat <<EOT
 			 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 
-	elif echo $LOCK | grep -q '^\(EMB:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t)
+	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
 		LOCKID=$(echo $LOCK | sed -e 's/^[^0-9]*\([0-9]\+\).*$/\1/') # 1st numeric sequence in $LOCK
 		cat <<EOT
 			-- lock #$LOCKNR

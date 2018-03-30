@@ -15,6 +15,19 @@ extern "C" {
 
 struct cu;
 
+/**
+ * cu__for_each_variable - iterate thru all the global variable tags
+ * @cu: struct cu instance to iterate
+ * @pos: struct tag iterator
+ * @id: uint32_t tag id
+ */
+#define cu__for_each_variable(cu, id, pos)		\
+	for (id = 0; id < cu->tags_table.nr_entries; ++id) \
+		if (!(pos = (struct tag*)cu->tags_table.entries[id]) || \
+		    !tag__is_variable(pos))		\
+			continue;			\
+		else
+
 enum load_steal_kind {
 	LSK__KEEPIT,
 	LSK__DELETE,
@@ -156,6 +169,40 @@ struct tag {
 	void		 *priv;
 };
 
+struct ip_tag {
+	struct tag tag;
+	uint64_t   addr;
+};
+
+enum vlocation {
+	LOCATION_UNKNOWN,
+	LOCATION_LOCAL,
+	LOCATION_GLOBAL,
+	LOCATION_REGISTER,
+	LOCATION_OPTIMIZED
+} __attribute__((packed));
+
+struct variable {
+	struct ip_tag	 ip;
+	strings_t	 name;
+	uint8_t		 external:1;
+	uint8_t		 declaration:1;
+	enum vlocation	 location;
+	struct hlist_node tool_hnode;
+};
+
+static inline struct variable *tag__variable(const struct tag *self)
+{
+	return (struct variable *)self;
+}
+
+static inline bool tag__is_variable(const struct tag *self)
+{
+	return self->tag == DW_TAG_variable;
+}
+
+const char *variable__name(const struct variable *self, const struct cu *cu);
+
 /** struct conf_fprintf - hints to the __fprintf routines
  *
  * @flat_arrays - a->foo[10][2] becomes a->foo[20]
@@ -226,7 +273,7 @@ int class__fprintf(void *class_, const struct cu *cu, FILE *out,
 	struct dwarves_convert_ext *ext);
 struct tag *cu__find_struct_by_name(const struct cu *cu, const char *name,
 				    const int include_decls, uint16_t *id);
-
+size_t tag__size(const struct tag *self, const struct cu *cu);
 const char *cus__get_function_at_addr(const struct cus *cus,uint64_t addr);
 
 int dwarves__init(uint16_t user_cacheline_size);

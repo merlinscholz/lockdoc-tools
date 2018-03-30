@@ -58,7 +58,10 @@ FROM
 --			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id THEN CONCAT('EMBSAME(', l.type, ')') -- embedded in same
 ----			ELSE CONCAT('EXT(', lock_a_dt.name, '.', l.type, ')') -- embedded in other
 --			ELSE CONCAT('EMB:', l.id, '(', l.type, ')') -- embedded in other
-			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
+				THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation *and* no name available)
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, ')') -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
 				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
 			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
@@ -190,7 +193,10 @@ FROM
 		SELECT fac.type_id, dt.name AS type_name, fac.member, fac.instrptr, fac.stacktrace_id,
 			GROUP_CONCAT(
 				CASE
-				WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation)
+				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
+					THEN CONCAT(l.id, '(', l.type, ')') -- global (or embedded in unknown allocation *and* no name available)
+				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
+					THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, ')') -- global (or embedded in unknown allocation *and* a name is available)
 				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = fac.alloc_id
 					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in same
 				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other

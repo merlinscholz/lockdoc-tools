@@ -102,19 +102,6 @@ static inline __pure bool cu__is_c_plus_plus(const struct cu *self)
 			continue;					     \
 		else
 
-/**
- * cu__for_each_variable - iterate thru all the global variable tags
- * @cu: struct cu instance to iterate
- * @pos: struct tag iterator
- * @id: uint32_t tag id
- */
-#define cu__for_each_variable(cu, id, pos)		\
-	for (id = 0; id < cu->tags_table.nr_entries; ++id) \
-		if (!(pos = cu->tags_table.entries[id]) || \
-		    !tag__is_variable(pos))		\
-			continue;			\
-		else
-
 int cu__add_tag(struct cu *self, struct tag *tag, long *id);
 int cu__table_add_tag(struct cu *self, struct tag *tag, long *id);
 int cu__table_nullify_type_entry(struct cu *self, uint32_t id);
@@ -179,11 +166,6 @@ static inline int tag__is_union(const struct tag *self)
 static inline int tag__is_const(const struct tag *self)
 {
 	return self->tag == DW_TAG_const_type;
-}
-
-static inline bool tag__is_variable(const struct tag *self)
-{
-	return self->tag == DW_TAG_variable;
 }
 
 static inline bool tag__is_volatile(const struct tag *self)
@@ -338,11 +320,6 @@ void namespace__delete(struct namespace *self, struct cu *cu);
 
 void namespace__add_tag(struct namespace *self, struct tag *tag);
 
-struct ip_tag {
-	struct tag tag;
-	uint64_t   addr;
-};
-
 struct inline_expansion {
 	struct ip_tag	 ip;
 	size_t		 size;
@@ -370,30 +347,6 @@ static inline const char *label__name(const struct label *self,
 {
 	return cu__string(cu, self->name);
 }
-
-enum vlocation {
-	LOCATION_UNKNOWN,
-	LOCATION_LOCAL,
-	LOCATION_GLOBAL,
-	LOCATION_REGISTER,
-	LOCATION_OPTIMIZED
-} __attribute__((packed));
-
-struct variable {
-	struct ip_tag	 ip;
-	strings_t	 name;
-	uint8_t		 external:1;
-	uint8_t		 declaration:1;
-	enum vlocation	 location;
-	struct hlist_node tool_hnode;
-};
-
-static inline struct variable *tag__variable(const struct tag *self)
-{
-	return (struct variable *)self;
-}
-
-const char *variable__name(const struct variable *self, const struct cu *cu);
 
 const char *variable__type_name(const struct variable *self,
 				const struct cu *cu, char *bf, size_t len);
