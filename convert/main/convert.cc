@@ -18,15 +18,12 @@
 #include "config.h"
 #include "log_event.h"
 #include "git_version.h"
+#include "rwlock.h"
+#include "rlock.h"
+#include "wlock.h"
 
 #include "dwarves_api.h"
 #include "gzstream/gzstream.h"
-
-#define PSEUDOLOCK_ADDR_RCU		0x42
-#define PSEUDOLOCK_ADDR_SOFTIRQ	0x45
-#define PSEUDOLOCK_ADDR_HARDIRQ	0x44
-#define IS_MULTILVL_LOCK(x)		((x).ptr == PSEUDOLOCK_ADDR_RCU)
-#define IS_STATIC_LOCK_ADDR(x)	((x) == PSEUDOLOCK_ADDR_RCU || (x) == PSEUDOLOCK_ADDR_SOFTIRQ || (x) == PSEUDOLOCK_ADDR_HARDIRQ)
 
 /**
  * Authors: Alexander Lochmann, Horst Schirmeier
@@ -46,30 +43,6 @@ enum AccessTypes {
 	READ,
 	WRITE,
 	TYPES_END
-};
-
-
-struct LockPos {
-	unsigned long long start;									// Timestamp when the lock has been acquired
-	int lastLine;												// Position within the file where the lock has been acquired for the last time
-	string lastFile;											// Last file from where the lock has been acquired
-	string lastFn;												// Last caller
-//	string lastLockFn;											// Lock function used the last time
-	unsigned long long lastPreemptCount;						// Value of preemptcount() after the lock has been acquired
-	enum IRQ_SYNC lastIRQSync;									// IRQ synchronization used
-
-};
-
-/**
- * Describes an instance of a lock
- */
-struct Lock {
-	unsigned long long id;										// A unique id which describes a particular lock within our dataset
-	unsigned long long ptr;										// The pointer to the memory area where the lock resides
-	int held;													// Indicates whether the lock is held or not (may be > 1 for recursive locks)
-	unsigned allocation_id;										// ID of the allocation this lock resides in (0 if not embedded)
-	string lockType;											// Describes the lock type
-	stack<LockPos> lastNPos;									// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
 };
 
 /**
@@ -109,27 +82,9 @@ struct MemAccess {
 };
 
 /**
- * Represents a Transaction (TXN).
- *
- * A TXN starts with a P or V, and ends with a P or V -- i.e., with a change in
- * the set of currently acquired locks.  If no lock is held, no TXN is active.
- * Hence, each TXN is associated with a set of held locks, which can be ordered
- * by looking at their start timestamp.
- *
- * Note that a TXN does not necessarily end with a V() on the same lock as it
- * started with using a P().
- */
-struct TXN {
-	unsigned long long id;										// ID
-	unsigned long long start;									// Timestamp when this TXN started
-	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
-	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
-};
-
-/**
  * Contains all known locks. The ptr of a lock is used as an index.
  */
-static map<unsigned long long,Lock> lockPrimKey;
+static map<unsigned long long,RWLock*> lockPrimKey;
 /**
  * Contains all active allocations. The ptr to the memory area is used as an index.
  */
@@ -224,25 +179,6 @@ static void printVersion()
 	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
 }
 
-// returns stringified var if cond is false, or "NULL" if cond is true
-template <typename T>
-static inline std::string sql_null_if(T var, bool cond)
-{
-	if (!cond) {
-		return std::to_string(var);
-	}
-	return "\\N";
-}
-
-template <>
-inline std::string sql_null_if<const char*>(const char *var, bool cond)
-{
-    if (!cond) {
-        return std::string(var);
-    }   
-    return "\\N";
-}
-
 // caching wrapper around cus__get_function_at_addr
 static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
 {
@@ -280,9 +216,7 @@ static int findGlobalLockVar(struct cu *cu, void *cookie) {
 			var->name != 0 && // Does this DW_AT_variable have a name?
 			lockVar->addr >= var->ip.addr && lockVar->addr < (var->ip.addr + tag__size(pos, cu))) {
 			lockVar->lockVarName = variable__name(var, cu);
-#ifdef VERBOSE
-			cerr << hex << showbase << "addr: " << var->ip.addr << ", size:" << dec << tag__size(pos, cu) << ", " << lockVar->lockName << endl;
-#endif
+			PRINT_DEBUG("", hex << showbase << "addr=" << var->ip.addr << ",size=" << dec << tag__size(pos, cu) << " --> " << lockVar->lockVarName);
 			return 1;
 		}
 	}
@@ -298,13 +232,14 @@ static const char* getGlobalLockVar(struct cus *cus, uint64_t addr) {
 	return lockVar.lockVarName;
 }
 
-static void startTXN(unsigned long long ts, unsigned long long lockPtr)
+void startTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK subLock)
 {
 	activeTXNs.push_back(TXN());
 	activeTXNs.back().id = curTXNID++;
 	activeTXNs.back().start = ts;
 	activeTXNs.back().memAccessCounter = 0;
 	activeTXNs.back().lockPtr = lockPtr;
+	activeTXNs.back().subLock = subLock;
 }
 
 #if 0
@@ -327,7 +262,7 @@ static void dumpTXNs(const std::deque<TXN>& txns)
  * @param txnsOFile      ofstream for txns.csv
  * @param locksHeldOFile ofstream for locks_held.csv
  */
-static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
+bool finishTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK subLock, bool removeReader, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile)
 {
 	// We have to differentiate two cases:
 	//
@@ -358,20 +293,26 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 			// TXNs "below" it (the order does not matter because we record the
 			// start timestamp).  Don't mention a lock more than once (see
 			// below).
-			std::set<decltype(Lock::id)> locks_seen;
+			std::set<decltype(RWLock::read_id)> locks_seen;
 			for (auto thisTXN : activeTXNs) {
-				Lock& tempLock = lockPrimKey[thisTXN.lockPtr];
-				if ((IS_MULTILVL_LOCK(tempLock) && tempLock.held >= 1) || (!IS_MULTILVL_LOCK(tempLock) && tempLock.held == 1)) {
-					LockPos& tempLockPos = tempLock.lastNPos.top();
+				RWLock *tempLock = lockPrimKey[thisTXN.lockPtr];
+				if (tempLock->isHeld()) {
+					if (tempLock->lastNPos.empty()) {
+						PRINT_ERROR(tempLock->toString(thisTXN.subLock) << ",ts=" << dec << ts, "TXN: Internal error, stack underflow in lastNPos");
+						continue;
+					}
+					LockPos& tempLockPos = tempLock->lastNPos.top();
+					decltype(RWLock::read_id) lockID = tempLock->getID(thisTXN.subLock);
 					// Have we already seen this lock?
-					if (locks_seen.find(tempLock.id) != locks_seen.end()) {
-						// For example, RCU may be held multiple times, but the
+					if (locks_seen.find(lockID) != locks_seen.end()) {
+						// All reader locks, for example, RCU, and the read-side of
+						// of reader-writer locks may be held multiple times, but the
 						// locks_held table structure currently does not allow
 						// this (because the lock_id is part of the PK).
 						continue;
 					}
-					locks_seen.insert(tempLock.id);
-					locksHeldOFile << dec << activeTXNs.back().id << delimiter << tempLock.id << delimiter;
+					locks_seen.insert(lockID);
+					locksHeldOFile << dec << activeTXNs.back().id << delimiter << lockID << delimiter;
 					locksHeldOFile << tempLockPos.start << delimiter;
 					locksHeldOFile << tempLockPos.lastFile << delimiter;
 					locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
@@ -379,16 +320,43 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 					// Add one to tempLockPos.lastIRQSync, because MySQL enums start at 1. Zero has a special meaning.
 					// https://dev.mysql.com/doc/refman/5.7/en/enum.html#enum-indexes
 				} else {
-					cerr << "TXN: Internal error, lock is part of the TXN hierarchy but not held? lockPtr = " << showbase << hex << thisTXN.lockPtr << noshowbase << endl;
+					PRINT_ERROR(tempLock->toString(thisTXN.subLock) << ",ts=" << dec << ts, "TXN: Internal error, lock is part of the TXN hierarchy but not held?");
 				}
 			}
 		}
 
 		// are we done deconstructing the TXN stack?
 		if (activeTXNs.back().lockPtr == lockPtr) {
-			activeTXNs.pop_back();
-			found = true;
-			break;
+			if (activeTXNs.back().subLock == subLock) {
+				// We have deconstructed the TXN stack until the topmost
+				// TXN belongs to the lock for which we have seen a V().
+				activeTXNs.pop_back();
+				found = true;
+				// But still, the TXN stack may contain TXNs belonging to lockPtr.
+				if (removeReader) {
+					// The caller wants to remove all READER_LOCKs from the TXN stack.
+					for (std::deque<TXN>::iterator it = activeTXNs.begin(); it != activeTXNs.end();) {
+						if (it->lockPtr != lockPtr) {
+							continue;
+						}
+						RWLock *tempLock;
+						// Does subLock and lockPtr match?
+						if (it->subLock == READER_LOCK) {
+							tempLock = lockPrimKey[it->lockPtr];
+							PRINT_DEBUG(tempLock->toString(it->subLock) << ",ts=" << dec << ts << ",txn=" << it->id, "Flushing TXN");
+							it = activeTXNs.erase(it);
+						} else {
+							it++;
+							tempLock = lockPrimKey[it->lockPtr];
+							PRINT_ERROR(tempLock->toString(it->subLock) << ",ts=" << dec << ts, "Multiple active txns for one writer lock");
+						}
+					}
+				}
+				break;
+			} else {
+				RWLock *tempLock = lockPrimKey[activeTXNs.back().lockPtr];
+				PRINT_ERROR(tempLock->toString(activeTXNs.back().subLock) << ",ts=" << dec << ts, "sublock does not match");
+			}
 		}
 
 		// this is a TXN we need to recreate under a different ID after we're done
@@ -405,16 +373,18 @@ static void finishTXN(unsigned long long ts, unsigned long long lockPtr, std::of
 	// sanity check whether activeTXNs is not empty -- this should never happen
 	// because we check whether we know this lock before we call finishTXN()!
 	if (!found) {
-		cerr << "TXN: Internal error -- V() but no matching TXN! lockPtr = " << showbase << hex << lockPtr << noshowbase << endl;
+		RWLock *tempLock = lockPrimKey[lockPtr];
+		PRINT_ERROR(tempLock->toString(subLock) << ",ts=" << dec << ts, "TXN: Internal error -- V() but no matching TXN!");
 	}
 
 	// recreate TXNs
 	std::move(restartTXNs.begin(), restartTXNs.end(), std::back_inserter(activeTXNs));
+	return found;
 }
 
 /* handle P() / V() events */
 static void handlePV(
-	char action,
+	enum LOCK_OP lockOP,
 	unsigned long long ts,
 	unsigned long long lockAddress,
 	string const& file,
@@ -431,145 +401,66 @@ static void handlePV(
 	ofstream& locksHeldOFile
 	)
 {
+	RWLock *tempLock;
+
 	auto itLock = lockPrimKey.find(lockAddress);
 	if (itLock != lockPrimKey.end()) {
-		if (action == 'p') {
-			// Found a known lock. Just update its metainformation
-#ifdef VERBOSE
-			cerr << "Found existing lock at address " << showbase << hex << lockAddress << noshowbase << ". Just updating the meta information." << endl;
-#endif
-			if (lockAddress == PSEUDOLOCK_ADDR_RCU) {
-				itLock->second.held++;
-			} else {
-				// Has it already been acquired?
-				if (itLock->second.held != 0) {
-					cerr << "Lock at address " << showbase << hex << lockAddress << noshowbase << " is already being held!" << PRINT_CONTEXT_LOCK << endl;
-					// finish TXN for this lock, we may have missed
-					// the corresponding V()
-					finishTXN(ts, lockAddress, txnsOFile, locksHeldOFile);
-					// forget locking position because this kind of
-					// lock can officially only be held once
-					itLock->second.lastNPos.pop();
-				}
-				itLock->second.held = 1;
-			}
-			itLock->second.lastNPos.push(LockPos());
-			LockPos& tempLockPos = itLock->second.lastNPos.top();
-			tempLockPos.start = ts;
-			tempLockPos.lastLine = line;
-			tempLockPos.lastFile = file;
-			tempLockPos.lastFn = fn;
-			tempLockPos.lastPreemptCount = preemptCount;
-			tempLockPos.lastIRQSync = irqSync;
-
-			// a P() suspends the current TXN and creates a new one
-			startTXN(ts, lockAddress);
-		} else if (action == 'v') {
-			if (!itLock->second.lastNPos.empty()) {
-				// a V() finishes the current TXN (even if it does
-				// not match its starting P()!) and continues the
-				// enclosing one
-				if (activeTXNs.empty()) {
-					cerr << "TXN: V() but no running TXN!" << PRINT_CONTEXT_LOCK << endl;
-				} else {
-					finishTXN(ts, lockAddress, txnsOFile, locksHeldOFile);
-				}
-
-				itLock->second.lastNPos.pop();
-			} else {
-				cerr << "No last locking position known for lock at address " << showbase << hex << lockAddress << noshowbase << ", cannot pop." << PRINT_CONTEXT_LOCK << endl;
-			}
-			if (lockAddress == PSEUDOLOCK_ADDR_RCU) {
-				if (itLock->second.held == 0) {
-					cerr << "RCU lock has already been released." << PRINT_CONTEXT_LOCK << endl;
-				} else {
-					itLock->second.held--;
-				}
-			} else {
-				// Has it already been released?
-				if (itLock->second.held == 0) {
-					cerr << "Lock at address " << showbase << hex << lockAddress << noshowbase << " has already been released." << PRINT_CONTEXT_LOCK << endl;
-				}
-				itLock->second.held = 0;
+		tempLock = itLock->second;
+	} else {
+		// categorize currently unknown lock
+		unsigned allocation_id = 0;
+		const char *lockVarName = NULL;
+		// A lock which probably resides in one of the observed allocations. If not, check if it is a global lock
+		// This way, locks which reside in global structs are recognized as 'embedded in'.
+		auto itAlloc = activeAllocs.upper_bound(lockAddress);
+		if (itAlloc != activeAllocs.begin()) {
+			itAlloc--;
+			if (lockAddress < itAlloc->first + itAlloc->second.size) {
+				allocation_id = itAlloc->second.id;
 			}
 		}
-		// Since the lock alreadys exists, and the metainformation has been updated, no further action is required
-		return;
-	}
-
-	// categorize currently unknown lock
-	unsigned allocation_id = 0;
-	const char *lockVarName = NULL;
-	// A lock which probably resides in one of the observed allocations. If not, check if it is a global lock
-	// This way, locks which reside in global structs are recognized as 'embedded in'.
-	auto itAlloc = activeAllocs.upper_bound(lockAddress);
-	if (itAlloc != activeAllocs.begin()) {
-		itAlloc--;
-		if (lockAddress < itAlloc->first + itAlloc->second.size) {
-			allocation_id = itAlloc->second.id;
-		}
-	}
-	if (allocation_id == 0) {
-		if ((lockAddress >= bssStart && lockAddress < bssStart + bssSize) ||
-			(lockAddress >= dataStart && lockAddress < dataStart + dataSize) ||
-			(lockMember.compare("static") == 0 && IS_STATIC_LOCK_ADDR(lockAddress))) {
-			// static lock which resides either in the bss segment or in the data segment
-			// or global static lock aka rcu lock
-#ifdef VERBOSE
-			cout << "Found static lock: " << showbase << hex << lockAddress << noshowbase << PRINT_CONTEXT_LOCK << endl;
-#endif
-			// Try to resolve what the name of this lock is
-			// This also catches cases where the lock resides inside another data structure.
-			if (lockMember.compare("static") != 0) {
-				lockVarName = getGlobalLockVar(cus,lockAddress);
+		if (allocation_id == 0) {
+			if ((lockAddress >= bssStart && lockAddress < bssStart + bssSize) ||
+				(lockAddress >= dataStart && lockAddress < dataStart + dataSize) ||
+				(lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
+				// static lock which resides either in the bss segment or in the data segment
+				// or global static lock aka rcu lock
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found static lock.");
+				// Try to resolve what the name of this lock is
+				// This also catches cases where the lock resides inside another data structure.
+				if (lockMember.compare("static") != 0) {
+					lockVarName = getGlobalLockVar(cus,lockAddress);
+				}
+			} else if (includeAllLocks) {
+				// non-static lock, but we don't known the allocation it belongs to
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
+				allocation_id = pseudoAllocID;
+			} else {
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Lock does not belong to any of the observed memory regions. Ignoring it.");
+				return;
 			}
-		} else if (includeAllLocks) {
-			// non-static lock, but we don't known the allocation it belongs to
-#ifdef VERBOSE
-			cout << "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation: "
-				<< showbase << hex << lockAddress << noshowbase << endl;
-#endif
-			allocation_id = pseudoAllocID;
-		} else {
-#ifdef VERBOSE
-			cerr << "Lock at address " << showbase << hex << lockAddress << noshowbase << " does not belong to any of the observed memory regions. Ignoring it." << PRINT_CONTEXT_LOCK << endl;
-#endif
+		}
+		if (lockOP == V_READ || lockOP == V_WRITE) {
+			PRINT_ERROR("ts=" << ts << ",lockAddress=" << hex << showbase << lockAddress << noshowbase << ",lockOP=" << dec << lockOP, "Cannot find a lock at given address.");
 			return;
 		}
+		// Instantiate the corresponding class ...
+		tempLock = RWLock::allocLock(lockAddress, allocation_id, lockType, lockVarName);
+		// ... , and assign ids to the sub locks
+		tempLock->initIDs(curLockID);
+		PRINT_DEBUG("", "Created lock: " << tempLock);
+		// Store the lock in our global map
+		pair<map<unsigned long long,RWLock*>::iterator,bool> retLock;
+		retLock = lockPrimKey.insert(pair<unsigned long long,RWLock*>(lockAddress, tempLock));
+		if (!retLock.second) {
+			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot insert lock into map.");
+			// This is a severe error. Abort immediately!
+			exit(1);
+		}
+		// Write the lock to disk (aka locks.csv)
+		tempLock->writeLock(locksOFile, delimiter);
 	}
-
-	if (action == 'v') {
-		cerr << "Cannot find a lock at address " << showbase << hex << lockAddress << noshowbase << PRINT_CONTEXT_LOCK << endl;
-		return;
-	}
-
-	// Insert virgin lock into map, and write entry to file
-	pair<map<unsigned long long,Lock>::iterator,bool> retLock =
-		lockPrimKey.insert(pair<unsigned long long,Lock>(lockAddress,Lock()));
-	if (!retLock.second) {
-		cerr << "Cannot insert lock into map: " << showbase << hex << lockAddress << noshowbase << PRINT_CONTEXT_LOCK << endl;
-	}
-	Lock& tempLock = retLock.first->second;
-	tempLock.ptr = lockAddress;
-	tempLock.held = 1;
-	tempLock.id = curLockID++;
-	tempLock.allocation_id = allocation_id;
-	tempLock.lockType = lockType;
-	tempLock.lastNPos.push(LockPos());
-	LockPos& tempLockPos = tempLock.lastNPos.top();
-	tempLockPos.start = ts;
-	tempLockPos.lastLine = line;
-	tempLockPos.lastFile = file;
-	tempLockPos.lastFn = fn;
-	tempLockPos.lastPreemptCount = preemptCount;
-	tempLockPos.lastIRQSync = irqSync;
-
-	locksOFile << dec << tempLock.id << delimiter << tempLock.ptr;
-	locksOFile << delimiter << sql_null_if(tempLock.allocation_id, tempLock.allocation_id == 0) << delimiter << tempLock.lockType << delimiter;
-	locksOFile << sql_null_if(lockVarName, lockVarName == NULL) << "\n";
-
-	// a P() suspends the current TXN and creates a new one
-	startTXN(ts, lockAddress);
+	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile);
 }
 
 /* taken from Linux 4.10 include/linux/preempt.h */
@@ -605,6 +496,7 @@ static void handlePreemptCountChange(
 	ofstream& locksHeldOFile
 	)
 {
+	
 	if (!enabled) {
 		return;
 	}
@@ -617,21 +509,21 @@ static void handlePreemptCountChange(
 
 	if (!prev_softirq && cur_softirq) {
 		/* P(softirq_pseudo_lock) */
-		handlePV('p', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
+		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
 			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	} else if (prev_softirq && !cur_softirq) {
 		/* V(softirq_pseudo_lock) */
-		handlePV('v', ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
+		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
 			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	}
 
 	if (!prev_hardirq && cur_hardirq) {
 		/* P(hardirq_pseudo_lock) */
-		handlePV('p', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
+		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
 			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	} else if (prev_hardirq && !cur_hardirq) {
 		/* V(hardirq_pseudo_lock) */
-		handlePV('v', ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
+		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
 			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 	}
 }
@@ -663,9 +555,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		    window[0].address == window[1].address &&
 		    window[0].address == pAddress &&
 		    window[0].size == window[1].size) {
-#ifdef VERBOSE
-			cout << "Discarding event r+w " << dec << window[0].ts << " reading and writing " << window[0].size << " bytes at address " << showbase << hex << window[0].address << noshowbase << endl;
-#endif
+			PRINT_DEBUG("ts=" << dec << window[0].ts << ",type=" << pAction << ",address=" << hex << showbase << pAddress, "Discarding r+w event of size " << dec << window[0].size);
 			// Remove the two last memory accesses from the list, because they belong to the upcoming acquire or release on a spinlock.
 			// We do *not* want them to be in our dataset.
 			pMemAccesses->pop_back();
@@ -903,13 +793,14 @@ int main(int argc, char *argv[]) {
 	string inputLine, token, typeStr, file, fn, lockType, stacktrace, lockMember;
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
-	map<unsigned long long,Lock>::iterator itLock, itTemp;
+	map<unsigned long long,RWLock*>::iterator itLock, itTemp;
 	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
 	unsigned long long prevPreemptCount = 0, curPreemptCount = 0;
 	int lineCounter, isGZ;
 	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false, processPreemptCount = false;
 	enum IRQ_SYNC irqSync = LOCK_NONE;
+	enum LOCK_OP lockOP = P_WRITE;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
 	while ((param = getopt(argc,argv,"k:b:m:t:svhd:up")) != -1) {
@@ -1060,7 +951,7 @@ int main(int argc, char *argv[]) {
 
 	locksOFile << "id" << delimiter << "ptr" << delimiter;
 	locksOFile << "embedded" << delimiter << "locktype" << delimiter;
-	locksOFile << "lock_var_name" << endl;
+	locksOFile << "sub_lock" << delimiter << "lock_var_name" << endl;
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
@@ -1116,7 +1007,7 @@ int main(int argc, char *argv[]) {
 				cerr << "Warning: Input data does not start with a CSV header." << endl;
 			}
 		}
-
+	
 		ss << inputLine;
 		// Tokenize each line by delimiter, and store each element in a vector
 		while (getline(ss,token,delimiter)) {
@@ -1137,44 +1028,65 @@ int main(int argc, char *argv[]) {
 			case 'a':
 			case 'f':
 				{
-					typeStr = lineElems.at(5);
-					baseAddress = std::stoull(lineElems.at(2),NULL,16);
-					size = std::stoull(lineElems.at(3));
+					typeStr = lineElems.at(6);
+					baseAddress = std::stoull(lineElems.at(3),NULL,16);
+					size = std::stoull(lineElems.at(4));
 					break;
 				}
-			case 'p':
-			case 'v':
+			case 'l':
 				{
 					int temp;
-					lockMember = lineElems.at(6);
-					address = std::stoull(lineElems.at(2),NULL,16);
-					file = lineElems.at(7);
-					line = std::stoull(lineElems.at(8));
-					fn = lineElems.at(9);
-					lockType = lineElems.at(5);
+					lockMember = lineElems.at(7);
+					address = std::stoull(lineElems.at(3),NULL,16);
+					file = lineElems.at(8);
+					line = std::stoull(lineElems.at(9));
+					fn = lineElems.at(10);
+					lockType = lineElems.at(6);
 					prevPreemptCount = curPreemptCount;
 					curPreemptCount =
-						preemptCount = std::stoull(lineElems.at(11),NULL,16);
-					temp = std::stoi(lineElems.at(12),NULL,10);
+						preemptCount = std::stoull(lineElems.at(12),NULL,16);
+					temp = std::stoi(lineElems.at(13),NULL,10);
 					switch(temp) {
 						case LOCK_NONE:
 							irqSync = LOCK_NONE;
 							break;
-						
+
 						case LOCK_IRQ:
 							irqSync = LOCK_IRQ;
 							break;
-						
+
 						case LOCK_IRQ_NESTED:
 							irqSync = LOCK_IRQ_NESTED;
 							break;
-						
+
 						case LOCK_BH:
 							irqSync = LOCK_BH;
 							break;
-						
+
 						default:
 							cerr << "Line (ts=" << ts << ") contains invalid value for irq_sync" << endl;
+							return EXIT_FAILURE;
+					}
+					temp = std::stoi(lineElems.at(2),NULL,10);
+					switch(temp) {
+						case P_READ:
+							lockOP = P_READ;
+							break;
+
+						case P_WRITE:
+							lockOP = P_WRITE;
+							break;
+
+						case V_READ:
+							lockOP = V_READ;
+							break;
+
+						case V_WRITE:
+							lockOP = V_WRITE;
+							break;
+
+						default:
+							cerr << "Line (ts=" << ts << ") contains invalid value for lock_op" << endl;
 							return EXIT_FAILURE;
 					}
 					handlePreemptCountChange(
@@ -1186,12 +1098,12 @@ int main(int argc, char *argv[]) {
 			case 'r':
 			case 'w':
 				{
-					address = std::stoull(lineElems.at(2),NULL,16);
-					size = std::stoull(lineElems.at(3));
-					baseAddress = std::stoull(lineElems.at(4),NULL,16);
-					instrPtr = std::stoull(lineElems.at(10),NULL,16);
-					stacktrace = lineElems.at(13);
-					if (lineElems.at(11).compare("NULL") != 0) {
+					address = std::stoull(lineElems.at(3),NULL,16);
+					size = std::stoull(lineElems.at(4));
+					baseAddress = std::stoull(lineElems.at(5),NULL,16);
+					instrPtr = std::stoull(lineElems.at(11),NULL,16);
+					stacktrace = lineElems.at(14);
+					if (lineElems.at(12).compare("NULL") != 0) {
 						prevPreemptCount = curPreemptCount;
 						curPreemptCount =
 							preemptCount = std::stoull(lineElems.at(11),NULL,16);
@@ -1218,14 +1130,14 @@ int main(int argc, char *argv[]) {
 		case 'a':
 				{
 				if (activeAllocs.find(baseAddress) != activeAllocs.end()) {
-					cerr << "Found active allocation at address " << showbase << hex << baseAddress << noshowbase << PRINT_CONTEXT << endl;
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase,"Found active allocation at address.");
 					continue;
 				}
 				// Do we know that datatype?
 				const auto it = find_if(types.cbegin(), types.cend(),
 					[&typeStr](const DataType& type) { return type.name == typeStr; } );
 				if (it == types.cend()) {
-					cerr << "Found unknown datatype: " << typeStr << endl;
+					PRINT_ERROR("ts=" << ts,"Found unknown datatype: " << typeStr);
 					continue;
 				}
 				int datatype_idx = it - types.cbegin();
@@ -1233,23 +1145,21 @@ int main(int argc, char *argv[]) {
 				pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
 					activeAllocs.insert(pair<unsigned long long,Allocation>(baseAddress,Allocation()));
 				if (!retAlloc.second) {
-					cerr << "Cannot insert allocation into map: " << showbase << hex << baseAddress << noshowbase << PRINT_CONTEXT << endl;
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase,"Cannot insert allocation into map.");
 				}
 				Allocation& tempAlloc = retAlloc.first->second;
 				tempAlloc.id = curAllocID++;
 				tempAlloc.start = ts;
 				tempAlloc.idx = datatype_idx;
 				tempAlloc.size = size;
-#ifdef VERBOSE
-				cerr << "Added allocation at " << showbase << hex << baseAddress << noshowbase << dec << ", Type:" << typeStr << ", Size:" << size << endl;
-#endif
+				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size,"Added allocation");
 				break;
 				}
 		case 'f':
 				{
 				itAlloc = activeAllocs.find(baseAddress);
 				if (itAlloc == activeAllocs.end()) {
-					cerr << "Didn't find active allocation for address " << showbase << hex << baseAddress << noshowbase << PRINT_CONTEXT << endl;
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Didn't find active allocation for address.");
 					continue;
 				}
 				Allocation& tempAlloc = itAlloc->second;
@@ -1257,10 +1167,10 @@ int main(int argc, char *argv[]) {
 				allocOFile << tempAlloc.id << delimiter << tempAlloc.idx + 1 << delimiter << baseAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
 				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
-					if (itLock->second.ptr >= itAlloc->first && itLock->second.ptr < (itAlloc->first + tempAlloc.size)) {
+					if (itLock->second->lockAddress >= itAlloc->first && itLock->second->lockAddress < (itAlloc->first + tempAlloc.size)) {
 						// Lock should not be held anymore
-						if (itLock->second.held > 0) {
-							cerr << "Lock at address " << showbase << hex << itLock->second.ptr << noshowbase << " is being freed but held = " << itLock->second.held << "! " << PRINT_CONTEXT << endl;
+						if (itLock->second->isHeld()) {
+							PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Lock at " << itLock->second->lockAddress << "is being freed but held!");
 						}
 						// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
 						itTemp = itLock;
@@ -1272,14 +1182,11 @@ int main(int argc, char *argv[]) {
 				}
 
 				activeAllocs.erase(itAlloc);
-#ifdef VERBOSE
-				cerr << "Removed allocation at " << showbase << hex << baseAddress << noshowbase << dec << ", Type:" << typeStr << ", Size:" << size << endl;
-#endif
+				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size, "Removed allocation");
 				break;
 				}
-		case 'v':
-		case 'p':
-			handlePV(action, ts, address, file, line, fn, lockMember, lockType,
+		case 'l':
+			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
 				preemptCount, irqSync, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
 			break;
 		case 'w':
@@ -1287,13 +1194,13 @@ int main(int argc, char *argv[]) {
 				{
 				itAlloc = activeAllocs.find(baseAddress);
 				if (itAlloc == activeAllocs.end()) {
-					cerr << "Didn't find active allocation for address " << showbase << hex << baseAddress << noshowbase << PRINT_CONTEXT << endl;
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Didn't find active allocation");
 					continue;
 				}
 				// sanity check
 				if (address < baseAddress || address > (baseAddress + itAlloc->second.size)
 					|| (address + size) < baseAddress || (address + size) > (baseAddress + itAlloc->second.size)) {
-					cerr << "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation " << baseAddress << noshowbase << PRINT_CONTEXT << endl;
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation");
 					return EXIT_FAILURE;
 				}
 
@@ -1310,6 +1217,10 @@ int main(int argc, char *argv[]) {
 				tempAccess.preemptCount = preemptCount;
 				break;
 				}
+		default:
+			{
+				PRINT_ERROR("ts" << dec << ts, "Unknown action:")
+			}
 		}
 	}
 
@@ -1329,7 +1240,7 @@ int main(int argc, char *argv[]) {
 		cerr << "TXN: There are still " << activeTXNs.size() << " TXNs active, flushing the topmost one." << endl;
 		// pretend there's a V() matching the top-most TXN's starting (P())
 		// lock at the last seen timestamp
-		finishTXN(ts, activeTXNs.back().lockPtr, txnsOFile, locksHeldOFile);
+		finishTXN(ts, activeTXNs.back().lockPtr, activeTXNs.back().subLock, false, txnsOFile, locksHeldOFile);
 	}
 
 	if (isGZ) {
