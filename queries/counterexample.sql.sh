@@ -47,12 +47,12 @@ if [ "$SANITYCHECK" != : ]; then
 	exit 1
 fi
 
-EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
+EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
 if [ -n ${USE_EMBOTHER} ];
 then
 	if [ ${USE_EMBOTHER} -gt 0 ];
 	then
-		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
+		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
 	fi
 fi
 
@@ -64,11 +64,11 @@ FROM
 	GROUP_CONCAT(
 		CASE
 		WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-			THEN CONCAT(l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* no name available)
+			THEN CONCAT(l.id, '(', l.type, '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* no name available)
 		WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-			THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* a name is available)
+			THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- global (or embedded in unknown allocation *and* a name is available)
 		WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), ')', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in same
+			THEN CONCAT('EMBSAME(', IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in same
 			${EMBOTHER_SQL}
 		END
 		ORDER BY lh.start
@@ -137,7 +137,8 @@ LAST_EMBOTHER=0
 for LOCK in "$@"; do
 	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\))$/\1/')		
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\1/')
+		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBSAME locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -148,6 +149,7 @@ cat <<EOT
 			  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
 			JOIN locks l_sbh${LOCKNR}
 			  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
+			 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 			JOIN allocations l_sbh_a${LOCKNR}
 			  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 			JOIN structs_layout_flat lock_member_sbh${LOCKNR}
@@ -160,15 +162,20 @@ EOT
 
 	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
 		LOCKID=$(echo $LOCK | sed -e 's/^[^0-9]*\([0-9]\+\).*$/\1/') # 1st numeric sequence in $LOCK
+		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
 		cat <<EOT
 			-- lock #$LOCKNR
 			JOIN locks_held lh_sbh${LOCKNR}
 			  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
 			 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
+			JOIN locks l_sbh${LOCKNR}
+			  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
+			 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\))$/\1/')		
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\1/')
+		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBOTHER locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -179,7 +186,8 @@ cat <<EOT
 			  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
 			JOIN locks l_sbh${LOCKNR}
 			  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-			  AND l_sbh${LOCKNR}.embedded_in != a.id
+			 AND l_sbh${LOCKNR}.embedded_in != a.id
+			 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 			JOIN allocations l_sbh_a${LOCKNR}
 			  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 			JOIN structs_layout_flat lock_member_sbh${LOCKNR}

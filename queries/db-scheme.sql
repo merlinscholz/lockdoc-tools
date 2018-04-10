@@ -20,6 +20,7 @@ CREATE TABLE `locks` (
   `ptr` int(11) UNSIGNED NOT NULL,		-- the address of the lock variable
   `embedded_in` int(11) DEFAULT NULL,		-- allocations.id of the allocation this lock belongs to (or NULL if static/global)
   `type` varchar(255) DEFAULT NULL,		-- describes the lock type
+  `sub_lock` enum('r','w') NOT NULL,
   `lock_var_name` varchar(255) DEFAULT NULL,		-- the variable name of the global lock.
   PRIMARY KEY (`id`),
   KEY `embedded_in` (`embedded_in`)

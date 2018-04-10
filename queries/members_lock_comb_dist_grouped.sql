@@ -27,7 +27,7 @@ FROM
 		a_ptr,
 		sl_member,
 		GROUP_CONCAT(IFNULL(lh.lock_id,"null") ORDER BY l.id SEPARATOR '+') AS locks,
-		GROUP_CONCAT(IFNULL(l.type,"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
+		GROUP_CONCAT(IFNULL(CONCAT(l.type, '[', l.sub_lock, ']'),"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
 		GROUP_CONCAT(IFNULL(a2.type,"null") ORDER BY l.id SEPARATOR '+') AS embedded_in_type,
 		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') ORDER BY l.id SEPARATOR '+') AS embedded_in_same,
 		GROUP_CONCAT(lh.lastLockFn ORDER BY l.id SEPARATOR '+') AS lockFn,

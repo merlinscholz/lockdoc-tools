@@ -7,7 +7,7 @@ SELECT
 	sl_member,
 	dt_name,
 	IFNULL(lh.lock_id,'null') AS locks,
-	IFNULL(l.type,'null') AS lock_types,
+	IFNULL(CONCAT(l.type, '[', l.sub_lock, ']'),'null') AS lock_types,
 	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
 	CASE 
 		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
