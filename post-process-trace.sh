@@ -44,8 +44,14 @@ if [ ${?} -ne 0 ];
 then
 	echo "Cannot delete atomic members!">&2 
 	exit 1
-fi 
-${TOOLS_PATH}/run-hypothesizer.sh ${DB}
+fi
+${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} nostack
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot run hypothesizer!">&2 
+	exit 1
+fi
+${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} stack
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run hypothesizer!">&2 
