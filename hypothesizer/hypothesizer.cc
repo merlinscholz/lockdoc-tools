@@ -22,11 +22,11 @@
 // Note: It is possible to limit the number of used threads by setting the
 // OMP_NUM_THREADS environment variable.
 
-const double accept_threshold_default = .9, cutoff_threshold_default = .1, nolock_threshold_default = .05;
+const double accept_threshold_default = .9, cutoff_threshold_default = .1, nolock_threshold_default = .05, confidence_threshold_default = 50.0;
 
 enum optionIndex { UNKNOWN, HELP,
 	ACCEPTTHRESHOLD, CUTOFFTHRESHOLD, NOLOCKTHRESHOLD,
-	DATATYPE, MEMBER, SORT, REPORT, BUGSQL };
+	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -67,6 +67,10 @@ const option::Descriptor usage[] = {
   "-b/--bugsql  \tGenerate parameters for counterexamples.sql.sh, "
   "which helps locating counterexamples in the kernel source code; "
   "effective in combination with --report normal, implicit with --report csv or csvwinner"
+}, {
+  CONFIDENCETHRESHOLD, 0, "c", "confidence-threshold", Arg::Required,
+  "-c/--confidence-threshold n  \tSet observations threshold for assuming a hypothesis is trustworthy to n (default: 50)."
+  "Values below lead to a scaled relative support of the respective hypothesis."
 }, {0,0,0,0,0,0}
 };
 
@@ -258,6 +262,24 @@ void find_hypotheses(Member& member)
 	}
 }
 
+double clamp(double x, double lowerlimit, double upperlimit) {
+	if (x < lowerlimit) {
+		x = lowerlimit;
+	}
+	if (x > upperlimit) {
+		x = upperlimit;
+	}
+	return x;
+}
+
+// Thanks to Wikipedia (https://en.wikipedia.org/wiki/Smoothstep#Variations)
+double smoothstep(double edge0, double edge1, double x) {
+	// Scale, bias and saturate x to 0..1 range
+	x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0); 
+	// Evaluate polynomial
+	return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
 void print_bugsql(const std::string& prefix, const std::string& postfix,
 	const Member& member, const std::vector<myid_t>& l, bool order_matters,
 	uint64_t expected_counterexamples)
@@ -278,7 +300,7 @@ void print_bugsql(const std::string& prefix, const std::string& postfix,
 
 void print_hypotheses(const Member& member,
 	double accept_threshold, double cutoff_threshold, double nolock_threshold,
-	ReportMode reportmode, bool bugsql)
+	ReportMode reportmode, bool bugsql, double confidence_threshold)
 {
 	if (reportmode == ReportMode::NORMAL) {
 		std::cout << member.datatype << " member: "
@@ -321,7 +343,8 @@ void print_hypotheses(const Member& member,
 			<< 100.0 << ";"
 
 			<< nolock_is_winner << ";"
-			<< "TODO;\n";
+		// Since "nolock" by definition complies with all lock combinations, its confidence is also 1.
+			<< "1;\n";
 		// are we done already?
 		if (reportmode == ReportMode::CSVWINNER) {
 			return;
@@ -417,7 +440,7 @@ void print_hypotheses(const Member& member,
 						<< std::setprecision(5)
 						<< match_fraction * 100 << ";"
 						<< this_is_the_winner << ";"
-						<< "TODO;";
+						<< match_fraction * smoothstep(0, confidence_threshold, match.second) << ";";
 					print_bugsql("", "\n", member, match.first, true,
 						member.occurrences_with_locks - match.second);
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
@@ -451,7 +474,7 @@ void print_hypotheses(const Member& member,
 		std::cout << member.datatype << ";"
 			<< member.name << ";"
 			<< member.accesstype << ";"
-			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO;\n";
+			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;0;\n";
 	}
 
 	if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
@@ -467,7 +490,7 @@ void print_hypotheses(const Member& member,
 				std::cout << member.datatype << ";"
 					<< member.name << ";"
 					<< member.accesstype << ";"
-					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;TODO;"
+					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;0;"
 					<< std::endl;
 			} else {
 				std::cerr << "Cannot generate documentation for "
@@ -488,7 +511,7 @@ void print_hypotheses(const Member& member,
 					<< std::setprecision(5)
 					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
 					<< this_is_the_winner << ";"
-					<< "TODO;";
+					<< match_fraction * smoothstep(0, confidence_threshold, lo.second) << ";";
 				print_bugsql("", "\n", member, lo.first, true,
 					member.occurrences_with_locks - lo.second);
 			} else if (this_is_the_winner) {
@@ -586,6 +609,16 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		nolock_threshold /= 100.0;
+	}
+
+	double confidence_threshold = confidence_threshold_default;
+	if (options[CONFIDENCETHRESHOLD]) {
+		try {
+			confidence_threshold = std::stod(options[CONFIDENCETHRESHOLD].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse confidence threshold value " << options[CONFIDENCETHRESHOLD].last()->arg << std::endl;
+			return 1;
+		}
 	}
 
 	std::set<std::string> accepted_datatypes;
@@ -802,7 +835,7 @@ int main(int argc, char **argv)
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql);
+			print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql, confidence_threshold);
 
 			member.clear();
 		} else {
@@ -836,7 +869,7 @@ int main(int argc, char **argv)
 
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql);
+				print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql, confidence_threshold);
 			}
 		}
 	}
