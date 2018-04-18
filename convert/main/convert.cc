@@ -337,6 +337,7 @@ bool finishTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK 
 					// The caller wants to remove all READER_LOCKs from the TXN stack.
 					for (std::deque<TXN>::iterator it = activeTXNs.begin(); it != activeTXNs.end();) {
 						if (it->lockPtr != lockPtr) {
+							it++;
 							continue;
 						}
 						RWLock *tempLock;
