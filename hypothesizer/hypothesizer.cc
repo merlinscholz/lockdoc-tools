@@ -331,12 +331,13 @@ void print_hypotheses(const Member& member,
 	} else if (reportmode == ReportMode::CSV ||
 		(reportmode == ReportMode::CSVWINNER && nolock_is_winner)) {
 		std::cout << member.datatype << ";" << member.name << ";" << member.accesstype << ";nolock;"
-			<< (member.occurrences - member.occurrences_with_locks) << ";"
+			// Since we assume that *all* observed lock combinations by definition comply with
+			// 'nolock', the absolute support for 'nolock' is equal to all occurrences for one member.
+			<< member.occurrences << ";"
 			<< member.occurrences << ";"
 			<< std::setprecision(5)
 //			<< (double) (member.occurrences - member.occurrences_with_locks) /
 //				(double) member.occurrences * 100 << ";"
-
 		// This is NOT the percentage of accesses without locks, but assumes
 		// that *all* observed lock combinations by definition comply with
 		// "nolock".  This is a temporary(?) quick-fix for the USENIX paper.
