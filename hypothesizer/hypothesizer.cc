@@ -262,22 +262,17 @@ void find_hypotheses(Member& member)
 	}
 }
 
-double clamp(double x, double lowerlimit, double upperlimit) {
-	if (x < lowerlimit) {
-		x = lowerlimit;
-	}
-	if (x > upperlimit) {
-		x = upperlimit;
-	}
-	return x;
-}
-
-// Thanks to Wikipedia (https://en.wikipedia.org/wiki/Smoothstep#Variations)
-double smoothstep(double edge0, double edge1, double x) {
-	// Scale, bias and saturate x to 0..1 range
-	x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0); 
-	// Evaluate polynomial
-	return x * x * x * (x * (x * 6 - 15) + 10);
+// taken from Ebert et al. "Texturing and Modeling: A Procedural Approach", 3rd
+// ed. (Morgan Kaufmann)
+// (using double instead of float)
+double smoothstep(double a, double b, double x)
+{
+	if (x < a)
+		return 0;
+	if (x >= b)
+		return 1;
+	x = (x - a) / (b - a);
+	return x * x * (3 - 2 * x);
 }
 
 void print_bugsql(const std::string& prefix, const std::string& postfix,
