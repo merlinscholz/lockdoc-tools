@@ -343,8 +343,7 @@ void print_hypotheses(const Member& member,
 			<< 100.0 << ";"
 
 			<< nolock_is_winner << ";"
-		// Since "nolock" by definition complies with all lock combinations, its confidence is also 1.
-			<< "1;\n";
+			<< 1.0 * smoothstep(0, confidence_threshold, member.occurrences) << ";\n";
 		// are we done already?
 		if (reportmode == ReportMode::CSVWINNER) {
 			return;
