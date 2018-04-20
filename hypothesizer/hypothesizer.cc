@@ -375,9 +375,9 @@ void print_hypotheses(const Member& member,
 	int printed = 0;
 	std::cout.precision(3);
 	for (const auto& h : sorted_hypotheses) {
-		// skip hypotheses below cutoff_threshold
-		double match_fraction = (double) h.occurrences / (double) member.occurrences_with_locks;
-		if (match_fraction < cutoff_threshold) {
+		// skip hypotheses with relative support below cutoff_threshold
+		double relative_support = (double) h.occurrences / (double) member.occurrences;
+		if (relative_support < cutoff_threshold) {
 			break;
 		}
 
@@ -390,8 +390,8 @@ void print_hypotheses(const Member& member,
 			reportmode == ReportMode::CSVWINNER ||
 			reportmode == ReportMode::DOC) {
 			if (reportmode == ReportMode::NORMAL) {
-				std::cout << "    " << std::setw(5) << match_fraction * 100 << "% ("
-					<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
+				std::cout << "    " << std::setw(5) << relative_support * 100 << "% ("
+					<< h.occurrences << " out of " << member.occurrences << " mem accesses): "
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 				if (bugsql) {
 					print_bugsql("    ", "\n", member, h.sorted_hypothesis, false,
@@ -414,11 +414,11 @@ void print_hypotheses(const Member& member,
 			// show locking-order distribution
 			for (const auto& match : sorted_matches) {
 				// fraction within this lock set
-				double local_fraction = match_fraction = (double) match.second / (double) h.occurrences;
-				// fraction within all memory accesses under locks
-				match_fraction = (double) match.second / (double) member.occurrences_with_locks;
+				double local_fraction = (double) match.second / (double) h.occurrences;
+				// fraction within all memory accesses
+				relative_support = (double) match.second / (double) member.occurrences;
 
-				bool this_is_the_winner = !found_winner && match_fraction >= accept_threshold;
+				bool this_is_the_winner = !found_winner && relative_support >= accept_threshold;
 				found_winner = found_winner || this_is_the_winner;
 
 				if (reportmode == ReportMode::NORMAL) {
@@ -436,11 +436,11 @@ void print_hypotheses(const Member& member,
 						<< member.accesstype << ";"
 						<< locks2string(match.first) << ";"
 						<< match.second << ";"
-						<< member.occurrences_with_locks << ";"
+						<< member.occurrences << ";"
 						<< std::setprecision(5)
-						<< match_fraction * 100 << ";"
+						<< relative_support * 100 << ";"
 						<< this_is_the_winner << ";"
-						<< match_fraction * smoothstep(0, confidence_threshold, match.second) << ";";
+						<< relative_support * smoothstep(0, confidence_threshold, match.second) << ";";
 					print_bugsql("", "\n", member, match.first, true,
 						member.occurrences_with_locks - match.second);
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
@@ -450,13 +450,13 @@ void print_hypotheses(const Member& member,
 		} else {
 			// only one locking order observed, show this one right away
 
-			bool this_is_the_winner = !found_winner && match_fraction >= accept_threshold;
+			bool this_is_the_winner = !found_winner && relative_support >= accept_threshold;
 			found_winner = found_winner || this_is_the_winner;
 
 			std::string prefix = std::string(this_is_the_winner ? "!" : " ") + "   ";
 			std::cout << prefix
-				<< std::setw(5) << match_fraction * 100 << "% ("
-				<< h.occurrences << " out of " << member.occurrences_with_locks << " mem accesses under locks): "
+				<< std::setw(5) << relative_support * 100 << "% ("
+				<< h.occurrences << " out of " << member.occurrences << " mem accesses): "
 				<< locks2string(h.matches.begin()->first) << std::endl;
 			if (bugsql) {
 				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true,
@@ -499,19 +499,19 @@ void print_hypotheses(const Member& member,
 			}
 		} else {
 			auto& lo = all_lock_orders[0];
-			double match_fraction = (double) lo.second / (double) member.occurrences_with_locks;
-			bool this_is_the_winner = match_fraction >= accept_threshold;
+			double relative_support = (double) lo.second / (double) member.occurrences;
+			bool this_is_the_winner = relative_support >= accept_threshold;
 			if (reportmode == ReportMode::CSVWINNER) {
 				std::cout << member.datatype << ";"
 					<< member.name << ";"
 					<< member.accesstype << ";"
 					<< locks2string(lo.first) << ";"
 					<< lo.second << ";"
-					<< member.occurrences_with_locks << ";"
+					<< member.occurrences << ";"
 					<< std::setprecision(5)
-					<< ((double) lo.second / (double) member.occurrences_with_locks * 100) << ";"
+					<< relative_support * 100 << ";"
 					<< this_is_the_winner << ";"
-					<< match_fraction * smoothstep(0, confidence_threshold, lo.second) << ";";
+					<< relative_support * smoothstep(0, confidence_threshold, lo.second) << ";";
 				print_bugsql("", "\n", member, lo.first, true,
 					member.occurrences_with_locks - lo.second);
 			} else if (this_is_the_winner) {
