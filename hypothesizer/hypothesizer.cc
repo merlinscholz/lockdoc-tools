@@ -395,7 +395,7 @@ void print_hypotheses(const Member& member,
 					<< locks2string(h.sorted_hypothesis, " + ") << std::endl;
 				if (bugsql) {
 					print_bugsql("    ", "\n", member, h.sorted_hypothesis, false,
-						member.occurrences_with_locks - h.occurrences);
+						member.occurrences - h.occurrences);
 				}
 			}
 
@@ -428,7 +428,7 @@ void print_hypotheses(const Member& member,
 						<< locks2string(match.first) << std::endl;
 					if (bugsql) {
 						print_bugsql(prefix, "\n", member, match.first, true,
-							member.occurrences_with_locks - match.second);
+							member.occurrences - match.second);
 					}
 				} else if (reportmode == ReportMode::CSV) {
 					std::cout << member.datatype << ";"
@@ -442,7 +442,7 @@ void print_hypotheses(const Member& member,
 						<< this_is_the_winner << ";"
 						<< relative_support * smoothstep(0, confidence_threshold, match.second) << ";";
 					print_bugsql("", "\n", member, match.first, true,
-						member.occurrences_with_locks - match.second);
+						member.occurrences - match.second);
 				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
 					all_lock_orders.push_back(match);
 				}
@@ -460,7 +460,7 @@ void print_hypotheses(const Member& member,
 				<< locks2string(h.matches.begin()->first) << std::endl;
 			if (bugsql) {
 				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true,
-					member.occurrences_with_locks - h.occurrences);
+					member.occurrences - h.occurrences);
 			}
 		}
 		printed++;
@@ -513,7 +513,7 @@ void print_hypotheses(const Member& member,
 					<< this_is_the_winner << ";"
 					<< relative_support * smoothstep(0, confidence_threshold, lo.second) << ";";
 				print_bugsql("", "\n", member, lo.first, true,
-					member.occurrences_with_locks - lo.second);
+					member.occurrences - lo.second);
 			} else if (this_is_the_winner) {
 				// TODO properly group member r/w accesses
 				doc_map[member.datatype][lo.first].push_back(member.combined_name());
