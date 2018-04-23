@@ -20,7 +20,7 @@ do
 	echo "Blacklisting ${FUNCTION} for ${DATA_TYPE}..."
 	${MYSQL} <<EOT
 select id into @dtid from data_types where name = '${DATA_TYPE}';
-insert into member_blacklist values (@dtid,NULL,'${FUNCTION}');
+insert into function_blacklist values (@dtid,NULL,'${FUNCTION}');
 EOT
 	FUNCTION=${1}; shift
 done
