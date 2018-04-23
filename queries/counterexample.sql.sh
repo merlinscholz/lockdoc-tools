@@ -161,8 +161,8 @@ cat <<EOT
 EOT
 
 	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
-		LOCKID=$(echo $LOCK | sed -e 's/^[^0-9]*\([0-9]\+\).*$/\1/') # 1st numeric sequence in $LOCK
-		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
+		LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
+		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
 		cat <<EOT
 			-- lock #$LOCKNR
 			JOIN locks_held lh_sbh${LOCKNR}
