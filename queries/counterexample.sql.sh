@@ -48,7 +48,7 @@ if [ "$SANITYCHECK" != : ]; then
 fi
 
 EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  IF(l.ptr - lock_a.ptr = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.lastFn, '@', lh.lastFile, ':', lh.lastLine) -- embedded in other"
-if [ -n ${USE_EMBOTHER} ];
+if [ -n "${USE_EMBOTHER}" ];
 then
 	if [ ${USE_EMBOTHER} -gt 0 ];
 	then
