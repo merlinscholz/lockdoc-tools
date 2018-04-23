@@ -20,6 +20,9 @@ inode;\N;inode_init_once
 inode;\N;inode_init_owner
 inode;\N;jbd2_journal_init_inode
 inode;\N;kernfs_get_inode
+inode;\N;kernfs_init_inode
+inode;\N;make_empty_dir_inode
+inode;\N;debugfs_create_automount
 inode;\N;load_elf_binary
 inode;\N;load_script
 inode;\N;mqueue_get_inode
