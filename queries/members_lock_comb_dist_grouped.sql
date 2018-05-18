@@ -30,7 +30,6 @@ FROM
 		GROUP_CONCAT(IFNULL(CONCAT(l.type, '[', l.sub_lock, ']'),"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
 		GROUP_CONCAT(IFNULL(a2.type,"null") ORDER BY l.id SEPARATOR '+') AS embedded_in_type,
 		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') ORDER BY l.id SEPARATOR '+') AS embedded_in_same,
-		GROUP_CONCAT(lh.lastLockFn ORDER BY l.id SEPARATOR '+') AS lockFn,
 		GROUP_CONCAT(HEX(lh.lastPreemptCount) ORDER BY l.id SEPARATOR '+') AS preemptCount,
 		GROUP_CONCAT(lh.lastFn ORDER BY l.id SEPARATOR '+') AS lockContext,
 		GROUP_CONCAT(IF(l.type IS NULL, 'null',
