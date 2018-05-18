@@ -40,7 +40,7 @@ DWARVES_OBJ=$(patsubst %.o,$(BUILD_PATH)/$(DWARVES_DIR)/%.o,$(DWARVES_SRC:%.c=%.
 INCLUDE_PATHS+= -I$(DWARVES_DIR)
 
 MAIN_DIR=main
-MAIN_SRC_CXX=convert.cc rwlock.cc
+MAIN_SRC_CXX=convert.cc rwlock.cc binaryread.cc
 MAIN_SRC_C=
 MAIN_OBJ=$(patsubst %.o,$(BUILD_PATH)/$(MAIN_DIR)/%.o,$(MAIN_SRC_CXX:%.cc=%.o)) $(patsubst %.o,$(BUILD_PATH)/$(MAIN_DIR)/%.o,$(MAIN_SRC_C:%.c=%.o))
 INCLUDE_PATHS+= -I$(MAIN_DIR)

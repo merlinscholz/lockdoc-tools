@@ -22,7 +22,7 @@
 #include "rlock.h"
 #include "wlock.h"
 
-#include "dwarves_api.h"
+#include "binaryread.h"
 #include "gzstream/gzstream.h"
 
 /**
@@ -43,16 +43,6 @@ enum AccessTypes {
 	READ,
 	WRITE,
 	TYPES_END
-};
-
-/**
- * Describes a certain datatype that is observed by our experiment
- */
-struct DataType {
-	DataType(unsigned id, std::string name) : id(id), name(name), foundInDw(false) { }
-	unsigned long long id;										// An unique id for a particular datatype
-	std::string name;												// Unique to describe a certain datatype, e.g., task_struct
-	bool foundInDw;												// True if the struct has been found in the dwarf information. False otherwise.
 };
 
 /**
@@ -80,6 +70,11 @@ struct MemAccess {
 	unsigned long long instrPtr;								// Instruction pointer
 	unsigned long long preemptCount;								// __preempt_count
 };
+
+/**
+ * The kernel source tree
+ */
+static const char *kernelBaseDir = "/opt/kernel/linux-32-lockdebugging-4-10/";
 
 /**
  * Contains all known locks. The ptr of a lock is used as an index.
@@ -117,16 +112,6 @@ static map<string,unsigned long long> stacktraces;
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
 static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
-/**
- * Used to pass context information to the dwarves callback.
- * Have a look at convert_cus_iterator().
- */
-struct CusIterArgs {
-	std::vector<DataType> *types = nullptr;
-	FILE *fp = nullptr;
-};
-// address -> function name cache
-std::map<uint64_t, const char *> functionAddresses;
 
 /**
  * The next id for a new data type.
@@ -157,7 +142,6 @@ static unsigned long long curMemberNameID = 1;
  */
 static unsigned long long curStacktraceID = 1;
 
-static struct cus *cus;
 char delimiter = DELIMITER_CHAR;
 
 static void printUsageAndExit(const char *elf) {
@@ -170,6 +154,7 @@ static void printUsageAndExit(const char *elf) {
 		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
 		" -u  include non-static locks with unknown allocation in output\n"
 		"     (these will be assigned to a pseudo allocation with ID 1)\n"
+		" -g  The kernel source tree, default: " << kernelBaseDir << "\n"
 		" -h  help\n";
 	exit(EXIT_FAILURE);
 }
@@ -177,59 +162,6 @@ static void printUsageAndExit(const char *elf) {
 static void printVersion()
 {
 	cerr << "convert version: " << GIT_BRANCH << ", " << GIT_MESSAGE << endl;
-}
-
-// caching wrapper around cus__get_function_at_addr
-static const char *get_function_at_addr(const struct cus *cus, uint64_t addr)
-{
-	auto it = functionAddresses.find(addr);
-	if (it == functionAddresses.end()) {
-		return functionAddresses[addr] = cus__get_function_at_addr(cus, addr);
-	} else {
-		return it->second;
-	}
-}
-
-struct lockVarSearch {
-	const char *lockVarName;
-	uint64_t addr;
-};
-
-static int findGlobalLockVar(struct cu *cu, void *cookie) {
-	uint32_t i;
-	struct tag *pos;
-	struct lockVarSearch *lockVar = (struct lockVarSearch*)cookie;
-
-	cu__for_each_variable(cu, i, pos) {
-		struct variable *var = tag__variable(pos);
-		
-		// Ensure that this definition has valid location information.
-		// The address and the size of a DW_AT_variable definition is valid
-		// if DW_AT_location and DW_OP_addr are present.
-		// --> var->location is equal LOCATION_GLOBAL.
-		// For more information look dwarf__location@dwarf_loader.c:572
-		if (var->location != LOCATION_GLOBAL) {
-			// No valid location information. Skip this DW_AT_variable.
-			continue;
-		}
-		if (!var->declaration && // Is this a variable definition (--> !declaration)?
-			var->name != 0 && // Does this DW_AT_variable have a name?
-			lockVar->addr >= var->ip.addr && lockVar->addr < (var->ip.addr + tag__size(pos, cu))) {
-			lockVar->lockVarName = variable__name(var, cu);
-			PRINT_DEBUG("", hex << showbase << "addr=" << var->ip.addr << ",size=" << dec << tag__size(pos, cu) << " --> " << lockVar->lockVarName);
-			return 1;
-		}
-	}
-	return 0;
-}
-
-static const char* getGlobalLockVar(struct cus *cus, uint64_t addr) {
-	struct lockVarSearch lockVar = { 0 };
-	lockVar.addr = addr;
-
-	cus__for_each_cu(cus, findGlobalLockVar, &lockVar, NULL);
-
-	return lockVar.lockVarName;
 }
 
 void startTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK subLock)
@@ -430,7 +362,7 @@ static void handlePV(
 				// Try to resolve what the name of this lock is
 				// This also catches cases where the lock resides inside another data structure.
 				if (lockMember.compare("static") != 0) {
-					lockVarName = getGlobalLockVar(cus,lockAddress);
+					lockVarName = getGlobalLockVar(lockAddress);
 				}
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
@@ -581,7 +513,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id << delimiter << tempAccess.instrPtr;
 		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1);
-		*pMemAccessOFile << delimiter << get_function_at_addr(cus, tempAccess.instrPtr) << "\n";
+		*pMemAccessOFile << delimiter << get_function_at_addr(kernelBaseDir, tempAccess.instrPtr).fn << "\n";
 		++accessCount;
 	}
 
@@ -620,7 +552,7 @@ static unsigned long long addMemberName(const char *member_name) {
 	return ret;
 }
 
-static unsigned long long addStacktrace(std::string stacktrace) {
+static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stacktracesOFile, char delimiter, unsigned long long instrPtr, std::string stacktrace) {
 	unsigned long long ret;
 
 	// Remove the last character since it always is a comma.
@@ -635,134 +567,6 @@ static unsigned long long addStacktrace(std::string stacktrace) {
 		ret = it->second;
 	}
 	return ret;
-}
-
-static int convert_cus_iterator(struct cu *cu, void *cookie) {
-	uint16_t class_id;
-	struct tag *ret;
-	CusIterArgs *cusIterArgs = (CusIterArgs*)cookie;
-	struct dwarves_convert_ext dwarvesconfig = { 0 }; // initializes all members
-
-	// Setup callback
-	dwarvesconfig.expand_type = expand_type;
-	dwarvesconfig.add_member_name = addMemberName;
-
-	for (auto& type : *cusIterArgs->types) {
-		// Skip known datatypes
-		if (type.foundInDw) {
-			continue;
-		}
-		// Does this compilation unit contain information on this type?
-		ret = cu__find_struct_by_name(cu, type.name.c_str(), 0, &class_id);
-		if (ret == NULL) {
-			continue;
-		}
-
-		// Is it really a class or a struct?
-		if (ret->tag == DW_TAG_class_type ||
-			ret->tag == DW_TAG_interface_type ||
-			ret->tag == DW_TAG_structure_type) {
-
-			dwarvesconfig.type_id = type.id;
-			if (class__fprintf(ret, cu, cusIterArgs->fp, &dwarvesconfig)) {
-				type.foundInDw = true;
-			}
-		} else {
-			cerr << "Internal error: Found struct for " << type.name << " that is no struct but tag ID " << ret->tag << endl;
-		}
-	}
-
-	// If at least the information about one datatype is still missing, continue iterating through the cus.
-	for (const auto& type : *cusIterArgs->types) {
-		if (!type.foundInDw) {
-			return 0;
-		}
-	}
-
-	// No need to proceed with the remaining compilation units. Stop iteration.
-	return 1;
-}
-
-// find .bss and .data sections
-static int readSections(const char *filename,
-	uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize) {
-	asection *bsSection, *dataSection;
-	bfd *kernelBfd;
-
-	bfd_init();
-
-	kernelBfd = bfd_openr(filename,"elf32-i386");
-	if (kernelBfd == NULL) {
-		bfd_perror("open vmlinux");
-		return -1;
-	}
-	// This check is not only a sanity check. Moreover, it is necessary
-	// to allow looking up of sections.
-	if (!bfd_check_format (kernelBfd, bfd_object)) {
-		cerr << "bfd: unknown format" << endl;
-		bfd_close(kernelBfd);
-		return -1;
-	}
-
-	bsSection = bfd_get_section_by_name(kernelBfd,".bss");
-	if (bsSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
-		bfd_close(kernelBfd);
-		return -1;
-	}
-	bssStart = bfd_section_vma(kernelBfd, bsSection);
-	bssSize = bfd_section_size(kernelBfd, bsSection);
-	cout << bfd_section_name(kernelBFD,bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
-
-	dataSection = bfd_get_section_by_name(kernelBfd,".data");
-	if (bsSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
-		bfd_close(kernelBfd);
-		return -1;
-	}
-	dataStart = bfd_section_vma(kernelBfd, dataSection);
-	dataSize = bfd_section_size(kernelBfd,dataSection);
-	cout << bfd_section_name(kernelBFD,dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
-
-	bfd_close(kernelBfd);
-
-	return 0;
-}
-
-static int extractStructDefs(struct cus *cus, const char *filename) {
-	CusIterArgs cusIterArgs;
-	struct conf_load confLoad;
-	FILE *structsLayoutOFile;
-
-	memset(&confLoad, 0, sizeof(confLoad));
-	confLoad.get_addr_info = true;
-
-	// Load the dwarf information of every compilation unit
-	if (cus__load_file(cus, &confLoad, filename) != 0) {
-		cerr << "No debug information found in " << filename << endl;
-		return -1;
-	}
-
-	// Open the output file and add the header
-	structsLayoutOFile = fopen("structs_layout.csv", "w+");
-	if (structsLayoutOFile == NULL) {
-		perror("fopen structs_layout.csv");
-		cus__delete(cus);
-		dwarves__exit();
-		return -1;
-	}
-	fprintf(structsLayoutOFile,
-		"type_id%ctype%cmember%coffset%csize\n",delimiter,delimiter,delimiter,delimiter);
-
-	// Pass the context information to the callback: types array and the outputfile
-	cusIterArgs.types = &types;
-	cusIterArgs.fp = structsLayoutOFile;
-	// Iterate through every compilation unit, and look for information about the datatypes of interest
-	cus__for_each_cu(cus, convert_cus_iterator, &cusIterArgs, NULL);
-
-	fclose(structsLayoutOFile);
-
-	return 0;
 }
 
 static int isGZIPFile(const char *filename) {
@@ -804,7 +608,7 @@ int main(int argc, char *argv[]) {
 	enum LOCK_OP lockOP = P_WRITE;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:up")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:upg:")) != -1) {
 		switch (param) {
 		case 'k':
 			vmlinuxName = optarg;
@@ -837,6 +641,9 @@ int main(int argc, char *argv[]) {
 		case 'd':
 			delimiter = *optarg;
 			break;
+		case 'g':
+			kernelBaseDir = optarg;
+			break;
 		}
 	}
 	if (!vmlinuxName || !fnBlacklistName || ! memberBlacklistName || !datatypesName || optind == argc) {
@@ -864,8 +671,13 @@ int main(int argc, char *argv[]) {
 		types.emplace_back(curTypeID++, inputLine);
 	}
 
+	if (binaryread_init(vmlinuxName)) {
+		cerr << "Cannot init binaryread" << endl;
+		return EXIT_FAILURE;
+	}
+
 	// Examine Linux-kernel ELF: retrieve BSS + data segment locations
-	if (readSections(vmlinuxName, bssStart, bssSize, dataStart, dataSize)) {
+	if (readSections(bssStart, bssSize, dataStart, dataSize)) {
 		return EXIT_FAILURE;
 	}
 
@@ -874,15 +686,7 @@ int main(int argc, char *argv[]) {
 		printUsageAndExit(argv[0]);
 	}
 
-	// Examine Linux-kernel ELF: retrieve struct definitions
-	dwarves__init(0);
-	cus = cus__new();
-	if (cus == NULL) {
-		cerr << "Insufficient memory" << endl;
-		return EXIT_FAILURE;
-	}
-
-	if (extractStructDefs(cus, vmlinuxName)) {
+	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
 		return EXIT_FAILURE;
 	}
 
@@ -1213,8 +1017,8 @@ int main(int argc, char *argv[]) {
 				tempAccess.action = action;
 				tempAccess.size = size;
 				tempAccess.address = address;
-				tempAccess.stacktrace_id = addStacktrace(stacktrace);
 				tempAccess.instrPtr = instrPtr;
+				tempAccess.stacktrace_id = addStacktrace(kernelBaseDir, stacktracesOFile, delimiter, instrPtr, stacktrace);
 				tempAccess.preemptCount = preemptCount;
 				break;
 				}
@@ -1250,8 +1054,7 @@ int main(int argc, char *argv[]) {
 		delete rawinfile;
 	}
 
-	cus__delete(cus);
-	dwarves__exit();
+	binaryread_destroy();
 
 	// Helper: type -> ID mapping
 	std::map<std::string, decltype(DataType::id)> type2id;

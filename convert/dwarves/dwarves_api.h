@@ -231,18 +231,21 @@ struct conf_fprintf {
 	uint8_t	   hex_fmt:1;
 };
 
+typedef bool (*expand_type_fn)(const char *struct_typename);
+typedef unsigned long long (*add_member_name_fn)(const char *member_name);
+
 struct dwarves_convert_ext {
 	// ID for first CSV column
 	unsigned long long type_id;
 	// callback: recurse into this struct type?
-	bool (*expand_type)(const char *struct_typename);
+	expand_type_fn expand_type;
 	// array of prefix strings, will be concatenated with "." in dwarves_convert_prefix_print()
 	char const *name_prefixes[16];
 	unsigned next_prefix_idx;
 	// offset of current struct within enclosing struct
 	uint32_t offset;
 	// callback: add a member's name to the global list of names, and return it's id. If it already exists, just return the id.
-	unsigned long long (*add_member_name)(const char *member_name);
+	add_member_name_fn add_member_name;
 };
 
 struct cus *cus__new(void);
