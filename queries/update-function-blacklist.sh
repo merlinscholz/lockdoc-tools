@@ -18,9 +18,16 @@ MYSQL="mysql ${DB}"
 while [ ! -z ${FUNCTION} ];
 do
 	echo "Blacklisting ${FUNCTION} for ${DATA_TYPE}..."
-	${MYSQL} <<EOT
-select id into @dtid from data_types where name = '${DATA_TYPE}';
-insert into function_blacklist values (@dtid,NULL,'${FUNCTION}');
+	if [ ${DATA_TYPE} -eq -1 ];
+	then
+		${MYSQL} <<EOT
+insert into function_blacklist (data_type_id,member_name_id,fn) values (NULL,NULL,'${FUNCTION}');
 EOT
+	else
+		${MYSQL} <<EOT
+select id into @dtid from data_types where name = '${DATA_TYPE}';
+insert into function_blacklist (data_type_id,member_name_id,fn) values (@dtid,NULL,'${FUNCTION}');
+EOT
+	fi
 	FUNCTION=${1}; shift
 done

@@ -94,12 +94,13 @@ CREATE TABLE `stacktraces` (
 ;
 
 CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
-  `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
-  `datatype_member_id` int(11) DEFAULT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,		-- Refers to a data type
+  `data_type_id` int(11) unsigned DEFAULT NULL,
+  `member_name_id` int(11) DEFAULT NULL,
   `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
-  PRIMARY KEY (`datatype_id`,`fn`),
-  KEY `fk_datatype_id` (`datatype_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `fn_bl_entry` (`data_type_id`,`member_name_id`,`fn`)
+) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
 ;
 
 CREATE TABLE `member_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.

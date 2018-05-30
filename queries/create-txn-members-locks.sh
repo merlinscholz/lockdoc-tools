@@ -114,9 +114,15 @@ FROM
 				LEFT JOIN member_names mn
 				  ON mn.id = sl.member_id
 				LEFT JOIN function_blacklist fn_bl
-				  ON fn_bl.datatype_id = a.type
-				 AND fn_bl.fn = st.function
-				 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+				  ON fn_bl.fn = st.function
+				 AND 
+				 (
+				   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				 )
 				LEFT JOIN member_blacklist m_bl
 				  ON m_bl.datatype_id = a.type
 				 AND m_bl.datatype_member_id = sl.member_id
@@ -200,9 +206,15 @@ FROM
 		LEFT JOIN member_names mn
 		  ON mn.id = sl.member_id
 		LEFT JOIN function_blacklist fn_bl
-		  ON fn_bl.datatype_id = a.type
-		 AND fn_bl.fn = st.function
-		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+		  ON fn_bl.fn = st.function
+		 AND 
+		 (
+		   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+		   OR
+		   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+		   OR
+		   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+		 )
 		LEFT JOIN member_blacklist m_bl
 		  ON m_bl.datatype_id = a.type
 		 AND m_bl.datatype_member_id = sl.member_id
@@ -263,13 +275,6 @@ FROM
 			 AND ac.address - a.ptr = sl.helper_offset
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
-			LEFT JOIN function_blacklist fn_bl
-			  ON fn_bl.datatype_id = a.type
-			 AND fn_bl.fn = st.function
-			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
-			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.datatype_id = a.type
-			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
@@ -292,9 +297,15 @@ FROM
 				LEFT JOIN member_names mn
 				  ON mn.id = sl.member_id
 				LEFT JOIN function_blacklist fn_bl
-				  ON fn_bl.datatype_id = a.type
-				 AND fn_bl.fn = st.function
-				 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+				  ON fn_bl.fn = st.function
+				 AND 
+				 (
+				   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				 )
 				LEFT JOIN member_blacklist m_bl
 				  ON m_bl.datatype_id = a.type
 				 AND m_bl.datatype_member_id = sl.member_id
@@ -369,9 +380,15 @@ FROM
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
 			LEFT JOIN function_blacklist fn_bl
-			  ON fn_bl.datatype_id = a.type
-			 AND fn_bl.fn = st.function
-			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+			  ON fn_bl.fn = st.function
+			 AND 
+			 (
+			   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+			   OR
+			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			   OR
+			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			 )
 			LEFT JOIN member_blacklist m_bl
 			  ON m_bl.datatype_id = a.type
 			 AND m_bl.datatype_member_id = sl.member_id

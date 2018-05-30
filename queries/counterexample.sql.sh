@@ -242,9 +242,15 @@ cat <<EOT
 				  ON mn.id = sl.member_id
 				 AND mn.name = '$MEMBER'
 				LEFT JOIN function_blacklist fn_bl
-				  ON fn_bl.datatype_id = a.type
-				 AND fn_bl.fn = st.function
-				 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+				  ON fn_bl.fn = st.function
+				 AND
+				 (
+				   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				   OR
+				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				 )
 				WHERE
 					fn_bl.fn IS NOT NULL
 				GROUP BY ac.id

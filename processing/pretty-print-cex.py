@@ -35,14 +35,12 @@ if __name__ == '__main__':
 	parser.add_argument('cexcsv', help='Input file containing the ground truth')
 	parser.add_argument('vmlinux', help='VMLINUX')
 	parser.add_argument('hypothesescsv', help='Input file containing preditions made by the hypothesizer (winner hypotheses only)')
-	parser.add_argument('fnblacklistcsv', help='CSV with blacklisted functions indexed by data type')
 	args = parser.parse_args()
 
 	cexCSV = args.cexcsv
 	vmlinux = args.vmlinux
 	crossRefURL = args.crossrefurl
 	hypothesesCSV = args.hypothesescsv
-	fnblacklistCSV = args.fnblacklistcsv
 	separator = ';'
 	count = 0
 	cexDict = dict()
@@ -77,31 +75,6 @@ if __name__ == '__main__':
 		else:
 			LOGGER.error('Lock combination (%s) does already exist for key %s', line['locks'], key)
 	LOGGER.debug('Read %d locking predictions for %d different (struct,member,accesstype) tuples from "%s"', count, len(hypothesesDict), hypothesesCSV)
-	tempFile.close()
-
-	# Read and parse the function blacklist
-	# $data_type --> fn: "list of blacklisted functions"
-	#				 members: $member --> fn: "list of blacklisted functions"
-	fnBlacklistDict = dict()
-	tempFile = open(fnblacklistCSV,'rb')
-	tempReader = csv.DictReader(tempFile, delimiter=';')
-	for line in tempReader:
-		count = count + 1
-		key = (line['datatype'])
-		if key not in fnBlacklistDict:
-			fnBlacklistEntry = {'members': dict(), 'fn': list()}
-			fnBlacklistDict[key] = fnBlacklistEntry
-		else:
-			fnBlacklistEntry = fnBlacklistDict[key]
-		if line['datatype_member'] == '\\N':
-			fnBlacklistEntry['fn'].append(line['fn'])
-		else:
-			if line['datatype_member'] not in fnBlacklistEntry['members']:
-				memberBlacklistEntry = list()
-				fnBlacklistEntry['members'][line['datatype_member']] = memberBlacklistEntry
-			else:
-				memberBlacklistEntry = fnBlacklistEntry['members'][line['datatype_member']]
-			memberBlacklistEntry.append(line['fn'])
 	tempFile.close()
 
 	tempFile = open(cexCSV,'rb')
@@ -226,30 +199,13 @@ tr.line_heading {
 		formattedStacktrace = ""
 		abort = None
 		for traceElem in traceElems:
-			# Split stacktrace element
+			# Split locks_held
 			# Example: 0x4711@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
 			elems = traceElem.split('@')
 			codePos = dict()
 			codePos['file'] = elems[2].split(':')[0]
 			codePos['line'] = elems[2].split(':')[1]
 			codePos['fn'] = elems[1]
-			# Is thise function globally blacklisted?
-			if codePos['fn'] in globalFnBlacklist:
-				abort = codePos['fn']
-				break
-			# Do we have blacklisted functions for this data type?
-			elif line['data_type'] in fnBlacklistDict:
-					fnBlacklistEntry = fnBlacklistDict[line['data_type']]
-					# Do we have 'global' (for all members) blacklisted functions?
-					if codePos['fn'] in fnBlacklistEntry['fn']:
-						abort = codePos['fn']
-						break
-					# We don't. But we may have member-specific blacklisted functions.
-					elif line['member'] in fnBlacklistEntry['members']:
-						fnBlMemberEntry = fnBlacklistEntry['members']
-						if codePos['fn'] in fnBlMemberEntry['fn']:
-							abort = codePos['fn']
-							break
 			# Mark the first stacktrace entry since it corresponds
 			# to the suspicious memory access.
 			if i == (traceElemsLen - 1):

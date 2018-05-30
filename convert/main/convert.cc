@@ -781,7 +781,7 @@ int main(int argc, char *argv[]) {
 
 	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 
-	fnblacklistOFile << "datatype_id" << delimiter << "datatype_member"
+	fnblacklistOFile << "id" << delimiter << "data_type_id" << delimiter << "member_name_id"
 		<< delimiter << "fn" << endl;
 
 	memberblacklistOFile << "datatype_id" << delimiter << "datatype_member_id" << endl;
@@ -1100,11 +1100,17 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		auto itType = type2id.find(lineElems.at(0));
-		if (itType == type2id.end()) {
-			cerr << "Unknown type in blacklist (function) line " << (lineCounter + 1)
-				<< ": " << lineElems.at(0) << endl;
-			continue;
+		string dataTypeID;
+		if (lineElems.at(0) != "\\N") {
+			auto itType = type2id.find(lineElems.at(0));
+			if (itType == type2id.end()) {
+				cerr << "Unknown type in blacklist (function) line " << (lineCounter + 1)
+					<< ": " << lineElems.at(0) << endl;
+				continue;
+			}
+			dataTypeID = std::to_string(itType->second);
+		} else {
+			dataTypeID = lineElems.at(0);
 		}
 		
 		string memberID;
@@ -1120,7 +1126,8 @@ int main(int argc, char *argv[]) {
 			memberID = lineElems.at(1);
 		}
 
-		fnblacklistOFile << itType->second << delimiter
+		// Write a MySQL NULL for the id which forces MySQL to allocate a new unique id for this entry
+		fnblacklistOFile << "\\N" << delimiter << dataTypeID << delimiter
 			<< memberID << delimiter
 			<< lineElems.at(2) << endl;
 	}

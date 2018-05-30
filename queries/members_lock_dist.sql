@@ -37,7 +37,16 @@ FROM
 	INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 	LEFT JOIN member_names AS mn ON mn.id = sl.member_id
-	LEFT JOIN function_blacklist fn_bl ON fn_bl.datatype_id = a.type AND fn_bl.fn = ac.fn AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+	LEFT JOIN function_blacklist fn_bl
+	  ON fn_bl.fn = st.function
+	 AND 
+	 (
+	   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+	   OR
+	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+	   OR
+	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+	 )
 	WHERE 
 		a.type = (SELECT id FROM data_types WHERE name = 'inode') AND
 		ac.type  IN ('r','w') AND

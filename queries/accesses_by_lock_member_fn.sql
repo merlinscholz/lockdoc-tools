@@ -1,4 +1,4 @@
-SELECT ac_type, sl_member, locks_held, ac_fn, ac_instrptr, contexts, preemptCounts, COUNT(*) AS num
+SELECT ac_type, sl_member, locks_held, st_fn, st_instrptr, contexts, preemptCounts, COUNT(*) AS num
 FROM
 (
 	SELECT
@@ -18,8 +18,8 @@ FROM
 			ORDER BY lh.start
 			SEPARATOR ' -> '
 		) AS locks_held,
-		ac_fn,
-		lower(hex(ac_instrptr)) AS ac_instrptr,
+		st_fn,
+		lower(hex(st_instrptr)) AS st_instrptr,
 		GROUP_CONCAT(
 			CASE 
 			WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
@@ -55,9 +55,15 @@ FROM
 		 AND ac.address - a.ptr = sl.helper_offset
 		LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 		LEFT JOIN function_blacklist fn_bl
-		  ON fn_bl.datatype_id = a.type
-		 AND fn_bl.fn = ac.fn
-		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+		  ON fn_bl.fn = st.function
+			 AND 
+			 (
+			   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+			   OR
+			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			   OR
+			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			 )
 		WHERE 
 			-- Name the data type of interest here
 			a.type in (SELECT id FROM data_types WHERE name in ('journal_t','transaction_t')) AND
