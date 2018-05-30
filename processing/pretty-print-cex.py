@@ -28,34 +28,9 @@ globalFnBlacklist = [ "atomic_read", "atomic_set", "atomic_add", "atomic_sub", "
 					  "test_and_clear_bit", "__test_and_clear_bit", "test_and_change_bit", "__test_and_change_bit", "constant_test_bit", "variable_test_bit",
 					  "mount_fs"]
 
-# Cache resolved instruction pointers
-addressCache = dict()
-
-def addrToFn(vmlinux, addr, pathPrefix):
-	addr = addr.lower()
-	if addr in addressCache:
-		retValue = addressCache[addr]
-	else:
-		cmd = ['addr2line', '-f', '-e', vmlinux, str(addr)]
-		addrProcess = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-		out, err = addrProcess.communicate()
-		if addrProcess.returncode != 0:
-			LOGGER.error("Cannot resolve function name:\n%s", err)
-		# The first line contains the function name
-		# The second one contains the filename followed by the linenumber.
-		lines = out.split('\n')
-		file = lines[1].split(':')[0].replace(pathPrefix,"")
-		lineNo = lines[1].split(':')[1] # Get the line number: <file>:<lineno>
-		lineNo = lineNo.split('(')[0].strip() # Strip of unwanted chars, e.g., ' (discriminator 5)'
-		retValue = {'fn': lines[0] , 'file': file, "line": lineNo}
-		addressCache[addr] = retValue
-	LOGGER.debug("%s --> %s:%s", addr, retValue['fn'], retValue['line'])
-	return retValue
-
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-	parser.add_argument('-k', '--kerneldir', help='Directory where the kernel was compiled', default='/opt/kernel/linux-32-lockdebugging-4-10/')
 	parser.add_argument('-u', '--crossrefurl', help='Base URL to the Linux cross reference site', default='https://elixir.bootlin.com/linux/v4.10')
 	parser.add_argument('cexcsv', help='Input file containing the ground truth')
 	parser.add_argument('vmlinux', help='VMLINUX')
@@ -65,7 +40,6 @@ if __name__ == '__main__':
 
 	cexCSV = args.cexcsv
 	vmlinux = args.vmlinux
-	kernelDir = args.kerneldir
 	crossRefURL = args.crossrefurl
 	hypothesesCSV = args.hypothesescsv
 	fnblacklistCSV = args.fnblacklistcsv
@@ -243,18 +217,22 @@ tr.line_heading {
 		# we must do this so early. Otherwise, this script would
 		# have produced output.
 		traceElems = line['stacktrace'].split(',')
-		# Insert the instruction pointer
-		traceElems.insert(0, line['instrptr'])
 		# Since we want a top-down view, we reverse the stacktrace.
 		traceElems.reverse()
 		traceElemsLen = len(traceElems)
-		LOGGER.debug("%s,%s", line['instrptr'], line['stacktrace'])
+		LOGGER.debug("%s", line['stacktrace'])
 		# Convert the stacktrace into humanreadable information
 		i = 0
 		formattedStacktrace = ""
 		abort = None
 		for traceElem in traceElems:
-			codePos = addrToFn(vmlinux, traceElem, kernelDir)
+			# Split stacktrace element
+			# Example: 0x4711@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
+			elems = traceElem.split('@')
+			codePos = dict()
+			codePos['file'] = elems[2].split(':')[0]
+			codePos['line'] = elems[2].split(':')[1]
+			codePos['fn'] = elems[1]
 			# Is thise function globally blacklisted?
 			if codePos['fn'] in globalFnBlacklist:
 				abort = codePos['fn']
@@ -329,7 +307,7 @@ tr.line_heading {
 				# Index 1: the function where the lock was acquired
 				# Index 2: the file and line where the lock was acquired
 				elems = lockHeld.split('@')
-				lockFile = elems[2].split(':')[0].replace(kernelDir, '')
+				lockFile = elems[2].split(':')[0]
 				lockLine = elems[2].split(':')[1]
 				print('%02d: <a class="lock" href="%s/source/%s#L%s" title="%s@%s:%s">%s</a>' %(i + 1, crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0]), end='')
 				if i < (locksHeldLen - 1):

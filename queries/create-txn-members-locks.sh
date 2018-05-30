@@ -81,7 +81,7 @@ FROM
 			-- Within each TXN and allocation: fold multiple accesses to the same
 			-- data-structure member into one; if there are reads and writes, the resulting
 			-- access is a write, otherwise a read.
-			-- NOTE: The above property does *NOT* apply if the the results are grouped by instrptr and stacktrace_id.
+			-- NOTE: The above property does *NOT* apply if the the results are grouped by stacktrace_id.
 			-- NOTE: This does not fold accesses to two different allocations.
 			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, a.type AS type_id, mn.name AS member, sl.offset, sl.size
 			FROM accesses ac
@@ -92,22 +92,46 @@ FROM
 			 AND ac.address - a.ptr = sl.helper_offset
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
-			LEFT JOIN function_blacklist fn_bl
-			  ON fn_bl.datatype_id = a.type
-			 AND fn_bl.fn = ac.fn
-			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
-			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.datatype_id = a.type
-			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- === FOR NOW: skip task_struct ===
 			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
-			AND fn_bl.fn IS NULL
-			AND m_bl.datatype_member_id IS NULL
 			AND ac.txn_id IS NOT NULL
+			AND ac.id NOT IN
+			(
+			-- Get all accesses that happened on an init path or accessed a blacklisted member
+				SELECT ac.id
+				FROM accesses ac
+				JOIN allocations a
+				  ON ac.alloc_id = a.id
+				JOIN stacktraces AS st
+				  ON ac.stacktrace_id = st.id
+				LEFT JOIN structs_layout_flat sl
+				  ON a.type = sl.type_id
+				 AND ac.address - a.ptr = sl.helper_offset
+				LEFT JOIN member_names mn
+				  ON mn.id = sl.member_id
+				LEFT JOIN function_blacklist fn_bl
+				  ON fn_bl.datatype_id = a.type
+				 AND fn_bl.fn = st.function
+				 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+				LEFT JOIN member_blacklist m_bl
+				  ON m_bl.datatype_id = a.type
+				 AND m_bl.datatype_member_id = sl.member_id
+				WHERE 1
+				${DATATYPE_FILTER}
+				${MEMBER_FILTER}
+				-- === FOR NOW: skip task_struct ===
+				AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+				-- ====================================
+				AND
+				(
+					fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+				)
+				GROUP BY ac.id
+			)
 			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
 		) AS fac -- = Folded ACcesses
 
@@ -154,22 +178,46 @@ FROM
 	 AND ac.address - a.ptr = sl.helper_offset
 	LEFT JOIN member_names mn
 	  ON mn.id = sl.member_id
-	LEFT JOIN function_blacklist fn_bl
-	  ON fn_bl.datatype_id = a.type
-	 AND fn_bl.fn = ac.fn
-	 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
-	LEFT JOIN member_blacklist m_bl
-	  ON m_bl.datatype_id = a.type
-	 AND m_bl.datatype_member_id = sl.member_id
 	WHERE 1
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
 	-- === FOR NOW: skip task_struct ===
 	AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 	-- ====================================
-	AND fn_bl.fn IS NULL
-	AND m_bl.datatype_member_id IS NULL
 	AND ac.txn_id IS NULL
+	AND ac.id NOT IN
+	(
+	-- Get all accesses that happened on an init path or accessed a blacklisted member
+		SELECT ac.id
+		FROM accesses ac
+		JOIN allocations a
+		  ON ac.alloc_id = a.id
+		JOIN stacktraces AS st
+		  ON ac.stacktrace_id = st.id
+		LEFT JOIN structs_layout_flat sl
+		  ON a.type = sl.type_id
+		 AND ac.address - a.ptr = sl.helper_offset
+		LEFT JOIN member_names mn
+		  ON mn.id = sl.member_id
+		LEFT JOIN function_blacklist fn_bl
+		  ON fn_bl.datatype_id = a.type
+		 AND fn_bl.fn = st.function
+		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+		LEFT JOIN member_blacklist m_bl
+		  ON m_bl.datatype_id = a.type
+		 AND m_bl.datatype_member_id = sl.member_id
+		WHERE 1
+		${DATATYPE_FILTER}
+		${MEMBER_FILTER}
+		-- === FOR NOW: skip task_struct ===
+		AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+		-- ====================================
+		AND
+		(
+			fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+		)
+		GROUP BY ac.id
+	)
 ) AS withlocks
 
 GROUP BY type_id, members_accessed, locks_held
@@ -190,7 +238,7 @@ FROM
 		member, locks_held
 	FROM
 	(
-		SELECT fac.type_id, dt.name AS type_name, fac.member, fac.instrptr, fac.stacktrace_id,
+		SELECT fac.type_id, dt.name AS type_name, fac.member, fac.stacktrace_id,
 			GROUP_CONCAT(
 				CASE
 				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
@@ -206,7 +254,7 @@ FROM
 			) AS locks_held
 		FROM
 		(
-			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, a.type AS type_id, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.instrptr, ac.stacktrace_id
+			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, a.type AS type_id, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.stacktrace_id
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
@@ -217,7 +265,7 @@ FROM
 			  ON mn.id = sl.member_id
 			LEFT JOIN function_blacklist fn_bl
 			  ON fn_bl.datatype_id = a.type
-			 AND fn_bl.fn = ac.fn
+			 AND fn_bl.fn = st.function
 			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
 			LEFT JOIN member_blacklist m_bl
 			  ON m_bl.datatype_id = a.type
@@ -228,9 +276,40 @@ FROM
 			-- === FOR NOW: skip task_struct ===
 			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
-			AND fn_bl.fn IS NULL
-			AND m_bl.datatype_member_id IS NULL
 			AND ac.txn_id IS NOT NULL
+			AND ac.id NOT IN
+			(
+			-- Get all accesses that happened on an init path or accessed a blacklisted member
+				SELECT ac.id
+				FROM accesses ac
+				JOIN allocations a
+				  ON ac.alloc_id = a.id
+				JOIN stacktraces AS st
+				  ON ac.stacktrace_id = st.id
+				LEFT JOIN structs_layout_flat sl
+				  ON a.type = sl.type_id
+				 AND ac.address - a.ptr = sl.helper_offset
+				LEFT JOIN member_names mn
+				  ON mn.id = sl.member_id
+				LEFT JOIN function_blacklist fn_bl
+				  ON fn_bl.datatype_id = a.type
+				 AND fn_bl.fn = st.function
+				 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+				LEFT JOIN member_blacklist m_bl
+				  ON m_bl.datatype_id = a.type
+				 AND m_bl.datatype_member_id = sl.member_id
+				WHERE 1
+				${DATATYPE_FILTER}
+				${MEMBER_FILTER}
+				-- === FOR NOW: skip task_struct ===
+				AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+				-- ====================================
+				AND
+				(
+					fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+				)
+				GROUP BY ac.id
+			)
 			GROUP BY ac.id -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
 		) AS fac
 		JOIN data_types dt
@@ -257,7 +336,7 @@ FROM
 		
 		UNION ALL
 		
-		SELECT a.type AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.instrptr, ac.stacktrace_id, '' AS locks_held
+		SELECT a.type AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.stacktrace_id, '' AS locks_held
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
@@ -266,13 +345,6 @@ FROM
 		 AND ac.address - a.ptr = sl.helper_offset
 		LEFT JOIN member_names mn
 		  ON mn.id = sl.member_id
-		LEFT JOIN function_blacklist fn_bl
-		  ON fn_bl.datatype_id = a.type
-		 AND fn_bl.fn = ac.fn
-		 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
-		LEFT JOIN member_blacklist m_bl
-		  ON m_bl.datatype_id = a.type
-		 AND m_bl.datatype_member_id = sl.member_id
 		JOIN data_types dt
 			ON dt.id = a.type
 		WHERE 1
@@ -281,12 +353,43 @@ FROM
 		-- === FOR NOW: skip task_struct ===
 		AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
 		-- ====================================
-		AND fn_bl.fn IS NULL
-		AND m_bl.datatype_member_id IS NULL
 		AND ac.txn_id IS NULL
+		AND ac.id NOT IN
+		(
+			-- Get all accesses that happened on an init path or accessed a blacklisted member
+			SELECT ac.id
+			FROM accesses ac
+			JOIN allocations a
+			  ON ac.alloc_id = a.id
+			JOIN stacktraces AS st
+			  ON ac.stacktrace_id = st.id
+			LEFT JOIN structs_layout_flat sl
+			  ON a.type = sl.type_id
+			 AND ac.address - a.ptr = sl.helper_offset
+			LEFT JOIN member_names mn
+			  ON mn.id = sl.member_id
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.datatype_id = a.type
+			 AND fn_bl.fn = st.function
+			 AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
+			LEFT JOIN member_blacklist m_bl
+			  ON m_bl.datatype_id = a.type
+			 AND m_bl.datatype_member_id = sl.member_id
+			WHERE 1
+			${DATATYPE_FILTER}
+			${MEMBER_FILTER}
+			-- === FOR NOW: skip task_struct ===
+			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+			-- ====================================
+			AND
+			(
+				fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+			)
+			GROUP BY ac.id
+		)
 		GROUP BY ac.id
-	) AS concatlocks	
-	GROUP BY concatlocks.type_id, concatlocks.member, concatlocks.locks_held, concatlocks.instrptr, concatlocks.stacktrace_id
+	) AS concatlocks
+	GROUP BY concatlocks.type_id, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id
 ) AS fstacks
 GROUP BY fstacks.type_id, fstacks.member, fstacks.locks_held
 ORDER BY fstacks.type_id, fstacks.member, fstacks.locks_held, occurrences

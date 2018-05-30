@@ -11,8 +11,8 @@ SELECT
 --	embedded_in_same,
 --	lockFn,
 --	preemptCount,
-	ac_fn,
-	ac_instrptr,
+	st_fn,
+	st_instrptr,
 --	lockContext,
 	COUNT(*) AS num
 FROM
@@ -21,9 +21,9 @@ FROM
 		ac_id,
 		alloc_id,
 		ac_type,
-		ac_fn,
+		st_fn,
 		ac_address,
-		ac_instrptr,
+		st_instrptr,
 		a_ptr,
 		sl_member,
 		GROUP_CONCAT(IFNULL(lh.lock_id,"null") ORDER BY l.id SEPARATOR '+') AS locks,
@@ -49,13 +49,14 @@ FROM
 			ac.alloc_id AS alloc_id,
 			ac.txn_id AS ac_txn_id,
 			ac.type AS ac_type,
-			ac.fn AS ac_fn,
+			st.function AS st_fn,
 			ac.address AS ac_address,
-			LOWER(HEX(ac.instrptr)) AS ac_instrptr,
+			LOWER(HEX(st.instruction_ptr)) AS st_instrptr,
 			a.ptr AS a_ptr,
 			mn.name AS sl_member
 		FROM accesses AS ac
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
+		INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 		LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 		LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 		LEFT JOIN function_blacklist fn_bl

@@ -67,7 +67,6 @@ struct MemAccess {
 	int size;													// Size of memory access
 	unsigned long long address;									// Accessed address
 	unsigned long long stacktrace_id;								// Stack pointer
-	unsigned long long instrPtr;								// Instruction pointer
 	unsigned long long preemptCount;								// __preempt_count
 };
 
@@ -104,9 +103,10 @@ static std::deque<TXN> activeTXNs;
 static map<string,unsigned long long> memberNames;
 /**
  * A map of all stacktraces found in all data types.
- * The key is the stacktrace, and the value is a stacktrace's global id.
+ * The key is the first instrptr of a stacktrace, and the value is a map.
+ * That map in turn maps the remaining stacktrace to a stacktrace's global id.
  */
-static map<string,unsigned long long> stacktraces;
+static map<unsigned long long, map<string,unsigned long long> > stacktraces;
 
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
@@ -511,9 +511,8 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
-		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id << delimiter << tempAccess.instrPtr;
-		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1);
-		*pMemAccessOFile << delimiter << get_function_at_addr(kernelBaseDir, tempAccess.instrPtr).fn << "\n";
+		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
+		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1) << "\n";
 		++accessCount;
 	}
 
@@ -557,14 +556,31 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 
 	// Remove the last character since it always is a comma.
 	stacktrace.pop_back();
-	// Do we know that member name?
-	const auto it = find_if(stacktraces.cbegin(), stacktraces.cend(),
+	auto itStacktrace = stacktraces.emplace(instrPtr,map<std::string,unsigned long long>());
+	auto subStacktraces = itStacktrace.first->second;
+	// Do we know that substacktrace?
+	const auto itSubStacktrace = find_if(subStacktraces.cbegin(), subStacktraces.cend(),
 		[&stacktrace](const pair<string, unsigned long long> &value ) { return value.first == stacktrace; } );
-	if (it == stacktraces.cend()) {
+	if (itSubStacktrace == subStacktraces.cend()) {
+		int sequence = 0;
+		stringstream ss;
+		ss << hex << showbase << instrPtr;
+		std::string token = ss.str();
+		ss.clear(); ss.str("");
+
 		ret = curStacktraceID++;
-		stacktraces.emplace(stacktrace,ret);
+		subStacktraces.emplace(stacktrace,ret);
+		
+		ss << stacktrace;
+		do {
+			instrPtr = std::stoull(token,NULL,16);
+			const struct InstructionPointerInfo &resolvedInstrPtr = get_function_at_addr(kernelBaseDir, instrPtr);
+			stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
+			stacktracesOFile << resolvedInstrPtr.fn << delimiter << resolvedInstrPtr.line << delimiter << resolvedInstrPtr.file << "\n";
+			sequence++;
+		} while (getline(ss,token,','));
 	} else {
-		ret = it->second;
+		ret = itSubStacktrace->second;
 	}
 	return ret;
 }
@@ -752,7 +768,7 @@ int main(int argc, char *argv[]) {
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
 	accessOFile << "ts" << delimiter;
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
-	accessOFile << "stacktrace_id" << delimiter << "instrptr" << delimiter << "preemptcount" << delimiter << "fn" << endl;
+	accessOFile << "stacktrace_id" << delimiter << "preemptcount" << delimiter << "fn" << endl;
 
 	locksOFile << "id" << delimiter << "ptr" << delimiter;
 	locksOFile << "embedded" << delimiter << "locktype" << delimiter;
@@ -772,7 +788,7 @@ int main(int argc, char *argv[]) {
 		
 	membernamesOFile << "id" << delimiter << "member_name" << endl;
 	
-	stacktracesOFile << "id" << delimiter << "stacktrace" << endl;
+	stacktracesOFile << "id" << delimiter << "sequence" << delimiter << "instruction_ptr" << delimiter << "function" << delimiter << "line" << delimiter << "file" << endl;
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
@@ -1017,7 +1033,6 @@ int main(int argc, char *argv[]) {
 				tempAccess.action = action;
 				tempAccess.size = size;
 				tempAccess.address = address;
-				tempAccess.instrPtr = instrPtr;
 				tempAccess.stacktrace_id = addStacktrace(kernelBaseDir, stacktracesOFile, delimiter, instrPtr, stacktrace);
 				tempAccess.preemptCount = preemptCount;
 				break;
@@ -1151,10 +1166,6 @@ int main(int argc, char *argv[]) {
 			<< itMember->second << endl;
 	}
 
-	for (const auto& stacktrace : stacktraces) {
-		stacktracesOFile << stacktrace.second << delimiter << stacktrace.first << endl;
-	}
-	
 	cerr << "Finished." << endl;
 
 	return EXIT_SUCCESS;

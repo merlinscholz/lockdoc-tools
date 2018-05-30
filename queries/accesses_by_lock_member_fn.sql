@@ -40,15 +40,16 @@ FROM
 			ac.txn_id AS ac_txn_id,
 			ac.alloc_id AS alloc_id,
 			ac.type AS ac_type,
-			ac.fn AS ac_fn,
+			st.function AS st_fn,
 			ac.address AS ac_address,
 			a.ptr AS a_ptr,
-			ac.instrptr AS ac_instrptr,
+			st.instruction_ptr AS st_instrptr,
 			mn.name AS sl_member,
 			dt.name AS dt_name
 		FROM accesses AS ac
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		INNER JOIN data_types AS dt ON dt.id=a.type
+		INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 		LEFT JOIN structs_layout_flat sl
 		  ON a.type = sl.type_id
 		 AND ac.address - a.ptr = sl.helper_offset
@@ -80,6 +81,6 @@ FROM
 	  ON mn_lock_member.id = lock_member.member_id
 	GROUP BY ac_id
 ) t
--- Since we want a detailed view about where an access happenend, the result is additionally grouped by ac_fn and ac_instrptr.
-GROUP BY ac_type, sl_member, locks_held, ac_fn, ac_instrptr
-ORDER BY ac_type, sl_member, locks_held, ac_fn, ac_instrptr, num DESC;
+-- Since we want a detailed view about where an access happenend, the result is additionally grouped by ac_fn and st_instrptr.
+GROUP BY ac_type, sl_member, locks_held, st_fn, st_instrptr
+ORDER BY ac_type, sl_member, locks_held, st_fn, st_instrptr, num DESC;

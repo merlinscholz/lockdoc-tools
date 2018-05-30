@@ -1,9 +1,9 @@
 SELECT
 	ac_id, alloc_id, 
-	ac_type, ac_fn,
+	ac_type, st_fn,
 	ac_address,
 --	ac_ptr,
-	lower(hex(ac_instrptr)) AS ac_instrptr,
+	lower(hex(st_instrptr)) AS st_instrptr,
 	sl_member,
 	dt_name,
 	IFNULL(lh.lock_id,'null') AS locks,
@@ -25,15 +25,16 @@ FROM
 		ac.txn_id AS ac_txn_id,
 		ac.alloc_id AS alloc_id,
 		ac.type AS ac_type,
-		ac.fn AS ac_fn,
+		st.function AS st_fn,
 		ac.address AS ac_address,
 		a.ptr AS a_ptr,
-		ac.instrptr AS ac_instrptr,
+		st.instruction_ptr AS st_instrptr,
 		mn.name AS sl_member,
 		dt.name AS dt_name
 	FROM accesses AS ac
 	INNER JOIN allocations AS a ON a.id=ac.alloc_id
 	INNER JOIN data_types AS dt ON dt.id=a.type
+	INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
 	LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 	LEFT JOIN function_blacklist fn_bl ON fn_bl.datatype_id = a.type AND fn_bl.fn = ac.fn AND (fn_bl.datatype_member_id IS NULL OR fn_bl.datatype_member_id = sl.member_id)
@@ -52,5 +53,5 @@ LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
 -- WHERE
 --	sl2.member IS NULL
 --	lh.start IS NULL
-GROUP BY ac_type, lock_member, sl_member, ac_fn
-ORDER BY ac_type, lock_member, sl_member, ac_fn, num DESC;
+GROUP BY ac_type, lock_member, sl_member, st_fn
+ORDER BY ac_type, lock_member, sl_member, st_fn, num DESC;

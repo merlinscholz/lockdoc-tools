@@ -50,7 +50,7 @@ do
 		echo "Running query..."
 		if [ ${COUNT} -gt 0 ];
 		then 
-			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" | sed '/data_type;member;accesstype;occurrences;instrptr;stacktrace;locks_held/d' >> ${OUTPUT}
+			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" | sed '/data_type;member;accesstype;occurrences;stacktrace;locks_held/d' >> ${OUTPUT}
 		else
 			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" >> ${OUTPUT}
 		fi
