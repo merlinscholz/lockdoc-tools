@@ -30,5 +30,5 @@ HYPO_INPUT=all_txns_members_locks_db_${VARIANT}.csv
 NO_LOCK_THRESHOLD=5.0
 
 echo "Retrieving txns members locks (${VARIANT})..."
-time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh nostack | mysql ${DB} > ${HYPO_INPUT}"
+time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${VARIANT} | mysql ${DB} > ${HYPO_INPUT}"
 ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT}
