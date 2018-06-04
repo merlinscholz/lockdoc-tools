@@ -14,7 +14,7 @@ datatype;datatype_member;fn
 \N;\N;atomic_inc_and_test
 \N;\N;atomic_add_negative
 \N;\N;atomic_add_return
-\N;\N;,atomic_sub_return
+\N;\N;atomic_sub_return
 \N;\N;atomic_fetch_add
 \N;\N;atomic_fetch_sub
 \N;\N;atomic_cmpxchg
