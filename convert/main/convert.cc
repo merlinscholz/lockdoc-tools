@@ -557,7 +557,7 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 	// Remove the last character since it always is a comma.
 	stacktrace.pop_back();
 	auto itStacktrace = stacktraces.emplace(instrPtr,map<std::string,unsigned long long>());
-	auto subStacktraces = itStacktrace.first->second;
+	auto &subStacktraces = itStacktrace.first->second;
 	// Do we know that substacktrace?
 	const auto itSubStacktrace = find_if(subStacktraces.cbegin(), subStacktraces.cend(),
 		[&stacktrace](const pair<string, unsigned long long> &value ) { return value.first == stacktrace; } );
