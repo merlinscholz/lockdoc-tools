@@ -10,3 +10,7 @@ address_space
 bdi_writeback
 journal_t
 transaction_t
+journal_head
+dentry
+qstr
+buffer_head
