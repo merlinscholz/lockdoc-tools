@@ -197,7 +197,6 @@ tr.line_heading {
 		# Convert the stacktrace into humanreadable information
 		i = 0
 		formattedStacktrace = ""
-		abort = None
 		for traceElem in traceElems:
 			# Split locks_held
 			# Example: 0x4711@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
@@ -217,10 +216,6 @@ tr.line_heading {
 			if i < (traceElemsLen - 1):
 				formattedStacktrace = formattedStacktrace + '<br/>\n'
 			i=i+1
-		# Abort further processing of this cex, it isn't a real one.
-		if abort is not None:
-			LOGGER.debug('Filtered cex for (%s,%s,%s) due to blacklisted function: %s.' % (line['data_type'], line['member'], line['accesstype'], codePos['fn']))
-			continue
 		
 		key = (line['data_type'], line['member'], line['accesstype'])
 		if key not in hypothesesDict:
