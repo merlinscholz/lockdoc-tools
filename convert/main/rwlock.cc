@@ -216,7 +216,7 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 		lockType.compare(PSEUDOLOCK_NAME_SOFTIRQ) == 0 ||
 		lockType.compare(PSEUDOLOCK_NAME_HARDIRQ) == 0 ||
 		lockType.compare("semaphore") == 0 ||
-		lockType.compare("bit_spin_locK") == 0) {
+		lockType.compare("bit_spin_lock") == 0) {
 		ret = new WLock(lockAddress, allocID, lockType, lockVarName);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
