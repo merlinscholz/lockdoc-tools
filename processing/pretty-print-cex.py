@@ -17,17 +17,6 @@ import subprocess
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
 
-# Temproray workaround to filter cex that are on an init or destroy path
-# Some day, this array will be merged into function_blacklist.csv.
-globalFnBlacklist = [ "atomic_read", "atomic_set", "atomic_add", "atomic_sub", "atomic_sub_return", "atomic_sub_and_test", "atomic_inc", "atomic_dec",
-					  "atomic_dec_return", "atomic_dec_and_test", "atomic_inc", "atomic_inc_return", "atomic_inc_and_test",
-					  "atomic_add_negative", "atomic_add_return", ",atomic_sub_return", "atomic_fetch_add", "atomic_fetch_sub",
-					  "atomic_cmpxchg", "atomic_xchg", "atomic_fetch_and", "atomic_fetch_or", "atomic_fetch_xor", "atomic_inc_short",
-					  "__atomic_add_unsless", "set_bit", "__set_bit", "clear_bit", "clear_bit_unlock", "__clear_bit", "clear_bit_unlock_is_negative_byte",
-					  "__clear_bit_unlock", "__change_bit", "change_bit", "test_and_set_bit", "test_and_set_bit_lock", "__test_and_set_bit",
-					  "test_and_clear_bit", "__test_and_clear_bit", "test_and_change_bit", "__test_and_change_bit", "constant_test_bit", "variable_test_bit",
-					  "mount_fs"]
-
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
