@@ -18,7 +18,7 @@ MYSQL="mysql ${DB}"
 while [ ! -z ${FUNCTION} ];
 do
 	echo "Blacklisting ${FUNCTION} for ${DATA_TYPE}..."
-	if [ ${DATA_TYPE} -eq -1 ];
+	if [ ${DATA_TYPE} == "any" ];
 	then
 		${MYSQL} <<EOT
 insert into function_blacklist (data_type_id,member_name_id,fn) values (NULL,NULL,'${FUNCTION}');
