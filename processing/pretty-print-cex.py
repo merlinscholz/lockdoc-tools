@@ -165,11 +165,7 @@ tr.line_heading {
 		</tr>
 	</table>
 	<h2>Results</h2>
-	<table>
-		<tr>
-			<th>Stacktrace<br/>(00 = stackframe where access occurred)</th><th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
-
-		</tr>""")
+	<table>""")
 	lastKey = None
 	cexID = 1
 	hypothesisID = 0
@@ -195,6 +191,9 @@ tr.line_heading {
 				% (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'], locksHeldKey), end='')
 			print('<b>%2.2f%%</b> (%d out of %d mem accesses under locks)</td>' % (locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total']))
 			print('		</tr>')
+			print("""		<tr>
+			<th>Stacktrace<br/>(00 = stackframe where access occurred)</th><th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
+		</tr>""")
 			cexID = 1
 		lastKey = key
 
