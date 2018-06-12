@@ -160,6 +160,9 @@ tr.line_heading {
 		<tr>
 			<td>x:y(z)</td><td>The global <k>x</k> lock of type <k>z</k> was held. It has the id <k>y</k>.</td>
 		</tr>
+		<tr>
+			<td colspan="2">The square brackets specify wether the read or the write side of a lock was held, e.g., [w]. This information is present even if the lock is a reader-only or writer-only lock.</td>
+		</tr>
 	</table>
 	<h2>Results</h2>
 	<table>
