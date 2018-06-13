@@ -776,8 +776,8 @@ int main(int argc, char *argv[]) {
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
-	locksHeldOFile << "lastFile" << delimiter << "lastLine" << delimiter << "lastFn" << delimiter;
-	locksHeldOFile << "lastPreemptCount" << delimiter << "lastIRQSync" << endl;
+	locksHeldOFile << "last_file" << delimiter << "last_line" << delimiter << "last_fn" << delimiter;
+	locksHeldOFile << "last_preempt_count" << delimiter << "last_irq_sync" << endl;
 
 	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 

@@ -30,15 +30,15 @@ FROM
 		GROUP_CONCAT(IFNULL(CONCAT(l.lock_type_name, '[', l.sub_lock, ']'),"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
 		GROUP_CONCAT(IFNULL(a2.data_type_id,"null") ORDER BY l.id SEPARATOR '+') AS embedded_in_type,
 		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') ORDER BY l.id SEPARATOR '+') AS embedded_in_same,
-		GROUP_CONCAT(HEX(lh.lastPreemptCount) ORDER BY l.id SEPARATOR '+') AS preemptCount,
-		GROUP_CONCAT(lh.lastFn ORDER BY l.id SEPARATOR '+') AS lockContext,
+		GROUP_CONCAT(HEX(lh.last_preempt_count) ORDER BY l.id SEPARATOR '+') AS preemptCount,
+		GROUP_CONCAT(lh.last_fn ORDER BY l.id SEPARATOR '+') AS lockContext,
 		GROUP_CONCAT(IF(l.lock_type_name IS NULL, 'null',
 		  IF(mn2.name IS NULL,CONCAT('global_',l.lock_type_name,'_',l.id),CONCAT(mn2.name,'_',IF(l.embedded_in = alloc_id,'1','0')))) ORDER BY l.id SEPARATOR '+') AS lock_member,
 		GROUP_CONCAT(DISTINCT
 			CASE 
-				WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
-				WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
-				WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+				WHEN lh.last_preempt_count & 0x0ff00 THEN 'softirq'
+				WHEN lh.last_preempt_count & 0xf0000 THEN 'hardirq'
+				WHEN (lh.last_preempt_count & 0xfff00) = 0 THEN 'noirq'
 				ELSE 'unknown'
 			END
 			SEPARATOR '+') AS context

@@ -10,9 +10,9 @@ SELECT
 	IFNULL(CONCAT(l.lock_type_name, '[', l.sub_lock, ']'),'null') AS lock_types,
 	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
 	CASE 
-		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
-		WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
-		WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
+		WHEN lh.last_preempt_count & 0x0ff00 THEN 'softirq'
+		WHEN lh.last_preempt_count & 0xf0000 THEN 'hardirq'
+		WHEN (lh.last_preempt_count & 0xfff00) = 0 THEN 'noirq'
 		ELSE 'unknown'
 	END AS context,
 	IF(l.lock_type_name IS NULL, 'null',

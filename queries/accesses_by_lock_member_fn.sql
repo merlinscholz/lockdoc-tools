@@ -22,15 +22,15 @@ FROM
 		lower(hex(st_instrptr)) AS st_instrptr,
 		GROUP_CONCAT(
 			CASE 
-			WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
-			WHEN lh.lastPreemptCount & 0xf0000 THEN 'hardirq'
-			WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
-			WHEN lh.lastPreemptCount IS NULL THEN 'nolock'
+			WHEN lh.last_preempt_count & 0x0ff00 THEN 'softirq'
+			WHEN lh.last_preempt_count & 0xf0000 THEN 'hardirq'
+			WHEN (lh.last_preempt_count & 0xfff00) = 0 THEN 'noirq'
+			WHEN lh.last_preempt_count IS NULL THEN 'nolock'
 			ELSE 'unknown'
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
-		) AS contexts, GROUP_CONCAT(lh.lastPreemptCount ORDER BY lh.start SEPARATOR ' -> ') AS preemptCounts
+		) AS contexts, GROUP_CONCAT(lh.last_preempt_count ORDER BY lh.start SEPARATOR ' -> ') AS preemptCounts
 	FROM
 	(
 		-- Get all accesses. Add information about the accessed member, data type, and the function the memory has been accessed from.
