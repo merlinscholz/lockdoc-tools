@@ -27,8 +27,8 @@ CREATE TABLE `locks` (
 
 CREATE TABLE `allocations` (
   `id` int(11) UNSIGNED NOT NULL,		-- identifies a certain allocation
-  `type` int(11) UNSIGNED NOT NULL,		-- describes the data type of an allocation. References table datatypes
-  `ptr` int(11) UNSIGNED NOT NULL,		-- the start address of an allocation
+  `data_type_id` int(11) UNSIGNED NOT NULL,		-- describes the data type of an allocation. References table datatypes
+  `base_address` int(11) UNSIGNED NOT NULL,		-- the start address of an allocation
   `size` int(11) UNSIGNED NOT NULL,		-- size of the memory area
   `start` bigint(20) UNSIGNED DEFAULT NULL,	-- Start of lifetime
   `end` bigint(20) UNSIGNED DEFAULT NULL,	-- End of life

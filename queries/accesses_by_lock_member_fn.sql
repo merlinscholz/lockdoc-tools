@@ -11,9 +11,9 @@ FROM
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
@@ -42,17 +42,17 @@ FROM
 			ac.type AS ac_type,
 			st.function AS st_fn,
 			ac.address AS ac_address,
-			a.ptr AS a_ptr,
+			a.base_address AS a_ptr,
 			st.instruction_ptr AS st_instrptr,
 			mn.name AS sl_member,
 			dt.name AS dt_name
 		FROM accesses AS ac
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
-		INNER JOIN data_types AS dt ON dt.id=a.type
+		INNER JOIN data_types AS dt ON dt.id=a.data_type_id
 		INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 		LEFT JOIN structs_layout_flat sl
-		  ON a.type = sl.type_id
-		 AND ac.address - a.ptr = sl.helper_offset
+		  ON a.data_type_id = sl.type_id
+		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 		LEFT JOIN function_blacklist fn_bl
 		  ON fn_bl.fn = st.function
@@ -60,13 +60,13 @@ FROM
 			 (
 			   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 			   OR
-			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 			   OR
-			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 			 )
 		WHERE 
 			-- Name the data type of interest here
-			a.type in (SELECT id FROM data_types WHERE name in ('journal_t','transaction_t')) AND
+			a.data_type_id in (SELECT id FROM data_types WHERE name in ('journal_t','transaction_t')) AND
 			ac.type  IN ('r') AND -- Filter by access type
 			sl.member_id IN (SELECT id FROM member_names WHERE name in ('j_barrier_count','j_running_transaction','t_reserved_list')) AND -- Only show results for a certain member
 			fn_bl.fn IS NULL
@@ -79,10 +79,10 @@ FROM
 	LEFT JOIN allocations AS lock_a
 	  ON lock_a.id=l.embedded_in
 	LEFT JOIN data_types lock_a_dt
-	  ON lock_a.type = lock_a_dt.id
+	  ON lock_a.data_type_id = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
-	  ON lock_a.type = lock_member.type_id
-	  AND l.address - lock_a.ptr = lock_member.helper_offset
+	  ON lock_a.data_type_id = lock_member.type_id
+	  AND l.address - lock_a.base_address = lock_member.helper_offset
 	JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_id
 	GROUP BY ac_id

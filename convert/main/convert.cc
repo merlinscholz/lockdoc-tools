@@ -762,7 +762,7 @@ int main(int argc, char *argv[]) {
 	// CSV headers
 	datatypesOFile << "id" << delimiter << "name" << endl;
 
-	allocOFile << "id" << delimiter << "type_id" << delimiter << "ptr" << delimiter;
+	allocOFile << "id" << delimiter << "data_type_id" << delimiter << "base_address" << delimiter;
 	allocOFile << "size" << delimiter << "start" << delimiter << "end" << endl;
 
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;

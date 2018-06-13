@@ -22,7 +22,7 @@ MEMBER=${1}
 
 if [ ! -z ${DATATYPE} ];
 then
-	DATATYPE_FILTER="AND a.type = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
+	DATATYPE_FILTER="AND a.data_type_id = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
 fi
 
 if [ ! -z ${MEMBER} ];
@@ -63,9 +63,9 @@ FROM
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
 			END
 			ORDER BY lh.start
 		) AS locks_held
@@ -83,20 +83,20 @@ FROM
 			-- access is a write, otherwise a read.
 			-- NOTE: The above property does *NOT* apply if the the results are grouped by stacktrace_id.
 			-- NOTE: This does not fold accesses to two different allocations.
-			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, a.type AS type_id, mn.name AS member, sl.offset, sl.size
+			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, a.data_type_id AS type_id, mn.name AS member, sl.offset, sl.size
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.type = sl.type_id
-			 AND ac.address - a.ptr = sl.helper_offset
+			  ON a.data_type_id = sl.type_id
+			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- === FOR NOW: skip task_struct ===
-			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+			AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
@@ -109,8 +109,8 @@ FROM
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				LEFT JOIN structs_layout_flat sl
-				  ON a.type = sl.type_id
-				 AND ac.address - a.ptr = sl.helper_offset
+				  ON a.data_type_id = sl.type_id
+				 AND ac.address - a.base_address = sl.helper_offset
 				LEFT JOIN member_names mn
 				  ON mn.id = sl.member_id
 				LEFT JOIN function_blacklist fn_bl
@@ -119,18 +119,18 @@ FROM
 				 (
 				   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 				   OR
-				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 				   OR
-				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
-				  ON m_bl.datatype_id = a.type
+				  ON m_bl.datatype_id = a.data_type_id
 				 AND m_bl.datatype_member_id = sl.member_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
 				-- === FOR NOW: skip task_struct ===
-				AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+				AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 				-- ====================================
 				AND
 				(
@@ -138,7 +138,7 @@ FROM
 				)
 				GROUP BY ac.id
 			)
-			GROUP BY ac.alloc_id, ac.txn_id, a.type, sl.offset
+			GROUP BY ac.alloc_id, ac.txn_id, a.data_type_id, sl.offset
 		) AS fac -- = Folded ACcesses
 
 		JOIN data_types dt
@@ -156,12 +156,12 @@ FROM
 	LEFT JOIN allocations lock_a
 	  ON l.embedded_in = lock_a.id
 	LEFT JOIN data_types lock_a_dt
-	  ON lock_a.type = lock_a_dt.id
+	  ON lock_a.data_type_id = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
-	  ON lock_a.type = lock_member.type_id
-	 AND l.address - lock_a.ptr = lock_member.helper_offset
+	  ON lock_a.data_type_id = lock_member.type_id
+	 AND l.address - lock_a.base_address = lock_member.helper_offset
 	-- lock_a.id IS NULL                         => not embedded
-	-- l.address - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
+	-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
 	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_id
@@ -178,17 +178,17 @@ FROM
 	JOIN allocations a
 	  ON ac.alloc_id = a.id
 	JOIN data_types dt
-	  ON dt.id = a.type
+	  ON dt.id = a.data_type_id
 	LEFT JOIN structs_layout_flat sl
-	  ON a.type = sl.type_id
-	 AND ac.address - a.ptr = sl.helper_offset
+	  ON a.data_type_id = sl.type_id
+	 AND ac.address - a.base_address = sl.helper_offset
 	LEFT JOIN member_names mn
 	  ON mn.id = sl.member_id
 	WHERE 1
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
 	-- === FOR NOW: skip task_struct ===
-	AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+	AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 	-- ====================================
 	AND ac.txn_id IS NULL
 	AND ac.id NOT IN
@@ -201,8 +201,8 @@ FROM
 		JOIN stacktraces AS st
 		  ON ac.stacktrace_id = st.id
 		LEFT JOIN structs_layout_flat sl
-		  ON a.type = sl.type_id
-		 AND ac.address - a.ptr = sl.helper_offset
+		  ON a.data_type_id = sl.type_id
+		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names mn
 		  ON mn.id = sl.member_id
 		LEFT JOIN function_blacklist fn_bl
@@ -211,18 +211,18 @@ FROM
 		 (
 		   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 		   OR
-		   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 		   OR
-		   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 		 )
 		LEFT JOIN member_blacklist m_bl
-		  ON m_bl.datatype_id = a.type
+		  ON m_bl.datatype_id = a.data_type_id
 		 AND m_bl.datatype_member_id = sl.member_id
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
 		-- === FOR NOW: skip task_struct ===
-		AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+		AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 		-- ====================================
 		AND
 		(
@@ -258,28 +258,28 @@ FROM
 				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 					THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = fac.alloc_id
-					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
-				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
---				ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
+				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+--				ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, ':', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
 				END
 				ORDER BY lh.start
 			) AS locks_held
 		FROM
 		(
-			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, a.type AS type_id, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.stacktrace_id
+			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, a.data_type_id AS type_id, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.stacktrace_id
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.type = sl.type_id
-			 AND ac.address - a.ptr = sl.helper_offset
+			  ON a.data_type_id = sl.type_id
+			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- === FOR NOW: skip task_struct ===
-			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+			AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
@@ -292,8 +292,8 @@ FROM
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				LEFT JOIN structs_layout_flat sl
-				  ON a.type = sl.type_id
-				 AND ac.address - a.ptr = sl.helper_offset
+				  ON a.data_type_id = sl.type_id
+				 AND ac.address - a.base_address = sl.helper_offset
 				LEFT JOIN member_names mn
 				  ON mn.id = sl.member_id
 				LEFT JOIN function_blacklist fn_bl
@@ -302,18 +302,18 @@ FROM
 				 (
 				   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 				   OR
-				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 				   OR
-				   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
-				  ON m_bl.datatype_id = a.type
+				  ON m_bl.datatype_id = a.data_type_id
 				 AND m_bl.datatype_member_id = sl.member_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
 				-- === FOR NOW: skip task_struct ===
-				AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+				AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 				-- ====================================
 				AND
 				(
@@ -334,12 +334,12 @@ FROM
 		LEFT JOIN allocations lock_a
 		  ON l.embedded_in = lock_a.id
 		LEFT JOIN data_types lock_a_dt
-		  ON lock_a.type = lock_a_dt.id
+		  ON lock_a.data_type_id = lock_a_dt.id
 		LEFT JOIN structs_layout_flat lock_member
-		  ON lock_a.type = lock_member.type_id
-		 AND l.address - lock_a.ptr = lock_member.helper_offset
+		  ON lock_a.data_type_id = lock_member.type_id
+		 AND l.address - lock_a.base_address = lock_member.helper_offset
 		-- lock_a.id IS NULL                         => not embedded
-		-- l.address - lock_a.ptr = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
+		-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 		-- else                                      => the lock is contained in this member, exact name unknown
 		LEFT JOIN member_names mn_lock_member
 		  ON mn_lock_member.id = lock_member.member_id
@@ -347,22 +347,22 @@ FROM
 		
 		UNION ALL
 		
-		SELECT a.type AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.stacktrace_id, '' AS locks_held
+		SELECT a.data_type_id AS type_id, dt.name AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.stacktrace_id, '' AS locks_held
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
 		LEFT JOIN structs_layout_flat sl
-		  ON a.type = sl.type_id
-		 AND ac.address - a.ptr = sl.helper_offset
+		  ON a.data_type_id = sl.type_id
+		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names mn
 		  ON mn.id = sl.member_id
 		JOIN data_types dt
-			ON dt.id = a.type
+			ON dt.id = a.data_type_id
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
 		-- === FOR NOW: skip task_struct ===
-		AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+		AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 		-- ====================================
 		AND ac.txn_id IS NULL
 		AND ac.id NOT IN
@@ -375,8 +375,8 @@ FROM
 			JOIN stacktraces AS st
 			  ON ac.stacktrace_id = st.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.type = sl.type_id
-			 AND ac.address - a.ptr = sl.helper_offset
+			  ON a.data_type_id = sl.type_id
+			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
 			  ON mn.id = sl.member_id
 			LEFT JOIN function_blacklist fn_bl
@@ -385,18 +385,18 @@ FROM
 			 (
 			   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 			   OR
-			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 			   OR
-			   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 			 )
 			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.datatype_id = a.type
+			  ON m_bl.datatype_id = a.data_type_id
 			 AND m_bl.datatype_member_id = sl.member_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- === FOR NOW: skip task_struct ===
-			AND a.type != (SELECT id FROM data_types WHERE name = 'task_struct')
+			AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND
 			(

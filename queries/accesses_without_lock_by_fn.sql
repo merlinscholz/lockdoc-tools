@@ -16,13 +16,13 @@ FROM
 		sl.member_id AS sl_member_id
 	FROM accesses AS ac
 	INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	INNER JOIN data_types AS dt ON dt.id=a.type
+	INNER JOIN data_types AS dt ON dt.id=a.data_type_id
 	INNER JOIN stacktraces AS st
 	  ON st.id=ac.stacktrace_id
 	 AND st.sequence=0
 	LEFT JOIN structs_layout_flat sl
-	  ON a.type = sl.type_id
-	 AND ac.address - a.ptr = sl.helper_offset
+	  ON a.data_type_id = sl.type_id
+	 AND ac.address - a.base_address = sl.helper_offset
 	LEFT JOIN member_names AS mn
 	  ON mn.id = sl.member_id
 	LEFT JOIN function_blacklist fn_bl
@@ -31,15 +31,15 @@ FROM
 	 (
 	   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 	   OR
-	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+	   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 	   OR
-	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+	   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 	 )
 	LEFT JOIN member_blacklist m_bl
-	  ON m_bl.datatype_id = a.type
+	  ON m_bl.datatype_id = a.data_type_id
 	 AND m_bl.datatype_member_id = sl.member_id
 	WHERE
-		a.type IN (SELECT id FROM data_types WHERE name IN ('journal_t','transaction_t')) AND
+		a.data_type_id IN (SELECT id FROM data_types WHERE name IN ('journal_t','transaction_t')) AND
 		fn_bl.fn IS NULL AND
 		m_bl.datatype_member_id IS NULL
 	GROUP BY ac.id
@@ -48,8 +48,8 @@ LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 LEFT JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 LEFT JOIN structs_layout_flat sl2
-	  ON a2.type = sl2.type_id
-	 AND l.address - a2.ptr = sl2.helper_offset
+	  ON a2.data_type_id = sl2.type_id
+	 AND l.address - a2.base_address = sl2.helper_offset
 LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
  WHERE
 	lh.start IS NULL

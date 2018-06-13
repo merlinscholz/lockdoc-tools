@@ -18,10 +18,10 @@ $MYSQL <<EOT
 DELETE ac
 FROM accesses AS ac
 INNER JOIN allocations AS a ON a.id=ac.alloc_id
-INNER JOIN data_types AS dt ON dt.id=a.type
+INNER JOIN data_types AS dt ON dt.id=a.data_type_id
 LEFT JOIN structs_layout_flat sl
-  ON a.type = sl.type_id
- AND ac.address - a.ptr = sl.helper_offset
+  ON a.data_type_id = sl.type_id
+ AND ac.address - a.base_address = sl.helper_offset
 LEFT JOIN member_names AS mn
   ON mn.id = sl.member_id
 WHERE

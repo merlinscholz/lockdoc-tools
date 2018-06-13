@@ -27,15 +27,15 @@ FROM
 		ac.type AS ac_type,
 		st.function AS st_fn,
 		ac.address AS ac_address,
-		a.ptr AS a_ptr,
+		a.base_address AS a_ptr,
 		st.instruction_ptr AS st_instrptr,
 		mn.name AS sl_member,
 		dt.name AS dt_name
 	FROM accesses AS ac
 	INNER JOIN allocations AS a ON a.id=ac.alloc_id
-	INNER JOIN data_types AS dt ON dt.id=a.type
+	INNER JOIN data_types AS dt ON dt.id=a.data_type_id
 	INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
-	LEFT JOIN structs_layout AS sl ON sl.type_id=a.type AND (ac.address - a.ptr) >= sl.offset AND (ac.address - a.ptr) < sl.offset+sl.size
+	LEFT JOIN structs_layout AS sl ON sl.type_id=a.data_type_id AND (ac.address - a.base_address) >= sl.offset AND (ac.address - a.base_address) < sl.offset+sl.size
 	LEFT JOIN member_names AS mn ON mn.id = sl.member_id
 	LEFT JOIN function_blacklist fn_bl
 	  ON fn_bl.fn = st.function
@@ -43,12 +43,12 @@ FROM
 	 (
 	   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 	   OR
-	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+	   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 	   OR
-	   (fn_bl.data_type_id = a.type AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+	   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
 	 )
 	WHERE 
-		a.type = (SELECT id FROM data_types WHERE name = 'inode') AND
+		a.data_type_id = (SELECT id FROM data_types WHERE name = 'inode') AND
 		ac.type  IN ('r','w') AND
 --		sl.member IN ('i_sb_list') AND
 		fn_bl.fn IS NULL
@@ -57,7 +57,7 @@ FROM
 LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 LEFT JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.address - a2.ptr) >= sl2.offset AND (l.address - a2.ptr) < sl2.offset+sl2.size
+LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.data_type_id AND (l.address - a2.base_address) >= sl2.offset AND (l.address - a2.base_address) < sl2.offset+sl2.size
 LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
 -- WHERE
 --	sl2.member IS NULL
