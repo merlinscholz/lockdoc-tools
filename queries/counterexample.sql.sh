@@ -107,10 +107,10 @@ FROM
 				  ON ac.stacktrace_id = st.id
 				 AND st.sequence = 0
 				JOIN structs_layout_flat sl
-				  ON sl.type_id = a.data_type_id
+				  ON sl.data_type_id = a.data_type_id
 				 AND sl.helper_offset = ac.address - a.base_address
 				JOIN member_names mn
-				  ON mn.id = sl.member_id
+				  ON mn.id = sl.member_name_id
 				 AND mn.name = '$MEMBER'
 				WHERE
 EOT
@@ -137,10 +137,10 @@ cat <<EOT
 					  ON a.data_type_id = dt.id
 					 AND dt.name = '$DATATYPE'
 					JOIN structs_layout_flat sl
-					  ON sl.type_id = a.data_type_id
+					  ON sl.data_type_id = a.data_type_id
 					 AND sl.helper_offset = ac.address - a.base_address
 					JOIN member_names mn
-					  ON mn.id = sl.member_id
+					  ON mn.id = sl.member_name_id
 					 AND mn.name = '$MEMBER'
 EOT
 
@@ -165,10 +165,10 @@ cat <<EOT
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.type_id
+					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
 					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
-					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
+					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 
@@ -203,10 +203,10 @@ cat <<EOT
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.type_id
+					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
 					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
-					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_id
+					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 		if [ $LAST_EMBOTHER -gt 0 ]; then
@@ -244,10 +244,10 @@ cat <<EOT
 					JOIN stacktraces AS st
 					  ON ac.stacktrace_id = st.id
 					JOIN structs_layout_flat sl
-					  ON sl.type_id = a.data_type_id
+					  ON sl.data_type_id = a.data_type_id
 					 AND sl.helper_offset = ac.address - a.base_address
 					JOIN member_names mn
-					  ON mn.id = sl.member_id
+					  ON mn.id = sl.member_name_id
 					 AND mn.name = '$MEMBER'
 					LEFT JOIN function_blacklist fn_bl
 					  ON fn_bl.fn = st.function
@@ -257,7 +257,7 @@ cat <<EOT
 					   OR
 					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 					 )
 					WHERE
 						fn_bl.fn IS NOT NULL
@@ -278,10 +278,10 @@ cat <<EOT
 			LEFT JOIN allocations lock_a
 			  ON l.embedded_in = lock_a.id
 			LEFT JOIN structs_layout_flat lock_member
-			  ON lock_a.data_type_id = lock_member.type_id
+			  ON lock_a.data_type_id = lock_member.data_type_id
 			 AND l.address - lock_a.base_address = lock_member.helper_offset
 			LEFT JOIN member_names lock_member_name
-			  ON lock_member_name.id = lock_member.member_id
+			  ON lock_member_name.id = lock_member.member_name_id
 			-- lock_a.id IS NULL                         => not embedded
 			-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 			-- else                                      => the lock is contained in this member, exact name unknown

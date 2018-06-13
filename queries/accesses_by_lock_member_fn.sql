@@ -51,9 +51,9 @@ FROM
 		INNER JOIN data_types AS dt ON dt.id=a.data_type_id
 		INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
 		LEFT JOIN structs_layout_flat sl
-		  ON a.data_type_id = sl.type_id
+		  ON a.data_type_id = sl.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
-		LEFT JOIN member_names AS mn ON mn.id = sl.member_id
+		LEFT JOIN member_names AS mn ON mn.id = sl.member_name_id
 		LEFT JOIN function_blacklist fn_bl
 		  ON fn_bl.fn = st.function
 			 AND 
@@ -62,13 +62,13 @@ FROM
 			   OR
 			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 			   OR
-			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 			 )
 		WHERE 
 			-- Name the data type of interest here
 			a.data_type_id in (SELECT id FROM data_types WHERE name in ('journal_t','transaction_t')) AND
 			ac.type  IN ('r') AND -- Filter by access type
-			sl.member_id IN (SELECT id FROM member_names WHERE name in ('j_barrier_count','j_running_transaction','t_reserved_list')) AND -- Only show results for a certain member
+			sl.member_name_id IN (SELECT id FROM member_names WHERE name in ('j_barrier_count','j_running_transaction','t_reserved_list')) AND -- Only show results for a certain member
 			fn_bl.fn IS NULL
 		GROUP BY ac.id -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
 	) s
@@ -81,10 +81,10 @@ FROM
 	LEFT JOIN data_types lock_a_dt
 	  ON lock_a.data_type_id = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
-	  ON lock_a.data_type_id = lock_member.type_id
+	  ON lock_a.data_type_id = lock_member.data_type_id
 	  AND l.address - lock_a.base_address = lock_member.helper_offset
 	JOIN member_names mn_lock_member
-	  ON mn_lock_member.id = lock_member.member_id
+	  ON mn_lock_member.id = lock_member.member_name_id
 	GROUP BY ac_id
 ) t
 -- Since we want a detailed view about where an access happenend, the result is additionally grouped by ac_fn and st_instrptr.

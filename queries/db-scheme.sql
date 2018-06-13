@@ -59,12 +59,12 @@ CREATE TABLE `txns` (				-- Transactions: sets of memory accesses between a P/V 
 ;
 
 CREATE TABLE `structs_layout` (
-  `type_id` int(11) UNSIGNED NOT NULL,		-- Refers to the datatype to which a member belongs to
-  `type` varchar(255) NOT NULL,			-- Describes the type of a member
-  `member_id` int(11) UNSIGNED NOT NULL,		-- The id of the member
+  `data_type_id` int(11) UNSIGNED NOT NULL,		-- Refers to the datatype to which a member belongs to
+  `data_type_name` varchar(255) NOT NULL,			-- Describes the type of a member
+  `member_name_id` int(11) UNSIGNED NOT NULL,		-- The id of the member
   `offset` smallint(11) UNSIGNED NOT NULL,	-- The offset in bytes from the beginning of a struct
   `size` smallint(11) UNSIGNED NOT NULL,	-- The size in bytes of a member
-  KEY (`type_id`, `offset`)
+  KEY (`data_type_id`, `offset`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 

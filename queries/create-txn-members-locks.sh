@@ -88,10 +88,10 @@ FROM
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.data_type_id = sl.type_id
+			  ON a.data_type_id = sl.data_type_id
 			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
-			  ON mn.id = sl.member_id
+			  ON mn.id = sl.member_name_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
@@ -109,10 +109,10 @@ FROM
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				LEFT JOIN structs_layout_flat sl
-				  ON a.data_type_id = sl.type_id
+				  ON a.data_type_id = sl.data_type_id
 				 AND ac.address - a.base_address = sl.helper_offset
 				LEFT JOIN member_names mn
-				  ON mn.id = sl.member_id
+				  ON mn.id = sl.member_name_id
 				LEFT JOIN function_blacklist fn_bl
 				  ON fn_bl.fn = st.function
 				 AND 
@@ -121,11 +121,11 @@ FROM
 				   OR
 				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 				   OR
-				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
 				  ON m_bl.datatype_id = a.data_type_id
-				 AND m_bl.datatype_member_id = sl.member_id
+				 AND m_bl.datatype_member_id = sl.member_name_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
@@ -158,13 +158,13 @@ FROM
 	LEFT JOIN data_types lock_a_dt
 	  ON lock_a.data_type_id = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
-	  ON lock_a.data_type_id = lock_member.type_id
+	  ON lock_a.data_type_id = lock_member.data_type_id
 	 AND l.address - lock_a.base_address = lock_member.helper_offset
 	-- lock_a.id IS NULL                         => not embedded
 	-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 	-- else                                      => the lock is contained in this member, exact name unknown
 	LEFT JOIN member_names mn_lock_member
-	  ON mn_lock_member.id = lock_member.member_id
+	  ON mn_lock_member.id = lock_member.member_name_id
 
 	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.type_id
 
@@ -180,10 +180,10 @@ FROM
 	JOIN data_types dt
 	  ON dt.id = a.data_type_id
 	LEFT JOIN structs_layout_flat sl
-	  ON a.data_type_id = sl.type_id
+	  ON a.data_type_id = sl.data_type_id
 	 AND ac.address - a.base_address = sl.helper_offset
 	LEFT JOIN member_names mn
-	  ON mn.id = sl.member_id
+	  ON mn.id = sl.member_name_id
 	WHERE 1
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
@@ -201,10 +201,10 @@ FROM
 		JOIN stacktraces AS st
 		  ON ac.stacktrace_id = st.id
 		LEFT JOIN structs_layout_flat sl
-		  ON a.data_type_id = sl.type_id
+		  ON a.data_type_id = sl.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names mn
-		  ON mn.id = sl.member_id
+		  ON mn.id = sl.member_name_id
 		LEFT JOIN function_blacklist fn_bl
 		  ON fn_bl.fn = st.function
 		 AND 
@@ -213,11 +213,11 @@ FROM
 		   OR
 		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 		   OR
-		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 		 )
 		LEFT JOIN member_blacklist m_bl
 		  ON m_bl.datatype_id = a.data_type_id
-		 AND m_bl.datatype_member_id = sl.member_id
+		 AND m_bl.datatype_member_id = sl.member_name_id
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
@@ -271,10 +271,10 @@ FROM
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.data_type_id = sl.type_id
+			  ON a.data_type_id = sl.data_type_id
 			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
-			  ON mn.id = sl.member_id
+			  ON mn.id = sl.member_name_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
@@ -292,10 +292,10 @@ FROM
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				LEFT JOIN structs_layout_flat sl
-				  ON a.data_type_id = sl.type_id
+				  ON a.data_type_id = sl.data_type_id
 				 AND ac.address - a.base_address = sl.helper_offset
 				LEFT JOIN member_names mn
-				  ON mn.id = sl.member_id
+				  ON mn.id = sl.member_name_id
 				LEFT JOIN function_blacklist fn_bl
 				  ON fn_bl.fn = st.function
 				 AND 
@@ -304,11 +304,11 @@ FROM
 				   OR
 				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 				   OR
-				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
 				  ON m_bl.datatype_id = a.data_type_id
-				 AND m_bl.datatype_member_id = sl.member_id
+				 AND m_bl.datatype_member_id = sl.member_name_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
@@ -336,13 +336,13 @@ FROM
 		LEFT JOIN data_types lock_a_dt
 		  ON lock_a.data_type_id = lock_a_dt.id
 		LEFT JOIN structs_layout_flat lock_member
-		  ON lock_a.data_type_id = lock_member.type_id
+		  ON lock_a.data_type_id = lock_member.data_type_id
 		 AND l.address - lock_a.base_address = lock_member.helper_offset
 		-- lock_a.id IS NULL                         => not embedded
 		-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 		-- else                                      => the lock is contained in this member, exact name unknown
 		LEFT JOIN member_names mn_lock_member
-		  ON mn_lock_member.id = lock_member.member_id
+		  ON mn_lock_member.id = lock_member.member_name_id
 		GROUP BY fac.id
 		
 		UNION ALL
@@ -352,10 +352,10 @@ FROM
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
 		LEFT JOIN structs_layout_flat sl
-		  ON a.data_type_id = sl.type_id
+		  ON a.data_type_id = sl.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names mn
-		  ON mn.id = sl.member_id
+		  ON mn.id = sl.member_name_id
 		JOIN data_types dt
 			ON dt.id = a.data_type_id
 		WHERE 1
@@ -375,10 +375,10 @@ FROM
 			JOIN stacktraces AS st
 			  ON ac.stacktrace_id = st.id
 			LEFT JOIN structs_layout_flat sl
-			  ON a.data_type_id = sl.type_id
+			  ON a.data_type_id = sl.data_type_id
 			 AND ac.address - a.base_address = sl.helper_offset
 			LEFT JOIN member_names mn
-			  ON mn.id = sl.member_id
+			  ON mn.id = sl.member_name_id
 			LEFT JOIN function_blacklist fn_bl
 			  ON fn_bl.fn = st.function
 			 AND 
@@ -387,11 +387,11 @@ FROM
 			   OR
 			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 			   OR
-			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 			 )
 			LEFT JOIN member_blacklist m_bl
 			  ON m_bl.datatype_id = a.data_type_id
-			 AND m_bl.datatype_member_id = sl.member_id
+			 AND m_bl.datatype_member_id = sl.member_name_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}

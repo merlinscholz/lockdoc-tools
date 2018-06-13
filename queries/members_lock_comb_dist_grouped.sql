@@ -57,8 +57,8 @@ FROM
 		FROM accesses AS ac
 		INNER JOIN allocations AS a ON a.id=ac.alloc_id
 		INNER JOIN stacktraces AS st ON ac.stacktrace_id=st.id AND st.sequence=0
-		LEFT JOIN structs_layout AS sl ON sl.type_id=a.data_type_id AND (ac.address - a.base_address) >= sl.offset AND (ac.address - a.base_address) < sl.offset+sl.size
-		LEFT JOIN member_names AS mn ON mn.id = sl.member_id
+		LEFT JOIN structs_layout AS sl ON sl.data_type_id=a.data_type_id AND (ac.address - a.base_address) >= sl.offset AND (ac.address - a.base_address) < sl.offset+sl.size
+		LEFT JOIN member_names AS mn ON mn.id = sl.member_name_id
 		LEFT JOIN function_blacklist fn_bl
 		  ON fn_bl.fn = st.function
 		 AND 
@@ -67,7 +67,7 @@ FROM
 		   OR
 		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 		   OR
-		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_id) -- for this member blacklisted
+		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 		 )
 		WHERE
 				a.data_type_id = (SELECT id FROM data_types WHERE name = 'inode') AND
@@ -79,8 +79,8 @@ FROM
 	LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 	LEFT JOIN locks AS l ON l.id=lh.lock_id
 	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-	LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.data_type_id AND (l.address - a2.base_address) >= sl2.offset AND (l.address - a2.base_address) < sl2.offset+sl2.size
-	LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
+	LEFT JOIN structs_layout AS sl2 ON sl2.data_type_id=a2.data_type_id AND (l.address - a2.base_address) >= sl2.offset AND (l.address - a2.base_address) < sl2.offset+sl2.size
+	LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_name_id
 	GROUP BY ac_id
 ) t
 GROUP BY ac_type, locks, sl_member, context

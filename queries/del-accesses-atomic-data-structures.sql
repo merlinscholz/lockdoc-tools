@@ -14,6 +14,6 @@ LEFT JOIN structs_layout_flat sl
   ON a.data_type_id = sl.type_id
  AND ac.address - a.base_address = sl.helper_offset
 LEFT JOIN member_names AS mn
-  ON mn.id = sl.member_id
+  ON mn.id = sl.member_name_id
 WHERE
-	sl.type like "%atomic_t%" or sl.type like "%atomic64_t*";
+	sl.data_type_name like "%atomic\_t%" or sl.data_type_name like "%atomic64\_t*" or sl.data_type_name like "%atomic\_long\_t%"
