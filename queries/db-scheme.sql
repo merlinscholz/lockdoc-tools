@@ -104,10 +104,10 @@ CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted func
 ;
 
 CREATE TABLE `member_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
-  `datatype_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
-  `datatype_member_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`datatype_id`,`datatype_member_id`),
-  KEY `fk_datatype_id` (`datatype_id`)
+  `data_type_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
+  `member_name_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`data_type_id`,`member_name_id`),
+  KEY `fk_datatype_id` (`data_type_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 

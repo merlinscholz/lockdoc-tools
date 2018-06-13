@@ -36,12 +36,12 @@ FROM
 	   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 	 )
 	LEFT JOIN member_blacklist m_bl
-	  ON m_bl.datatype_id = a.data_type_id
-	 AND m_bl.datatype_member_id = sl.member_name_id
+	  ON m_bl.data_type_id = a.data_type_id
+	 AND m_bl.member_name_id = sl.member_name_id
 	WHERE
 		a.data_type_id IN (SELECT id FROM data_types WHERE name IN ('journal_t','transaction_t')) AND
 		fn_bl.fn IS NULL AND
-		m_bl.datatype_member_id IS NULL
+		m_bl.member_name_id IS NULL
 	GROUP BY ac.id
 ) s
 LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id

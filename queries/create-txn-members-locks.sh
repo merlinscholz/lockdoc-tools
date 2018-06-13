@@ -124,8 +124,8 @@ FROM
 				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
-				  ON m_bl.datatype_id = a.data_type_id
-				 AND m_bl.datatype_member_id = sl.member_name_id
+				  ON m_bl.data_type_id = a.data_type_id
+				 AND m_bl.member_name_id = sl.member_name_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
@@ -134,7 +134,7 @@ FROM
 				-- ====================================
 				AND
 				(
-					fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+					fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
 				)
 				GROUP BY ac.id
 			)
@@ -216,8 +216,8 @@ FROM
 		   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 		 )
 		LEFT JOIN member_blacklist m_bl
-		  ON m_bl.datatype_id = a.data_type_id
-		 AND m_bl.datatype_member_id = sl.member_name_id
+		  ON m_bl.data_type_id = a.data_type_id
+		 AND m_bl.member_name_id = sl.member_name_id
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
@@ -226,7 +226,7 @@ FROM
 		-- ====================================
 		AND
 		(
-			fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+			fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
 		)
 		GROUP BY ac.id
 	)
@@ -307,8 +307,8 @@ FROM
 				   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 				 )
 				LEFT JOIN member_blacklist m_bl
-				  ON m_bl.datatype_id = a.data_type_id
-				 AND m_bl.datatype_member_id = sl.member_name_id
+				  ON m_bl.data_type_id = a.data_type_id
+				 AND m_bl.member_name_id = sl.member_name_id
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
@@ -317,7 +317,7 @@ FROM
 				-- ====================================
 				AND
 				(
-					fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+					fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
 				)
 				GROUP BY ac.id
 			)
@@ -390,8 +390,8 @@ FROM
 			   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 			 )
 			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.datatype_id = a.data_type_id
-			 AND m_bl.datatype_member_id = sl.member_name_id
+			  ON m_bl.data_type_id = a.data_type_id
+			 AND m_bl.member_name_id = sl.member_name_id
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
@@ -400,7 +400,7 @@ FROM
 			-- ====================================
 			AND
 			(
-				fn_bl.fn IS NOT NULL OR m_bl.datatype_member_id IS NOT NULL
+				fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
 			)
 			GROUP BY ac.id
 		)
