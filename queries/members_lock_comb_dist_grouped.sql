@@ -27,13 +27,13 @@ FROM
 		a_ptr,
 		sl_member,
 		GROUP_CONCAT(IFNULL(lh.lock_id,"null") ORDER BY l.id SEPARATOR '+') AS locks,
-		GROUP_CONCAT(IFNULL(CONCAT(l.type, '[', l.sub_lock, ']'),"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
+		GROUP_CONCAT(IFNULL(CONCAT(l.lock_type_name, '[', l.sub_lock, ']'),"null") ORDER BY l.id SEPARATOR '+') AS lock_types,
 		GROUP_CONCAT(IFNULL(a2.type,"null") ORDER BY l.id SEPARATOR '+') AS embedded_in_type,
 		GROUP_CONCAT(IF(l.embedded_in = alloc_id,'1','0') ORDER BY l.id SEPARATOR '+') AS embedded_in_same,
 		GROUP_CONCAT(HEX(lh.lastPreemptCount) ORDER BY l.id SEPARATOR '+') AS preemptCount,
 		GROUP_CONCAT(lh.lastFn ORDER BY l.id SEPARATOR '+') AS lockContext,
-		GROUP_CONCAT(IF(l.type IS NULL, 'null',
-		  IF(mn2.name IS NULL,CONCAT('global_',l.type,'_',l.id),CONCAT(mn2.name,'_',IF(l.embedded_in = alloc_id,'1','0')))) ORDER BY l.id SEPARATOR '+') AS lock_member,
+		GROUP_CONCAT(IF(l.lock_type_name IS NULL, 'null',
+		  IF(mn2.name IS NULL,CONCAT('global_',l.lock_type_name,'_',l.id),CONCAT(mn2.name,'_',IF(l.embedded_in = alloc_id,'1','0')))) ORDER BY l.id SEPARATOR '+') AS lock_member,
 		GROUP_CONCAT(DISTINCT
 			CASE 
 				WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
@@ -79,7 +79,7 @@ FROM
 	LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 	LEFT JOIN locks AS l ON l.id=lh.lock_id
 	LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-	LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
+	LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.address - a2.ptr) >= sl2.offset AND (l.address - a2.ptr) < sl2.offset+sl2.size
 	LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
 	GROUP BY ac_id
 ) t

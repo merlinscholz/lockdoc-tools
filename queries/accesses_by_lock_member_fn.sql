@@ -7,13 +7,13 @@ FROM
 		GROUP_CONCAT(
 		CASE
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-				THEN CONCAT(l.id, '(', l.type, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* no name available)
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* no name available)
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.type, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.ptr - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.ptr = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
@@ -82,7 +82,7 @@ FROM
 	  ON lock_a.type = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
 	  ON lock_a.type = lock_member.type_id
-	  AND l.ptr - lock_a.ptr = lock_member.helper_offset
+	  AND l.address - lock_a.ptr = lock_member.helper_offset
 	JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_id
 	GROUP BY ac_id

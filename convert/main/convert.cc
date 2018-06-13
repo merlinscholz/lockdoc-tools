@@ -770,8 +770,8 @@ int main(int argc, char *argv[]) {
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
 	accessOFile << "stacktrace_id" << delimiter << "preemptcount" << delimiter << "fn" << endl;
 
-	locksOFile << "id" << delimiter << "ptr" << delimiter;
-	locksOFile << "embedded" << delimiter << "locktype" << delimiter;
+	locksOFile << "id" << delimiter << "address" << delimiter;
+	locksOFile << "embedded_in" << delimiter << "lock_type_name" << delimiter;
 	locksOFile << "sub_lock" << delimiter << "lock_var_name" << endl;
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;

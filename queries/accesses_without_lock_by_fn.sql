@@ -49,7 +49,7 @@ LEFT JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
 LEFT JOIN structs_layout_flat sl2
 	  ON a2.type = sl2.type_id
-	 AND l.ptr - a2.ptr = sl2.helper_offset
+	 AND l.address - a2.ptr = sl2.helper_offset
 LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
  WHERE
 	lh.start IS NULL

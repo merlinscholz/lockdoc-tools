@@ -7,7 +7,7 @@ SELECT
 	sl_member,
 	dt_name,
 	IFNULL(lh.lock_id,'null') AS locks,
-	IFNULL(CONCAT(l.type, '[', l.sub_lock, ']'),'null') AS lock_types,
+	IFNULL(CONCAT(l.lock_type_name, '[', l.sub_lock, ']'),'null') AS lock_types,
 	IF(l.embedded_in = alloc_id,'1','0') AS embedded_in_same,
 	CASE 
 		WHEN lh.lastPreemptCount & 0x0ff00 THEN 'softirq'
@@ -15,8 +15,8 @@ SELECT
 		WHEN (lh.lastPreemptCount & 0xfff00) = 0 THEN 'noirq'
 		ELSE 'unknown'
 	END AS context,
-	IF(l.type IS NULL, 'null',
-	  IF(sl2.member_id IS NULL,CONCAT('global_',l.type,'_',l.id),CONCAT(mn2.name,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
+	IF(l.lock_type_name IS NULL, 'null',
+	  IF(sl2.member_id IS NULL,CONCAT('global_',l.lock_type_name,'_',l.id),CONCAT(mn2.name,'_',IF(l.embedded_in = alloc_id,'1','0')))) AS lock_member,
 	COUNT(*) AS num
 FROM
 (
@@ -57,7 +57,7 @@ FROM
 LEFT JOIN locks_held AS lh ON lh.txn_id=ac_txn_id
 LEFT JOIN locks AS l ON l.id=lh.lock_id
 LEFT JOIN allocations AS a2 ON a2.id=l.embedded_in
-LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.ptr - a2.ptr) >= sl2.offset AND (l.ptr - a2.ptr) < sl2.offset+sl2.size
+LEFT JOIN structs_layout AS sl2 ON sl2.type_id=a2.type AND (l.address - a2.ptr) >= sl2.offset AND (l.address - a2.ptr) < sl2.offset+sl2.size
 LEFT JOIN member_names AS mn2 ON mn2.id = sl2.member_id
 -- WHERE
 --	sl2.member IS NULL
