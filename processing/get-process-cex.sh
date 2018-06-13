@@ -54,14 +54,14 @@ else
 fi
 
 
-${TOOLS_PATH}/get-counterexamples.sh all_txns_members_locks_hypo_bugs_${VARIANT}.txt ${DATA_TYPE} ${DB} > ${CEX_CSV}
+${TOOLS_PATH}/get-counterexamples.sh all_txns_members_locks_hypo_bugs_${VARIANT}.txt ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run get-counterexamples.sh for ${VARIANT}!">&2 
 	exit 1
 fi
 
-${TOOLS_PATH}/pretty-print-cex.py -u ${BASE_URL} ${CEX_CSV} ${KERNEL} all_txns_members_locks_hypo_bugs_${VARIANT}.txt > ${CEX_HTML}
+${TOOLS_PATH}/pretty-print-cex.py -u ${BASE_URL} ${CEX_CSV} ${KERNEL} all_txns_members_locks_hypo_winner_${VARIANT}.csv > ${CEX_HTML}
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run pretty-print-cex.py for ${VARIANT}!">&2 
