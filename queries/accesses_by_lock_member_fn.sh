@@ -1,6 +1,6 @@
 #!/bin/bash
 # A. Lochmann 2018
-# This script gets all accesses to data_type.member grouped by data_type, member, access_type, locks_held and stracktrace.
+# This script gets all accesses to data_type.member grouped by data_type, member, access_type, stracktrace and locks_held.
 # Usage: ./accesses_by_lock_member_fn.sh transaction_t t_inode_list w | mysql lockdebugging_mixed_fs_al
 
 if [ ${#} -lt 1 ];
@@ -29,7 +29,7 @@ then
 fi
 
 cat <<EOT
-SELECT dt_name, sl_member, ac_type, locks_held, stacktrace, COUNT(*) AS num
+SELECT dt_name, sl_member, ac_type, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held, COUNT(*) AS num
 FROM
 (
 	SELECT
@@ -136,11 +136,11 @@ FROM
 	LEFT JOIN structs_layout_flat lock_member
 	  ON lock_a.data_type_id = lock_member.data_type_id
 	  AND l.address - lock_a.base_address = lock_member.helper_offset
-	JOIN member_names mn_lock_member
+	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_name_id
 	GROUP BY ac_id
 ) t
 -- Since we want a detailed view about where an access happenend, the result is additionally grouped by ac_fn and st_instrptr.
-GROUP BY dt_name, sl_member, ac_type, locks_held, stacktrace
-ORDER BY dt_name, sl_member, ac_type, locks_held, stacktrace, num DESC;
+GROUP BY dt_name, sl_member, ac_type, stacktrace, locks_held
+ORDER BY dt_name, sl_member, ac_type, stacktrace, locks_held, num DESC;
 EOT
