@@ -1,4 +1,8 @@
 #!/bin/bash
+# A. Lochmann 2018
+# This script gets all accesses to data_type.member grouped by data_type, member, access_type, locks_held and stracktrace.
+# Usage: ./accesses_by_lock_member_fn.sh transaction_t t_inode_list w | mysql lockdebugging_mixed_fs_al
+
 if [ ${#} -lt 1 ];
 then
 	echo "${0} <data type> [<member> [<access type (or any)>]]" >&2
