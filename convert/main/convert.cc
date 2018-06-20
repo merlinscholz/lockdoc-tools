@@ -574,10 +574,17 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 		ss << stacktrace;
 		do {
 			instrPtr = std::stoull(token,NULL,16);
-			const struct InstructionPointerInfo &resolvedInstrPtr = get_function_at_addr(kernelBaseDir, instrPtr);
+			const struct ResolvedInstructionPtr &resolvedInstrPtr = get_function_at_addr(kernelBaseDir, instrPtr);
 			stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
-			stacktracesOFile << resolvedInstrPtr.fn << delimiter << resolvedInstrPtr.line << delimiter << resolvedInstrPtr.file << "\n";
+			stacktracesOFile << resolvedInstrPtr.codeLocation.fn << delimiter << resolvedInstrPtr.codeLocation.line << delimiter << resolvedInstrPtr.codeLocation.file << "\n";
 			sequence++;
+			if (resolvedInstrPtr.inlinedBy.size() > 0) {
+				for (auto &inlinedFn : resolvedInstrPtr.inlinedBy) {
+					stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
+					stacktracesOFile << inlinedFn.fn << delimiter << inlinedFn.line << delimiter << inlinedFn.file << "\n";
+					sequence++;
+				}
+			}
 		} while (getline(ss,token,','));
 	} else {
 		ret = itSubStacktrace->second;

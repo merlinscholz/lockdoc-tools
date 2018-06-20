@@ -53,7 +53,7 @@ static asymbol **bfdSyms;
 /**
  * address -> code location cache
  */
-static std::map<uint64_t, InstructionPointerInfo> functionAddresses;
+static std::map<uint64_t, ResolvedInstructionPtr> functionAddresses;
 /**
  * A dwarves descriptor for the vmlinux
  */
@@ -253,7 +253,7 @@ static void find_address_in_section (bfd *kernelBfd, asection *section, void *da
 }
 
 // caching wrapper around cus__get_function_at_addr
-const struct InstructionPointerInfo& get_function_at_addr(const char *compDir, uint64_t addr)
+const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, uint64_t addr)
 {
 	auto it = functionAddresses.find(addr);
 	if (it == functionAddresses.end()) {
@@ -264,26 +264,53 @@ const struct InstructionPointerInfo& get_function_at_addr(const char *compDir, u
 		bfd_map_over_sections (kernelBfd, find_address_in_section, &bfdSearchCtx);
 
 		if (bfdSearchCtx.found) {
-			functionAddresses[addr].line = bfdSearchCtx.line;
+			vector<struct CodeLocation>& inlinedBy = functionAddresses[addr].inlinedBy;
+			bfd_boolean foundInline = FALSE;
+			int i = 0;
+
+			functionAddresses[addr].codeLocation.line = bfdSearchCtx.line;
 			if (bfdSearchCtx.file) {
 				const char *tmp = strstr(bfdSearchCtx.file, compDir);
 				if (tmp) {
-					functionAddresses[addr].file = bfdSearchCtx.file + strlen(compDir);
+					functionAddresses[addr].codeLocation.file = bfdSearchCtx.file + strlen(compDir);
 				} else {
-					functionAddresses[addr].file = bfdSearchCtx.file;
+					functionAddresses[addr].codeLocation.file = bfdSearchCtx.file;
 				}
 			} else {
-				functionAddresses[addr].file = "unknown";
+				functionAddresses[addr].codeLocation.file = "unknown";
 			}
 			if (bfdSearchCtx.fn) {
-				functionAddresses[addr].fn = bfdSearchCtx.fn;
+				functionAddresses[addr].codeLocation.fn = bfdSearchCtx.fn;
 			} else {
-				functionAddresses[addr].fn = "unknown";
+				functionAddresses[addr].codeLocation.fn = "unknown";
+			}
+			while (1) {
+				// Re-use bfdSearchCtx
+				foundInline = bfd_find_inliner_info(kernelBfd, &bfdSearchCtx.file, &bfdSearchCtx.fn, &bfdSearchCtx.line);
+				if (foundInline == TRUE) {
+					inlinedBy.push_back(CodeLocation());
+
+					const char *tmp = strstr(bfdSearchCtx.file, compDir);
+					if (tmp) {
+						inlinedBy[i].file = bfdSearchCtx.file + strlen(compDir);
+					} else {
+						inlinedBy[i].file = bfdSearchCtx.file;
+					}
+					if (bfdSearchCtx.fn) {
+						inlinedBy[i].fn = bfdSearchCtx.fn;
+					} else {
+						inlinedBy[i].fn = "unknown";
+					}
+					inlinedBy[i].line = bfdSearchCtx.line;
+					i++;
+				} else {
+					break;
+				}
 			}
 		} else {
-			functionAddresses[addr].fn = "unknown";
-			functionAddresses[addr].file = "unknown";
-			functionAddresses[addr].line = 0;
+			functionAddresses[addr].codeLocation.fn = "unknown";
+			functionAddresses[addr].codeLocation.file = "unknown";
+			functionAddresses[addr].codeLocation.line = 0;
 		}
 		return functionAddresses[addr];
 	}
