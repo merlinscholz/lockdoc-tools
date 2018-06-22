@@ -578,7 +578,14 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 			stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
 			stacktracesOFile << resolvedInstrPtr.codeLocation.fn << delimiter << resolvedInstrPtr.codeLocation.line << delimiter << resolvedInstrPtr.codeLocation.file << "\n";
 			sequence++;
-			if (resolvedInstrPtr.inlinedBy.size() > 0) {
+			/**
+			 * Only resolve potential inlined functions for the instruction pointer that triggered the memory access (--> sequence == 0)
+			 * The instruction pointers found on the stack are return addresses.
+			 * That means each ip indicates the *next* instruction to be executed.
+			 * Resolving that ip for inlined functions may lead to a corrupt stacktrace which
+			 * includes functions that have not been called yet.
+			 */
+			if (resolvedInstrPtr.inlinedBy.size() > 0 && sequence == 0) {
 				for (auto &inlinedFn : resolvedInstrPtr.inlinedBy) {
 					stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
 					stacktracesOFile << inlinedFn.fn << delimiter << inlinedFn.line << delimiter << inlinedFn.file << "\n";
