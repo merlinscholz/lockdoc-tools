@@ -7,7 +7,6 @@ MEMBER_BLACK_LIST=${TOOLS_PATH}/data/member_blacklist.csv
 CONVERT_BINARY=${TOOLS_PATH}/convert/build/convert
 DB_SCHEME=${TOOLS_PATH}/queries/db-scheme.sql
 CONV_OUTPUT=conv-out.txt
-PROCESS_PREEMPT_COUNT=1
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
 
 
@@ -41,12 +40,6 @@ fi
 
 echo "Using convert binary: ${CONVERT_BINARY}"
 echo "Using \"${DB_SCHEME}\", \"${DATA_TYPES}\", \"${FN_BLACK_LIST}\" and \"${MEMBER_BLACK_LIST}\""
-
-if [ ${PROCESS_PREEMPT_COUNT} -gt 0 ];
-then
-	echo "Processing of hardirq/softirq levels from preempt_count as two pseudo locks"
-	PROCESS_PC_PARAM="-p"
-fi
 
 if [ ! -f ${CONVERT_BINARY} ];
 then
@@ -134,9 +127,9 @@ fi
 #GDB='cgdb --args'
 
 if echo $DATA | egrep -q '.bz2$'; then
-	$VALGRIND $GDB ${CONVERT_BINARY} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" ${PROCESS_PC_PARAM} <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+	$VALGRIND $GDB ${CONVERT_BINARY} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 elif echo $DATA | egrep -q '.gz$'; then
-	$VALGRIND $GDB ${CONVERT_BINARY} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" ${PROCESS_PC_PARAM} <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+	$VALGRIND $GDB ${CONVERT_BINARY} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 else
 	echo "no idea what to do with filename extension of $DATA" >&2
 	exit 1
