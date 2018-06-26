@@ -66,33 +66,32 @@ SELECT data_type, member, accesstype, stacktrace,
 	) AS locks_held
 FROM
 (
-	SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, stacktrace_id, stacktrace, locks_held
+	SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, 
+			stacktrace_id, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held
 	FROM
 	(
-		SELECT stacktrace_id,
-			GROUP_CONCAT(
-				stacktrace_elem
-				ORDER BY st_sequence
-				SEPARATOR ','
-			) AS stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held
-		
+		SELECT stacktrace_id, stacktrace,
+		GROUP_CONCAT(
+			CASE
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
+			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
+				THEN CONCAT('EMBSAME(', IF(l.address - lock_a.base_address = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+				${EMBOTHER_SQL}
+			END
+			ORDER BY lh.start
+			SEPARATOR ','
+		) AS locks_held
 		FROM
 		(
-			SELECT ac.id AS ac_id, stacktrace_id, CONCAT('0x', HEX(st.instruction_ptr), '@', st.function, '@', st.file, ':', st.line) AS stacktrace_elem, st.sequence AS st_sequence,
-			GROUP_CONCAT(
-				CASE
-				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-					THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
-				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-					THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
-				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac.alloc_id
-					THEN CONCAT('EMBSAME(', IF(l.address - lock_a.base_address = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
-					${EMBOTHER_SQL}
-				END
-				ORDER BY lh.start
-				SEPARATOR ','
-			) AS locks_held
-
+			SELECT ac.id AS ac_id, ac.alloc_id AS alloc_id, ac.txn_id AS txn_id, stacktrace_id,
+				GROUP_CONCAT(
+					CONCAT('0x', HEX(st.instruction_ptr), '@', st.function, '@', st.file, ':', st.line)
+					ORDER BY st.sequence
+					SEPARATOR ','
+				) AS stacktrace
 			FROM
 			(
 				SELECT ac.id, ac.txn_id, ac.alloc_id, st.function, ac.stacktrace_id
@@ -267,29 +266,28 @@ cat <<EOT
 
 			JOIN stacktraces AS st
 			  ON ac.stacktrace_id = st.id
-
-			LEFT JOIN locks_held lh
-			  ON lh.txn_id = ac.txn_id
-			LEFT JOIN locks l
-			  ON l.id = lh.lock_id
-
-			-- find out more about each held lock (allocation -> structs_layout
-			-- member or contained-in member in case of a complex member)
-			LEFT JOIN allocations lock_a
-			  ON l.embedded_in = lock_a.id
-			LEFT JOIN structs_layout_flat lock_member
-			  ON lock_a.data_type_id = lock_member.data_type_id
-			 AND l.address - lock_a.base_address = lock_member.helper_offset
-			LEFT JOIN member_names lock_member_name
-			  ON lock_member_name.id = lock_member.member_name_id
-			-- lock_a.id IS NULL                         => not embedded
-			-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
-			-- else                                      => the lock is contained in this member, exact name unknown
 			-- Joining the stacktraces table multiplies each row by the number of stackframes an access has.
-			-- First, (group) concat all locks held during one access, but preserve one row for each stackframe.
-			-- One might leave ac.stacktrace_id out, because each access (--> unique ac.id) has exactly one assiotciated stacktrace.
-			GROUP BY ac.id, ac.stacktrace_id, st.sequence
-		) folded_locks
+			-- First, (group) concat all stackframes to a stacktrace.
+			GROUP BY ac.id
+		) folded_stacks
+
+		LEFT JOIN locks_held lh
+		  ON lh.txn_id = folded_stacks.txn_id
+		LEFT JOIN locks l
+		  ON l.id = lh.lock_id
+
+		-- find out more about each held lock (allocation -> structs_layout
+		-- member or contained-in member in case of a complex member)
+		LEFT JOIN allocations lock_a
+		  ON l.embedded_in = lock_a.id
+		LEFT JOIN structs_layout_flat lock_member
+		  ON lock_a.data_type_id = lock_member.data_type_id
+		 AND l.address - lock_a.base_address = lock_member.helper_offset
+		LEFT JOIN member_names lock_member_name
+		  ON lock_member_name.id = lock_member.member_name_id
+		-- lock_a.id IS NULL                         => not embedded
+		-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
+		-- else                                      => the lock is contained in this member, exact name unknown
 		-- Now collapse the stacktrace to one row (aka GROUP_CONCAT)
 		GROUP BY ac_id
 	) all_counterexamples
