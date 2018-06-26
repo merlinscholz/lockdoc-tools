@@ -160,7 +160,7 @@ if __name__ == '__main__':
 				LOGGER.debug('SEARCHRULE: Checking %s and %s',lockingRule,locksHeld)
 				if re.match('^' + lockingRule + '$',locksHeld):
 					matchFound = True
-					LOGGER.debug('SEARCHRULE: %s matches %s', lockingRule, locksHeld)
+					LOGGER.debug('SEARCHRULE: %s %s matches %s by %d', key, lockingRule, locksHeld, locksHeldEntry['percentage'])
 					if locksHeldEntry['percentage'] == 100:
 						resultsEntry['full'] += 1
 						_color = 'green'
