@@ -29,3 +29,4 @@ block_device;bd_fsfreeze_mutex
 pipe_inode_info;mutex
 bdi_writeback;list_lock
 bdi_writeback;work_lock
+dentry;d_lockref.lock
