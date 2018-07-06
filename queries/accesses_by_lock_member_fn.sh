@@ -39,13 +39,13 @@ FROM
 		GROUP_CONCAT(
 		CASE
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* no name available)
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')') -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
@@ -63,7 +63,7 @@ FROM
 			mn.name AS sl_member,
 			dt.name AS dt_name,
 			GROUP_CONCAT(
-				CONCAT(st.function, '@', st.file, ':', st.line)
+				CONCAT(lower(hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line)
 				ORDER BY st.sequence
 				SEPARATOR ','
 			) AS stacktrace
