@@ -140,3 +140,11 @@ dentry;\N;__d_alloc
 dentry;\N;d_free
 dentry;\N;__d_free
 dentry;\N;__d_free_external
+buffer_head;\N;free_buffer_head
+buffer_head;\N;alloc_buffer_head
+buffer_head;\N;jbd2_unfile_log_bh
+buffer_head;\N;alloc_page_buffers
+buffer_head;\N;blkdev_get_block
+buffer_head;\N;create_empty_buffers
+buffer_head;\N;link_dev_buffers
+buffer_head;\N;create_page_buffers
