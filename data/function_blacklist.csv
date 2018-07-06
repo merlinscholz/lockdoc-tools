@@ -137,5 +137,6 @@ transaction_t;\N;start_this_handle
 journal_head;\N;jbd2_journal_add_journal_head
 journal_head;\N;__journal_remove_journal_head
 dentry;\N;__d_alloc
+dentry;\N;d_free
 dentry;\N;__d_free
 dentry;\N;__d_free_external
