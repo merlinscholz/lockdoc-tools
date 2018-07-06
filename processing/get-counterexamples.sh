@@ -42,6 +42,11 @@ grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//"
 do
 	echo "Running: ${cmd}:" >&2
 	eval ${DIR}/../queries/$cmd > ${QUERY_FILE}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot generate query" >&2
+		continue
+	fi
 	if [ ! -z ${DATABASE} ];
 	then
 		echo "Running query..." >&2
