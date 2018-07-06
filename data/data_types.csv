@@ -12,6 +12,8 @@ journal_t
 transaction_t
 journal_head
 dentry
+dentry_aux
+lockref
 qstr
 buffer_head
 lockdoc_ring_buffer
