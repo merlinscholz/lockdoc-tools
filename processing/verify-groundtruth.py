@@ -102,7 +102,7 @@ if __name__ == '__main__':
 				temp = float(line['confidence'])
 			locksHeldEntry = {'occurrences': int(line['occurrences']), 'total': int(line['total']), 'percentage': float(line['percentage']), 'accepted': int(line['accepted']), 'confidence': temp, 'counterexample-parameters': line['counterexample-parameters']}
 			hypothesisEntry['locks'][line['locks']] = locksHeldEntry
-			LOGGER.debug('Added lock combination (%s) for key %s', line['locks'], key)
+			#LOGGER.debug('Added lock combination (%s) for key %s', line['locks'], key)
 		else:
 			LOGGER.error('Lock combination (%s) does already exist for key %s', line['locks'], key)
 	LOGGER.debug('Read %d locking predictions for %d different (struct,member,accesstype) tuples from "%s"', count, len(hypothesisDict), hypothesisCSV)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
 			# '$key in $dict' syntax does *not* do the job, because locksHeld is a regex.
 			# We therefore need to use re.match().
 			for locksHeld, locksHeldEntry in locksHeldDict.iteritems():
-				LOGGER.debug('SEARCHRULE: Checking %s and %s',lockingRule,locksHeld)
+				LOGGER.debug('SEARCHRULE:%s: Checking %s and %s', key, lockingRule,locksHeld)
 				if re.match('^' + lockingRule + '$',locksHeld):
 					matchFound = True
 					LOGGER.debug('SEARCHRULE: %s %s matches %s by %d', key, lockingRule, locksHeld, locksHeldEntry['percentage'])
