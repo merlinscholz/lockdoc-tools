@@ -179,3 +179,25 @@ inode;i_opflags;w;EMBSAME\(inode:i_lock\);code-read;fs/namei.c:387
 inode;i_opflags;r;nolock;code-read;fs/namei.c:387
 inode;i_uid;r;nolock;code-read;
 inode;i_uid;r;EMBSAME\(inode:i_rwsem\);code-read;
+dentry;d_flags;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
+dentry;d_flags;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
+dentry;d_alias;r;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref\[[rw]\]\);;fs/dcache.c:49
+dentry;d_alias;w;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref\[[rw]\]\);;fs/dcache.c:49
+dentry;d_name.name;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_name.name;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_name.hash_len;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_name.hash_len;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_lru;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_lru;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_lockref.count;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_lockref.count;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_hash;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_hash;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_parent;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_parent;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_subdirs;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_subdirs;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_child;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_child;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_inode;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_inode;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
