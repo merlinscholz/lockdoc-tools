@@ -14,3 +14,4 @@ journal_head
 dentry
 qstr
 buffer_head
+lockdoc_ring_buffer
