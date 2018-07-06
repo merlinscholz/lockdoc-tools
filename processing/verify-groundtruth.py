@@ -57,6 +57,8 @@ if __name__ == '__main__':
 	# value: locking rule
 	# example: (transaction_t,t_cpprev,w) -> 'EMBOTHER\(journal_t:j_list_lock\)'
 	for line in tempReader:
+		if args.struct is not None and line['datatype'] not in args.struct:
+			continue
 		key = toKey(line['datatype'], line['member'] ,line['accesstype'])
 		if key in groundtruthDict:
 			LOGGER.error('Key %s does already exist in groundtruthDict', key)
@@ -81,6 +83,8 @@ if __name__ == '__main__':
 	tempFile = open(hypothesisCSV,'rb')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	for line in tempReader:
+		if args.struct is not None and line['type'] not in args.struct:
+			continue
 		count = count + 1
 		key = toKey(line['type'], line['member'], line['accesstype'])
 		if key not in hypothesisDict:
@@ -192,8 +196,6 @@ if __name__ == '__main__':
 	elif args.machine_output == 'summary':
 		print('datatype,member,accesstype,lockingrule,percentage,color')
 	for datatype, resultsEntry in resultsDict.iteritems():
-		if args.struct is not None and datatype not in args.struct:
-			continue
 		if args.machine_output == 'summary':
 			if args.percentage:
 				print('%s,%d,%d,%d,%3.2f,%3.2f,%3.2f' %
