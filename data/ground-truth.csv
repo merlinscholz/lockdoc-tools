@@ -201,3 +201,29 @@ dentry;d_child;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.
 dentry;d_child;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_inode;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_inode;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
+journal_head;b_bh;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_bh;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_jcount;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_jcount;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_jlist;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_jlist;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_modified;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_modified;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_frozen_data;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_frozen_data;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_committed_data;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_committed_data;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_transaction;r;(EMBOTHER\(journal_t:j_list_lock\[[rw]\]\)|EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\));;include/linux/journal_head.h:19
+journal_head;b_transaction;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\) -> EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_next_transaction;r;EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\) -> EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_next_transaction;w;EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\) -> EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_tnext;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\) -> EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_tnext;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\) -> EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_tprev;r;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\) -> EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_tprev;w;EMBOTHER\(buffer_head:(__)*b_state\?*\[[rw]\]\) -> EMBOTHER\(transaction_t:t_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cp_transaction;r;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cp_transaction;w;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cpnext;r;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cpnext;w;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cpprev;r;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
+journal_head;b_cpprev;w;EMBOTHER\(journal_t:j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
