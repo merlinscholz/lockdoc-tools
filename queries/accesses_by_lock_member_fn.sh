@@ -18,12 +18,12 @@ then
 	DATATYPE_FILTER="AND a.data_type_id = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
 fi
 
-if [ ! -z ${MEMBER} ];
+if [ ! -z ${MEMBER} ] && [ ${MEMBER} != "any" ];
 then
 	MEMBER_FILTER="AND mn.id = (SELECT id FROM member_names WHERE name = '${MEMBER}') -- Only show results for a certain member"
 fi
 
-if [ ! -z ${ACCESS_TYPE} ];
+if [ ! -z ${ACCESS_TYPE} ] && [ ${ACCESS_TYPE} != "any" ];
 then
 	ACCESS_TYPE_FILTER="AND ac.type = '${ACCESS_TYPE}' -- Filter by access type"
 fi
