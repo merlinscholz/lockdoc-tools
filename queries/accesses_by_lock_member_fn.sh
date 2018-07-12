@@ -1,17 +1,18 @@
 #!/bin/bash
 # A. Lochmann 2018
 # This script gets all accesses to data_type.member grouped by data_type, member, access_type, stracktrace and locks_held.
-# Usage: ./accesses_by_lock_member_fn.sh transaction_t t_inode_list w | mysql lockdebugging_mixed_fs_al
+# Usage: ./accesses_by_lock_member_fn.sh transaction_t t_inode_list w 1 | mysql lockdebugging_mixed_fs_al
 
 if [ ${#} -lt 1 ];
 then
-	echo "${0} <data type> [<member> [<access type (or any)>]]" >&2
+	echo "${0} <data type> [<member (or any)> [<access type (or any)>] [<ignore fn blacklist>]]" >&2
 	exit 1
 fi
 
 DATATYPE=${1}; shift
 MEMBER=${1}; shift
 ACCESS_TYPE=${1}; shift
+IGNORE_FUNCTION_BLACKLIST=${1}; shift
 
 if [ ! -z ${DATATYPE} ];
 then
@@ -26,6 +27,51 @@ fi
 if [ ! -z ${ACCESS_TYPE} ] && [ ${ACCESS_TYPE} != "any" ];
 then
 	ACCESS_TYPE_FILTER="AND ac.type = '${ACCESS_TYPE}' -- Filter by access type"
+fi
+
+if [ ! -z ${IGNORE_FUNCTION_BLACKLIST} ] && [ ${IGNORE_FUNCTION_BLACKLIST} -eq 1 ];
+then
+	FUNCTION_BLACKLIST_FILTER=""
+else
+	FUNCTION_BLACKLIST_FILTER="AND ac.id NOT IN
+			(
+				  SELECT ac.id
+					FROM accesses ac
+					JOIN allocations a
+					  ON ac.alloc_id = a.id
+					JOIN stacktraces AS st
+					  ON ac.stacktrace_id = st.id
+					LEFT JOIN structs_layout_flat sl
+					  ON a.data_type_id = sl.data_type_id
+					 AND ac.address - a.base_address = sl.helper_offset
+					LEFT JOIN member_names mn
+					  ON mn.id = sl.member_name_id
+					LEFT JOIN function_blacklist fn_bl
+					  ON fn_bl.fn = st.function
+					 AND 
+					 (
+					   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					   OR
+					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					   OR
+					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+					 )
+					LEFT JOIN member_blacklist m_bl
+					  ON m_bl.data_type_id = a.data_type_id
+					 AND m_bl.member_name_id = sl.member_name_id
+					WHERE 1
+					${DATATYPE_FILTER}
+					${MEMBER_FILTER}
+					${ACCESS_TYPE_FILTER}
+					-- === FOR NOW: skip task_struct ===
+					AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
+					-- ====================================
+					AND
+					(
+						fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
+					)
+					GROUP BY ac.id
+			)"
 fi
 
 cat <<EOT
@@ -84,45 +130,7 @@ FROM
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			${ACCESS_TYPE_FILTER}
-			AND ac.id NOT IN
-			(
-				  SELECT ac.id
-					FROM accesses ac
-					JOIN allocations a
-					  ON ac.alloc_id = a.id
-					JOIN stacktraces AS st
-					  ON ac.stacktrace_id = st.id
-					LEFT JOIN structs_layout_flat sl
-					  ON a.data_type_id = sl.data_type_id
-					 AND ac.address - a.base_address = sl.helper_offset
-					LEFT JOIN member_names mn
-					  ON mn.id = sl.member_name_id
-					LEFT JOIN function_blacklist fn_bl
-					  ON fn_bl.fn = st.function
-					 AND 
-					 (
-					   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
-					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
-					 )
-					LEFT JOIN member_blacklist m_bl
-					  ON m_bl.data_type_id = a.data_type_id
-					 AND m_bl.member_name_id = sl.member_name_id
-					WHERE 1
-					${DATATYPE_FILTER}
-					${MEMBER_FILTER}
-					${ACCESS_TYPE_FILTER}
-					-- === FOR NOW: skip task_struct ===
-					AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
-					-- ====================================
-					AND
-					(
-						fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
-					)
-					GROUP BY ac.id
-			)
+			${FUNCTION_BLACKLIST_FILTER}
 		GROUP BY ac.id -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
 	) s
 	LEFT JOIN locks_held AS lh
