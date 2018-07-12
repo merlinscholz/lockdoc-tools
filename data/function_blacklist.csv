@@ -148,3 +148,4 @@ buffer_head;\N;blkdev_get_block
 buffer_head;\N;create_empty_buffers
 buffer_head;\N;link_dev_buffers
 buffer_head;\N;create_page_buffers
+buffer_head;\N;init_page_buffers
