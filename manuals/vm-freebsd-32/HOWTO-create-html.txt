@@ -1,0 +1,12 @@
+- Sublime-Repo hinzufügen: Siehe https://www.sublimetext.com/docs/3/linux_repositories.html
+- Sublime-Text installieren
+- In Sublime-Text
+	* Ctrl + Shift + P --> "package install" --> {Markdown Preview, MarkdownTOC}
+	 * Preferences --> Package Settings --> MarkdownTOC --> "Settings -- User"
+		Folgendes einfügen
+{
+  "defaults": {
+    "autoanchor": true,
+    "autolink": true,
+  },
+}
