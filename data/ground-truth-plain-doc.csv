@@ -95,8 +95,8 @@ inode;i_lru;r;EMBSAME\(inode:i_lock\[[rw]\]\);;fs/inode.c:413,fs/inode.c:27
 inode;i_lru;w;EMBSAME\(inode:i_lock\[[rw]\]\);;fs/inode.c:413,fs/inode.c:27
 dentry;d_flags;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
 dentry;d_flags;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
-dentry;d_alias;r;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref\[[rw]\]\);;fs/dcache.c:49
-dentry;d_alias;w;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref\[[rw]\]\);;fs/dcache.c:49
+dentry;d_u.d_alias;r;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
+dentry;d_u.d_alias;w;EMBOTHER\(inode:i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
 dentry;d_name.name;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_name.name;w;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_name.hash_len;r;EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
