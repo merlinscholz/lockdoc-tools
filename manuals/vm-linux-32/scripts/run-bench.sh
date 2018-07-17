@@ -3,7 +3,7 @@ DIR=/home/al/bench-out
 CWD=`pwd`
 BENCH_OUTDEV=/dev/null
 BENCH="dummy"
-export PATH=/opt/kernel/ltp-bin/testcases/bin/:$PATH
+export PATH=/opt/kernel/ltp/bin/testcases/bin/:$PATH
 
 cd ${DIR}
 

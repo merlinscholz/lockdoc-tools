@@ -45,4 +45,4 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
 	- git checkout -b lockdoc-ltp 5f8ca6cf
 	- Den Patch aus dem tools-Repo aus manuals/vm-linux-32/ anwenden
 		patch -p1 < ltp-lockdebug.patch
-	- ./configure --prefix=/opt/kernel/ltp-bin/ && make && make install
+	- ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
