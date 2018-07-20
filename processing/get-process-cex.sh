@@ -1,7 +1,7 @@
 #!/bin/bash
 CONFIGFILE="convert.conf"
 TOOLS_PATH=`dirname ${0}`
-BASE_URL="https://ess.cs.tu-dortmund.de/pferd/linux-lockdoc/lockdebug-v4.10-0.9"
+BASE_URL="https://ess.cs.tu-dortmund.de/pferd/linux-lockdoc/lockdebug-v4.10-0.10"
 
 function usage() {
 	echo "usage: $0 <database> <data_type> <variant: nostack vs. stack>" >&2
