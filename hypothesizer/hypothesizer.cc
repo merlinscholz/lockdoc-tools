@@ -69,7 +69,7 @@ const option::Descriptor usage[] = {
   "effective in combination with --report normal, implicit with --report csv or csvwinner"
 }, {
   CONFIDENCETHRESHOLD, 0, "c", "confidence-threshold", Arg::Required,
-  "-c/--confidence-threshold n  \tSet observations threshold for assuming a hypothesis is trustworthy to n (default: 50)."
+  "-c/--confidence-threshold n  \tSet observations threshold for assuming a hypothesis is trustworthy to n (default: 50). "
   "Values below lead to a scaled relative support of the respective hypothesis."
 }, {0,0,0,0,0,0}
 };
