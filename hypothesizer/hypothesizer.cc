@@ -22,10 +22,10 @@
 // Note: It is possible to limit the number of used threads by setting the
 // OMP_NUM_THREADS environment variable.
 
-const double accept_threshold_default = .9, cutoff_threshold_default = .1, nolock_threshold_default = .05, confidence_threshold_default = 50.0;
+const double accept_threshold_default = .9, cutoff_threshold_default = .1, confidence_threshold_default = 50.0;
 
 enum optionIndex { UNKNOWN, HELP,
-	ACCEPTTHRESHOLD, CUTOFFTHRESHOLD, NOLOCKTHRESHOLD,
+	ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
 	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD };
 const option::Descriptor usage[] = {
 {
@@ -39,9 +39,6 @@ const option::Descriptor usage[] = {
 }, {
   CUTOFFTHRESHOLD, 0, "t", "cutoff-threshold", Arg::Required,
   "-t/--cutoff-threshold n  \tSet hypothesis cutoff threshold to n% (default: 10.0)"
-}, {
-  NOLOCKTHRESHOLD, 0, "n", "nolock-threshold", Arg::Required,
-  "-n/--nolock-threshold n  \tSet threshold for assuming that no lock is required to n% (default: 5.0)"
 }, {
   DATATYPE, 0, "d", "datatype", Arg::Required,
   "-d/--datatype typename  \tOnly create/test hypotheses for a specific data structure; may be used more than once"
@@ -104,6 +101,10 @@ struct LockCombination {
 	bool contains_locks(const std::vector<myid_t>& l) const
 	{
 		auto it_theirlock = l.cbegin();
+		// the no-lock hypothesis always matches
+		if (it_theirlock == l.cend()) {
+			return true;
+		}
 		for (const auto mylock : locks_held_sorted) {
 			if (mylock == *it_theirlock) {
 				++it_theirlock;
@@ -115,13 +116,16 @@ struct LockCombination {
 		return false;
 	}
 	// Returns actual order of locks presented in l.
-	std::vector<myid_t> lock_order(const std::vector<myid_t>& l) const
+	std::vector<myid_t> lock_order(std::vector<myid_t> l) const
 	{
 		std::vector<myid_t> ret;
-		std::vector<myid_t> l_copy = l; // modifiable copy
+		// fast-path for no-lock hypothesis
+		if (l.empty()) {
+			return ret;
+		}
 		for (const auto mylock : locks_held) {
-			auto it = find(l_copy.begin(), l_copy.end(), mylock);
-			if (it != l_copy.end()) {
+			auto it = find(l.begin(), l.end(), mylock);
+			if (it != l.end()) {
 				ret.push_back(mylock);
 
 				// Make sure a specific lock is only presented once.  This
@@ -129,8 +133,8 @@ struct LockCombination {
 				// case of "LOCK_X -> LOCK_X" in case this lock is held
 				// multiple times in this combination (which can happen quite
 				// often with EMBOTHER).
-				l_copy.erase(it);
-				if (l_copy.empty()) {
+				l.erase(it);
+				if (l.empty()) {
 					break;
 				}
 			}
@@ -168,7 +172,6 @@ struct Member {
 	std::string datatype;
 	std::string name; // without r: / w: prefix (this is kept in the accesstype member)
 	uint64_t occurrences = 0; // counts all accesses to this member
-	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
 	bool show = true; // set to false if filtered out by user parameters
@@ -198,6 +201,9 @@ void map2vec(const M& m, V& v) {
 std::string locks2string(const std::vector<myid_t>& l, const std::string separator = " -> ", const std::string quote = "")
 {
 	std::stringstream ss;
+	if (l.size() == 0) {
+		ss << "(no locks held)";
+	}
 	for (auto it = l.cbegin(); it != l.cend(); ++it) {
 		ss << quote << locks[*it] << quote;
 		if (it + 1 != l.cend()) {
@@ -230,25 +236,30 @@ void evaluate_hypothesis(Member& member, std::vector<myid_t>& hypothesis)
 
 void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned next_lockpos, std::vector<myid_t>& cur, unsigned depth)
 {
+	if (depth == 0) {
+		evaluate_hypothesis(member, cur);
+		return;
+	}
 	for (unsigned lockpos = next_lockpos; lockpos < lc.locks_held_sorted.size(); ++lockpos) {
 		cur.push_back(lc.locks_held_sorted[lockpos]);
-		if (depth == 1) {
-			evaluate_hypothesis(member, cur);
-		} else {
-			find_hypotheses_rek(member, lc, lockpos + 1, cur, depth - 1);
-		}
+		find_hypotheses_rek(member, lc, lockpos + 1, cur, depth - 1);
 		cur.pop_back();
 	}
 }
 
 void find_hypotheses(Member& member)
 {
-	for (unsigned depth = 1; ; ++depth) {
+	std::vector<myid_t> cur;
+
+	// depth = 0 -> evaluate the no-lock hypothesis
+	// depth = 1 -> evaluate all one-lock hypotheses
+	// depth = 2 -> evaluate all two-lock hypotheses
+	// ...
+	for (unsigned depth = 0; ; ++depth) {
 		size_t prev_hypothesis_count = member.hypotheses.size();
 
 		//std::cerr << "depth " << depth << std::endl;
 
-		std::vector<myid_t> cur;
 		for (const auto& lc : member.combinations) {
 			//std::cout << locks2string(obs.locks_held_sorted, " + ") << std::endl;
 			cur.clear();
@@ -294,7 +305,7 @@ void print_bugsql(const std::string& prefix, const std::string& postfix,
 }
 
 void print_hypotheses(const Member& member,
-	double accept_threshold, double cutoff_threshold, double nolock_threshold,
+	double accept_threshold, double cutoff_threshold,
 	ReportMode reportmode, bool bugsql, double confidence_threshold)
 {
 	if (reportmode == ReportMode::NORMAL) {
@@ -304,52 +315,6 @@ void print_hypotheses(const Member& member,
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 	}
 
-	// handle accesses w/o locks
-	double nolock_fraction =
-		(double) (member.occurrences - member.occurrences_with_locks) /
-		(double) member.occurrences;
-	bool nolock_is_winner = nolock_fraction >= nolock_threshold;
-	if (reportmode == ReportMode::NORMAL) {
-		std::cout << (nolock_is_winner ? '!' : ' ') << "   ";
-		if (nolock_fraction == 0) {
-			std::cout << "Unlikely to be";
-		} else if (!nolock_is_winner) {
-			std::cout << "Possibly";
-		} else {
-			std::cout << "Seemingly";
-		}
-		std::cout << " accessible without locks, "
-			<< (member.occurrences - member.occurrences_with_locks)
-			<< " accesses without locks ["
-			<< nolock_fraction * 100
-			<< "%] out of a total of " << member.occurrences << " observed.)" << std::endl;
-	} else if (reportmode == ReportMode::CSV ||
-		(reportmode == ReportMode::CSVWINNER && nolock_is_winner)) {
-		std::cout << member.datatype << ";" << member.name << ";" << member.accesstype << ";nolock;"
-			// Since we assume that *all* observed lock combinations by definition comply with
-			// 'nolock', the absolute support for 'nolock' is equal to all occurrences for one member.
-			<< member.occurrences << ";"
-			<< member.occurrences << ";"
-			<< std::setprecision(5)
-//			<< (double) (member.occurrences - member.occurrences_with_locks) /
-//				(double) member.occurrences * 100 << ";"
-		// This is NOT the percentage of accesses without locks, but assumes
-		// that *all* observed lock combinations by definition comply with
-		// "nolock".  This is a temporary(?) quick-fix for the USENIX paper.
-			<< 100.0 << ";"
-
-			<< nolock_is_winner << ";"
-			<< 1.0 * smoothstep(0, confidence_threshold, member.occurrences) << ";\n";
-		// are we done already?
-		if (reportmode == ReportMode::CSVWINNER) {
-			return;
-		}
-	} else if (reportmode == ReportMode::DOC && nolock_is_winner) {
-		// TODO properly group member r/w accesses
-		doc_map[member.datatype][std::vector<myid_t>()].push_back(member.combined_name());
-		return;
-	}
-
 	// sort lock hypotheses by the number of memory accesses where each *set*
 	// of locks is held (for now disregarding the lock order, this happens
 	// within the output loop)
@@ -357,23 +322,23 @@ void print_hypotheses(const Member& member,
 	map2vec(member.hypotheses, sorted_hypotheses);
 	sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
 		[](const LockingHypothesisMatches& a, const LockingHypothesisMatches& b)
-		{ return a.occurrences > b.occurrences || // reverse order
+		{ return a.occurrences < b.occurrences || // ascending occurrences
 			(a.occurrences == b.occurrences &&
-			a.sorted_hypothesis.size() > b.sorted_hypothesis.size()); // more locks first
+			// more locks first: as we pick the first (= lowest-support)
+			// hypothesis with a relative support >= accept_threshold as the
+			// winner, this makes sure we get the most specific hypothesis (the
+			// one with the most locks) if several with the same support exist
+			a.sorted_hypothesis.size() > b.sorted_hypothesis.size());
 		});
 
-	// collect all lock orders for ReportMode CSVWINNER and DOC
-	std::vector<std::pair<std::vector<myid_t>, uint64_t>> all_lock_orders;
-
-	// iterate over hypotheses from best to worst
-	bool found_winner = nolock_is_winner; // have we found a winner already?
-	int printed = 0;
+	// iterate over hypotheses from worst to best
+	bool found_winner = false; // have we found a winner already?
 	std::cout.precision(3);
 	for (const auto& h : sorted_hypotheses) {
 		// skip hypotheses with relative support below cutoff_threshold
 		double relative_support = (double) h.occurrences / (double) member.occurrences;
 		if (relative_support < cutoff_threshold) {
-			break;
+			continue;
 		}
 
 		// more than one locking order within this lock set?
@@ -403,7 +368,7 @@ void print_hypotheses(const Member& member,
 				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
 					const std::pair<std::vector<myid_t>, uint64_t>& b)
 					{
-						return a.second > b.second;
+						return a.second < b.second;
 					});
 
 			// show locking-order distribution
@@ -425,7 +390,8 @@ void print_hypotheses(const Member& member,
 						print_bugsql(prefix, "\n", member, match.first, true,
 							member.occurrences - match.second);
 					}
-				} else if (reportmode == ReportMode::CSV) {
+				} else if (reportmode == ReportMode::CSV ||
+							(reportmode == ReportMode::CSVWINNER && this_is_the_winner)) {
 					std::cout << member.datatype << ";"
 						<< member.name << ";"
 						<< member.accesstype << ";"
@@ -438,8 +404,9 @@ void print_hypotheses(const Member& member,
 						<< relative_support * smoothstep(0, confidence_threshold, match.second) << ";";
 					print_bugsql("", "\n", member, match.first, true,
 						member.occurrences - match.second);
-				} else if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
-					all_lock_orders.push_back(match);
+				} else if (reportmode == ReportMode::DOC && this_is_the_winner) {
+					// TODO properly group member r/w accesses
+					doc_map[member.datatype][match.first].push_back(member.combined_name());
 				}
 			}
 		} else {
@@ -456,67 +423,6 @@ void print_hypotheses(const Member& member,
 			if (bugsql) {
 				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true,
 					member.occurrences - h.occurrences);
-			}
-		}
-		printed++;
-	}
-
-	if (printed == 0 && reportmode == ReportMode::NORMAL) {
-		std::cout << "    (No hypothesis with locks exceeds cutoff threshold of " << cutoff_threshold * 100 << "%.)" << std::endl;
-	} else if (printed > 0 && reportmode == ReportMode::NORMAL && !found_winner) {
-		std::cout << "    (No hypothesis with locks exceeds accept threshold of " << accept_threshold * 100 << "%.)" << std::endl;
-	} else if (printed == 0 && reportmode == ReportMode::CSV) {
-		std::cout << member.datatype << ";"
-			<< member.name << ";"
-			<< member.accesstype << ";"
-			<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;0;\n";
-	}
-
-	if (reportmode == ReportMode::CSVWINNER || reportmode == ReportMode::DOC) {
-		sort(all_lock_orders.begin(), all_lock_orders.end(),
-			[](const std::pair<std::vector<myid_t>, uint64_t>& a,
-				const std::pair<std::vector<myid_t>, uint64_t>& b)
-				{
-					return a.second > b.second ||
-						(a.second == b.second && a.first.size() > b.first.size());
-				});
-		if (all_lock_orders.size() == 0) {
-			if (reportmode == ReportMode::CSVWINNER) {
-				std::cout << member.datatype << ";"
-					<< member.name << ";"
-					<< member.accesstype << ";"
-					<< "no hypothesis with locks exceeds cutoff threshold;0;0;0;0;0;"
-					<< std::endl;
-			} else {
-				std::cerr << "Cannot generate documentation for "
-					<< member.datatype << "::" << member.name
-					<< " [" << member.accesstype << "]" << std::endl;
-			}
-		} else {
-			auto& lo = all_lock_orders[0];
-			double relative_support = (double) lo.second / (double) member.occurrences;
-			bool this_is_the_winner = relative_support >= accept_threshold;
-			if (reportmode == ReportMode::CSVWINNER) {
-				std::cout << member.datatype << ";"
-					<< member.name << ";"
-					<< member.accesstype << ";"
-					<< locks2string(lo.first) << ";"
-					<< lo.second << ";"
-					<< member.occurrences << ";"
-					<< std::setprecision(5)
-					<< relative_support * 100 << ";"
-					<< this_is_the_winner << ";"
-					<< relative_support * smoothstep(0, confidence_threshold, lo.second) << ";";
-				print_bugsql("", "\n", member, lo.first, true,
-					member.occurrences - lo.second);
-			} else if (this_is_the_winner) {
-				// TODO properly group member r/w accesses
-				doc_map[member.datatype][lo.first].push_back(member.combined_name());
-			} else {
-				std::cerr << "Cannot generate documentation for "
-					<< member.datatype << "::" << member.name
-					<< " [" << member.accesstype << "] "
-					<< "(best locking rule does not exceed accept threshold)" << std::endl;
 			}
 		}
 	}
@@ -593,17 +499,6 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		cutoff_threshold /= 100.0;
-	}
-
-	double nolock_threshold = nolock_threshold_default;
-	if (options[NOLOCKTHRESHOLD]) {
-		try {
-			nolock_threshold = std::stod(options[NOLOCKTHRESHOLD].last()->arg);
-		} catch (const std::exception& e) {
-			std::cerr << "Cannot parse no-lock threshold value " << options[NOLOCKTHRESHOLD].last()->arg << std::endl;
-			return 1;
-		}
-		nolock_threshold /= 100.0;
 	}
 
 	double confidence_threshold = confidence_threshold_default;
@@ -767,16 +662,17 @@ int main(int argc, char **argv)
 				member_id = it->second;
 			}
 
-			// add lock combination (or increase its occurrence counter)
+			// Add lock combination (or increase its occurrence counter).  Note
+			// that the "no locks held" case is not special-cased here, it ends
+			// up as a zero-element lock-ID vector in members_combinations (and
+			// later members[member_id].combinations).
 			members[member_id].occurrences += occurrences;
-			if (locks_held.size() > 0) {
-				members[member_id].occurrences_with_locks += occurrences;
-				auto& combinations = members_combinations[member_id];
-				auto ret = combinations.emplace(std::piecewise_construct,
-					std::forward_as_tuple(locks_held), std::forward_as_tuple(occurrences, locks_held));
-				if (ret.second == false) {
-					ret.first->second.occurrences += occurrences;
-				}
+			auto& combinations = members_combinations[member_id];
+			auto ret = combinations.emplace(std::piecewise_construct,
+				std::forward_as_tuple(locks_held), std::forward_as_tuple(occurrences, locks_held));
+			if (ret.second == false) {
+				// combination already existed
+				ret.first->second.occurrences += occurrences;
 			}
 		}
 	}
@@ -830,7 +726,7 @@ int main(int argc, char **argv)
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql, confidence_threshold);
+			print_hypotheses(member, accept_threshold, cutoff_threshold, reportmode, bugsql, confidence_threshold);
 
 			member.clear();
 		} else {
@@ -864,7 +760,7 @@ int main(int argc, char **argv)
 
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, accept_threshold, cutoff_threshold, nolock_threshold, reportmode, bugsql, confidence_threshold);
+				print_hypotheses(member, accept_threshold, cutoff_threshold, reportmode, bugsql, confidence_threshold);
 			}
 		}
 	}
