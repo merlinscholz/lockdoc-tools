@@ -1116,95 +1116,95 @@ herunter. Wir verwenden das DVD-Image für <a href="https://download.freebsd.org
 <p>Wir booten das Installer-Image in den gewünschten Modus. Der Standardfall ist dabei 
 <code>multi user</code>. Zu den Modis siehe auch 
 <a href="https://www.freebsd.org/doc/handbook/boot-introduction.html#boot-singleuser">FreeBSD Handbook</a>.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-01.png" /></p>
+<p><img alt="alt text" src="img/install-01.png" /></p>
 <p><a id="beginn-der-installation"></a></p>
 <h3 id="beginn-der-installation">Beginn der Installation<a class="headerlink" href="#beginn-der-installation" title="Permanent link"></a></h3>
 <p>Danach wählen wir <code>Install</code> aus, um die Installation zu beginnen.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-02.png" /></p>
+<p><img alt="alt text" src="img/install-02.png" /></p>
 <p><a id="keyboard-konfiguration"></a></p>
 <h3 id="keyboard-konfiguration">Keyboard konfiguration<a class="headerlink" href="#keyboard-konfiguration" title="Permanent link"></a></h3>
 <p>Konfiguration des Tastatur Layouts (Default ist US).</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-03.png" /></p>
+<p><img alt="alt text" src="img/install-03.png" /></p>
 <p>Wir haben <em>German</em> gewählt.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-04.png" /></p>
+<p><img alt="alt text" src="img/install-04.png" /></p>
 <p><a id="konfiguration"></a></p>
 <h3 id="konfiguration">Konfiguration<a class="headerlink" href="#konfiguration" title="Permanent link"></a></h3>
 <p>Danach geben wir der Maschine einen Namen.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-05.png" /></p>
+<p><img alt="alt text" src="img/install-05.png" /></p>
 <p>Und haben nun die Auswahl darüber, was installiert werden soll. Hier wählen wir zusätzlich 
 <code>src</code> aus, um im Anschluss einfacher einen eigenen Kernel konfigurieren und übersetzen 
 zu könnten. Ansonsten ist noch die Option <code>ports</code> zu erwähnen, die eine Ansammlung 
 von Scripten entspricht, die automatisiert Software (z.B. X11), die nicht direkt zu FreeBSD 
 gehört, laden, übersetzt und installiert. Der Rest sollte selbsterklärend sein.</p>
 <p>Die Komponenten lassen sich auch alle nachträglich installieren.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-06.png" /></p>
+<p><img alt="alt text" src="img/install-06.png" /></p>
 <p><a id="partitionierung"></a></p>
 <h3 id="partitionierung">Partitionierung<a class="headerlink" href="#partitionierung" title="Permanent link"></a></h3>
 <p>Anschließend partitionieren wir unser VM-Image. <code>UFS</code> ist dabei für 
 eine VM zu empfehlen, da <code>ZFS</code> wesentlich mehr RAM und Rechenleistung benötigt.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-07.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-08.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-09.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-10.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-11.png" /></p>
+<p><img alt="alt text" src="img/install-07.png" />
+<img alt="alt text" src="img/install-08.png" />
+<img alt="alt text" src="img/install-09.png" />
+<img alt="alt text" src="img/install-10.png" />
+<img alt="alt text" src="img/install-11.png" /></p>
 <p><a id="eigentliche-installation"></a></p>
 <h3 id="eigentliche-installation">Eigentliche Installation<a class="headerlink" href="#eigentliche-installation" title="Permanent link"></a></h3>
 <p>Jetzt kopiert und entpackt der Installer die Daten von dem Installer-Image auf das VM-Image. 
 Das kann je nach Maschine und Installer-Image 3-10 Minuten dauern.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-12.png" /></p>
+<p><img alt="alt text" src="img/install-12.png" /></p>
 <p><a id="root-passwort"></a></p>
 <h3 id="root-passwort">Root-Passwort<a class="headerlink" href="#root-passwort" title="Permanent link"></a></h3>
 <p>Jetzt noch das root-Passwort festlegen und wir sind fast fertig.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-15.png" /></p>
+<p><img alt="alt text" src="img/install-15.png" /></p>
 <p><a id="netzwerk"></a></p>
 <h3 id="netzwerk">Netzwerk<a class="headerlink" href="#netzwerk" title="Permanent link"></a></h3>
 <p>Entsprechende Netzwerk Einstellungen sind nur notwendig, falls Software 
 (z.B. <code>vim</code>) nachinstalliert werden soll oder falls für die eigentliche 
 Aufgabe Netzwerk notwendig ist.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-16.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-17.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-18.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-19.png" /></p>
+<p><img alt="alt text" src="img/install-16.png" />
+<img alt="alt text" src="img/install-17.png" />
+<img alt="alt text" src="img/install-18.png" />
+<img alt="alt text" src="img/install-19.png" /></p>
 <p>IPv6 können wir überspringen, da die Uni (und das ITMC) eh nicht daran glauben.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-20.png" /></p>
+<p><img alt="alt text" src="img/install-20.png" /></p>
 <p>Die DNS Einstellungen kann man auf den voreingestellten Werten belassen.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-21.png" /></p>
+<p><img alt="alt text" src="img/install-21.png" /></p>
 <p><a id="zeiteinstellung"></a></p>
 <h3 id="zeiteinstellung">Zeiteinstellung<a class="headerlink" href="#zeiteinstellung" title="Permanent link"></a></h3>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-22.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-23.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-24.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-25.png" /></p>
+<p><img alt="alt text" src="img/install-22.png" />
+<img alt="alt text" src="img/install-23.png" />
+<img alt="alt text" src="img/install-24.png" />
+<img alt="alt text" src="img/install-25.png" /></p>
 <p>Falls notwendig setzen des korrekten Datums und Uhrzeit.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-26.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-27.png" /></p>
+<p><img alt="alt text" src="img/install-26.png" />
+<img alt="alt text" src="img/install-27.png" /></p>
 <p><a id="services"></a></p>
 <h3 id="services">Services<a class="headerlink" href="#services" title="Permanent link"></a></h3>
 <p>Hier kann der Default auch belassen werden.
 <code>local_unbound</code> ist <a href="http://hauweele.net/~gawen/blog/?tag=local_unbound">a secure, lightweight and high performance validating, recursive, and caching DNS resolver. It performs DNSSEC validation and it is also really easy to configure</a></p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-28.png" /></p>
+<p><img alt="alt text" src="img/install-28.png" /></p>
 <p><a id="hardening"></a></p>
 <h3 id="hardening">Hardening<a class="headerlink" href="#hardening" title="Permanent link"></a></h3>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-29.png" /></p>
+<p><img alt="alt text" src="img/install-29.png" /></p>
 <p><a id="weitere-benutzer"></a></p>
 <h3 id="weitere-benutzer">Weitere Benutzer<a class="headerlink" href="#weitere-benutzer" title="Permanent link"></a></h3>
 <p>Hier sollte direkt ein Nutzer angelegt werden.
 Analog zu Linux können wir später jeder Zeit neue Nutzer mit <code>adduser</code> anlegen.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-30.png" /></p>
+<p><img alt="alt text" src="img/install-30.png" /></p>
 <p><a id="abschluss"></a></p>
 <h3 id="abschluss">Abschluss<a class="headerlink" href="#abschluss" title="Permanent link"></a></h3>
 <p>Im Anschluss haben wir noch einmal die Möglichkeit diverse Einstellungen zu ändern.
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-31.png" /></p>
+<img alt="alt text" src="img/install-31.png" /></p>
 <p>Außerdem erhalten wir noch die Option vor dem Neustart mit einer Shell im neuen System eigene Änderungen vorzunehmen.</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-32.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-33.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-34.png" /></p>
+<p><img alt="alt text" src="img/install-32.png" />
+<img alt="alt text" src="img/install-33.png" />
+<img alt="alt text" src="img/install-34.png" /></p>
 <p><a id="fertiges-os"></a></p>
 <h3 id="fertiges-os">Fertiges OS<a class="headerlink" href="#fertiges-os" title="Permanent link"></a></h3>
 <p>Nach dem Neustart können wir uns anmelden:</p>
-<p><img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-35.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-36.png" />
-<img alt="alt text" src="/media/nfs/ios/fs/scratch/al/coccinelle/tools/master/manuals/vm-freebsd-32/img/install-37.png" /></p>
+<p><img alt="alt text" src="img/install-35.png" />
+<img alt="alt text" src="img/install-36.png" />
+<img alt="alt text" src="img/install-37.png" /></p>
 <p><a id="links"></a></p>
 <h3 id="links">Links<a class="headerlink" href="#links" title="Permanent link"></a></h3>
 <p>Nützliche Links:</p>
