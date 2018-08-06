@@ -8,11 +8,6 @@ Kernel
 	* installieren: make install (modules_install is nicht nötig, da es ein statischer Kernel ist)
 	* VMLINUX sichern: scp vmlinux ios:/fs/scratch/al/coccinelle/tools/data/vmlinux-4-10-nococci-20170402 (vmlinux-<Kernel-Version>-<mit oder ohne Coccinelle>-<Datum>)
 
-VM
-==
-- Zwei serielle Konsolen
-	Die *erste* serielle Schnittstelle: VM --> FAIL*-Experiment
-	Die *zweite* serielle Schnittstelle: FAIL*-Experiment --> VM (Dienst nur zum Mitteilen des auszuführenden Benchmarks)
 
 Benchmarks:
 ===========
@@ -43,3 +38,9 @@ Fail
 
 - ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=<port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
 	Beispiel: ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=4711 -Wf,--vmlinux=/fs/scratch/al/coccinelle/experiment/vmlinux-4-10-nococci-20180717-g029f74393479-dirty-grub -q -f bochsrc-4-10-testing-4711-al 2>&1 | tee out.txt
+
+VM
+==
+- Zwei serielle Konsolen
+	Die *erste* serielle Schnittstelle: VM --> FAIL*-Experiment
+	Die *zweite* serielle Schnittstelle: FAIL*-Experiment --> VM (Dienst nur zum Mitteilen des auszuführenden Benchmarks)
