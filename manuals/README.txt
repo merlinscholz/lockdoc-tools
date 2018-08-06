@@ -38,6 +38,12 @@ Fail
 
 - ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=<port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
 	Beispiel: ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=4711 -Wf,--vmlinux=/fs/scratch/al/coccinelle/experiment/vmlinux-4-10-nococci-20180717-g029f74393479-dirty-grub -q -f bochsrc-4-10-testing-4711-al 2>&1 | tee out.txt
+- Hinweis für BOCHS:
+	- Je nach Festplatten-Image muss die Geometrie in der BOCHS-Konfig angepasst werden:
+		Adjust cylinders to your image size: cylinders = imageSize / (heads * spt * 512)
+		For more details have a look at $BOCHS/iodev/harddrv.c:{288-291,347}
+	- Passiert das nicht, erscheint folgende Fehlermeldung in der Datei bochsout.txt: "00000000000p[HD   ] >>PANIC<< ata0-0 disk size doesn't match specified geometry"
+	  BOCHS bricht die Ausführung deshalb aber *nicht* ab, stattdessen wird keine Festplatte emuliert.
 
 VM
 ==
