@@ -313,12 +313,14 @@ Damit wirklich nur der Kernel übersetzt wird und nicht noch Abhängigkeiten aus
 einen spezialisierten Source-Tree erzeugen und diesen anschließend übersetzen:
 
 ```
-cd /opt/kernel/freebsd/src/conf
-config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
-cd /$OBJDIR
-make
-make install
+# cd /opt/kernel/freebsd/src/conf
+# config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
+# cd /$OBJDIR
+# MODULES_OVERRIDE="" make [-j X]
+# sudo -E MODULES_OVERRIDE="" make install
 ```
+Es ist wichtig, die Variable `MODULES_OVERRIDE=""` zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist.
+Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt.
 
 <a id="%C3%9Cbersetzen-im-source-tree"></a>
 ### Übersetzen im Source-Tree
