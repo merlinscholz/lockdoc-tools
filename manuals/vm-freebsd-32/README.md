@@ -298,8 +298,9 @@ git clone ssh://ios.cs.tu-dortmund.de:/fs/staff/al/repos/lockdebugging/freebsd/ 
 ### Konfiguration
 
 Zunächst legen wir eine eigene Konfiguration für unseren neuen Kernel an. Dazu nehmen wir
-die i386-Konfiguration als Basis.
+die `LOCKDOC`-Konfig aus dem tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese muss in das Verzeichnis `/opt/kernel/freebsd/src/sys/i386/conf` kopiert werden.
 
+Alternativ kann auch mit einer Standard-Konfiguration begonnen werden:
 ```
 # cd /opt/kernel/freebsd/src/sys/i386/conf
 # cp GENERIC LOCKDOC
