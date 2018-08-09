@@ -215,7 +215,7 @@ Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM ko
 <p><a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a></p>
 <h2 id="konfiguration-und-ubersetzen-des-freebsd-kernels">Konfiguration und Übersetzen des FreeBSD Kernels</h2>
 <p>Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.</p>
-<pre><code>git clone ssh://ios.cs.tu-dortmund.de:/fs/staff/al/repos/lockdebugging/freebsd/ -b releng/11.2 /opt/kernel/freebsd/src</code></pre>
+<pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/11.2 /opt/kernel/freebsd/src</code></pre>
 <p>** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:</p>
 <pre><code>sudo cp -r /boot/kernel /boot/kernel.bak</code></pre>
 <p>Bei einem <code>make install</code> wird der aktuelle Kernel nach <code>/boot/kernel.old</code> kopiert und der neue Kernel in <code>/boot/kernel</code> installiert.<br />

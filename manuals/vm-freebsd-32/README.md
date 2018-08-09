@@ -292,7 +292,7 @@ Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM ko
 Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.
 
 ```
-git clone ssh://ios.cs.tu-dortmund.de:/fs/staff/al/repos/lockdebugging/freebsd/ -b releng/11.2 /opt/kernel/freebsd/src
+git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/11.2 /opt/kernel/freebsd/src
 ```
 ** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:
 ```
