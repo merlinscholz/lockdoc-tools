@@ -89,9 +89,8 @@ Danach geben wir der Maschine einen Namen.
 
 ![alt text](./img/install-05.png)
 
-Und haben nun die Auswahl darüber, was installiert werden soll. Hier wählen wir zusätzlich 
-`src` aus, um im Anschluss einfacher einen eigenen Kernel konfigurieren und übersetzen 
-zu könnten. Ansonsten ist noch die Option `ports` zu erwähnen, die eine Ansammlung 
+Und haben nun die Auswahl darüber, was installiert werden soll. Entgegen des Screenshots ist das Paket `src` nicht erforderlich, da wir unseren eigenen FreeBSD-Tree nutzen.
+Ansonsten ist noch die Option `ports` zu erwähnen, die eine Ansammlung 
 von Scripten entspricht, die automatisiert Software (z.B. X11), die nicht direkt zu FreeBSD 
 gehört, laden, übersetzt und installiert. Der Rest sollte selbsterklärend sein.
 
