@@ -294,7 +294,12 @@ Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir ver
 ```
 git clone ssh://ios.cs.tu-dortmund.de:/fs/staff/al/repos/lockdebugging/freebsd/ -b releng/11.2 /opt/kernel/freebsd/src
 ```
-
+** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:
+```
+sudo cp -r /boot/kernel /boot/kernel.bak
+```
+Bei einem `make install` wird der aktuelle Kernel nach `/boot/kernel.old` kopiert und der neue Kernel in `/boot/kernel` installiert.
+Zusätzlich kann man in `/boot/loader.conf` in der Zeile `kernels="kernel kernel.old` noch `kernel.bak` hinzufügen, damit der Standard-Kernel direkt über den Bootloader erreichbar ist.
 <a id="konfiguration-1"></a>
 ### Konfiguration
 
