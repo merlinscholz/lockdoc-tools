@@ -236,11 +236,12 @@ Ggf. muss der Versions-String für einzelne Pakete angepasst werden.
 
 <a id="userland-einrichten"></a>
 ## Userland einrichten
-Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe `sudo` sein.
+Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe `wheel` sein.
 
 ```
-pw groupmod -m al -n sudo
+pw groupmod -m al -n wheel
 ```
+In `/usr/local/etc/sudoers` muss nun die Zeile `%wheel ALL=(ALL) ALL` auskommentiert werden.
 
 Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.
 
