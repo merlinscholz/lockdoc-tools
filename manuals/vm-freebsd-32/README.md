@@ -101,8 +101,10 @@ Die Komponenten lassen sich auch alle nachträglich installieren.
 <a id="partitionierung"></a>
 ### Partitionierung
 
-Anschließend partitionieren wir unser VM-Image. `UFS` ist dabei für 
-eine VM zu empfehlen, da `ZFS` wesentlich mehr RAM und Rechenleistung benötigt.
+Anschließend partitionieren wir unser VM-Image. Auch wenn `UFS` eher für 
+eine VM zu empfehlen ist, da `ZFS` wesentlich mehr RAM und Rechenleistung benötigt, ist hier `ZFS` zu wählen!
+Wird `ZFS` eingesetzt, kann man das Image im Zweifel einfach unter Linux einhängen und bearbeiten. Mit `UFS` geht das nicht ohne Weiteres.
+Wenn geht es auch nur lesend. Die Unterstützung für schreibenden Zugriff ist noch sehr experimentell.
 
 ![alt text](./img/install-07.png)
 ![alt text](./img/install-08.png)
