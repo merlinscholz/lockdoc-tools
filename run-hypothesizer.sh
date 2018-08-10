@@ -25,11 +25,9 @@ fi
 VARIANT=`echo ${1}| tr '[:upper:]' '[:lower:]'`
 shift
 
-NO_LOCK_THRESHOLD=5.0
-
 echo "Running hypothesizer (${VARIANT})..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > all_txns_members_locks_hypo_${VARIANT}.txt        &
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_winner_${VARIANT}.csv &
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs_${VARIANT}.txt   &
-${TOOLS_PATH}/hypothesizer/hypothesizer -n ${NO_LOCK_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_${VARIANT}.csv   &
+${TOOLS_PATH}/hypothesizer/hypothesizer -r normal    -s member          ${HYPO_INPUT} > all_txns_members_locks_hypo_${VARIANT}.txt        &
+${TOOLS_PATH}/hypothesizer/hypothesizer -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_winner_${VARIANT}.csv &
+${TOOLS_PATH}/hypothesizer/hypothesizer -r normal    -s member --bugsql ${HYPO_INPUT} > all_txns_members_locks_hypo_bugs_${VARIANT}.txt   &
+${TOOLS_PATH}/hypothesizer/hypothesizer -r csv       -s member -t 0.0   ${HYPO_INPUT} > all_txns_members_locks_hypo_${VARIANT}.csv   &
 wait
