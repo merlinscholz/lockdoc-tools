@@ -182,8 +182,9 @@ Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.)
 Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p><a id="userland-einrichten"></a></p>
 <h2 id="userland-einrichten">Userland einrichten</h2>
-<p>Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe <code>sudo</code> sein.</p>
-<pre><code>pw groupmod -m al -n sudo</code></pre>
+<p>Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe <code>wheel</code> sein.</p>
+<pre><code>pw groupmod -m al -n wheel</code></pre>
+<p>In <code>/usr/local/etc/sudoers</code> muss nun die Zeile <code>%wheel ALL=(ALL) ALL</code> auskommentiert werden.</p>
 <p>Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.</p>
 <pre><code># ln -s /usr/local/bin/bash /bin/
 # ln -s /usr/local/bin/sysbench /usr/bin/</code></pre>
@@ -222,8 +223,7 @@ Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM ko
 Zusätzlich kann man in <code>/boot/loader.conf</code> in der Zeile <code>kernels=&quot;kernel kernel.old</code> noch <code>kernel.bak</code> hinzufügen, damit der Standard-Kernel direkt über den Bootloader erreichbar ist.<br />
 <a id="konfiguration-1"></a></p>
 <h3 id="konfiguration-1">Konfiguration</h3>
-<p>Zunächst legen wir eine eigene Konfiguration für unseren neuen Kernel an. Dazu nehmen wir<br />
-die <code>LOCKDOC</code>-Konfig aus dem tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese muss in das Verzeichnis <code>/opt/kernel/freebsd/src/sys/i386/conf</code> kopiert werden.</p>
+<p>Die Konfiguration für LockDoc befindet sich bereits in <code>/opt/kernel/freebsd/src/sys/i386/conf</code>. Daher ist nichts weiter zu tun, sofern diese Konfiguration verwendet werden soll.</p>
 <p>Alternativ kann auch mit einer Standard-Konfiguration begonnen werden:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # cp GENERIC LOCKDOC</code></pre>

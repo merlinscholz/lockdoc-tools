@@ -304,8 +304,7 @@ Zusätzlich kann man in `/boot/loader.conf` in der Zeile `kernels="kernel kernel
 <a id="konfiguration-1"></a>
 ### Konfiguration
 
-Zunächst legen wir eine eigene Konfiguration für unseren neuen Kernel an. Dazu nehmen wir
-die `LOCKDOC`-Konfig aus dem tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese muss in das Verzeichnis `/opt/kernel/freebsd/src/sys/i386/conf` kopiert werden.
+Die Konfiguration für LockDoc befindet sich bereits in `/opt/kernel/freebsd/src/sys/i386/conf`. Daher ist nichts weiter zu tun, sofern diese Konfiguration verwendet werden soll.
 
 Alternativ kann auch mit einer Standard-Konfiguration begonnen werden:
 ```
