@@ -49,6 +49,7 @@
 <li><a href="#%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees">Übersetzen außerhalb des Source-Trees</a></li>
 <li><a href="#%C3%9Cbersetzen-im-source-tree">Übersetzen im Source-Tree</a></li>
 </ul></li>
+<li><a href="#fbsd-plattenabbild-linux">FreeBSD-Plattenabbild unter Linux einhägen</a></li>
 <li><a href="#links-1">Links</a></li>
 </ul></li>
 </ul>
@@ -252,6 +253,16 @@ geändert hat.</p>
 <pre><code># cd /usr/src
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
 # make installkernel KERNCONF=LOCKDOC</code></pre>
+<p><a id="fbsd-plattenabbild-linux"></a></p>
+<h3 id="freebsd-plattenabbild-unter-linux-einhagen">FreeBSD-Plattenabbild unter Linux einhägen</h3>
+<pre><code># kpartx -a /path/to/image.img
+# zpool import -d /dev/mapper           # nach ZFS-Pools scannen
+# zpool import -R /mnt -N &lt;name&gt;        # entsprechenden ZFS-Pool einbinden
+# zfs mount &lt;name&gt;/ROOT/default         # rootfs unter /mnt/ eingehängen
+# zfs mount -a                          # alle weiteren Datasets einhängen
+# zfs umount -a                         # alles aushängen
+# zpool export &lt;name&gt;                   # ZFS-Pool entfernen
+# kpartx -d /path/to/image.img</code></pre>
 <p><a id="links-1"></a></p>
 <h2 id="links-1">Links</h2>
 <ul>

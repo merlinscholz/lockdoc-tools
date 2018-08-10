@@ -29,6 +29,7 @@
 		- [Konfiguration](#konfiguration-1)
 		- [Übersetzen außerhalb des Source-Trees](#%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees)
 		- [Übersetzen im Source-Tree](#%C3%9Cbersetzen-im-source-tree)
+	- [FreeBSD-Plattenabbild unter Linux einhägen](#fbsd-plattenabbild-linux)
 	- [Links](#links-1)
 
 <!-- /MarkdownTOC -->
@@ -349,6 +350,19 @@ geändert hat.
 # cd /usr/src
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
 # make installkernel KERNCONF=LOCKDOC
+```
+
+<a id="fbsd-plattenabbild-linux"></a>
+### FreeBSD-Plattenabbild unter Linux einhägen
+```
+# kpartx -a /path/to/image.img
+# zpool import -d /dev/mapper			# nach ZFS-Pools scannen
+# zpool import -R /mnt -N <name>		# entsprechenden ZFS-Pool einbinden
+# zfs mount <name>/ROOT/default			# rootfs unter /mnt/ eingehängen
+# zfs mount -a							# alle weiteren Datasets einhängen
+# zfs umount -a							# alles aushängen
+# zpool export <name>					# ZFS-Pool entfernen
+# kpartx -d /path/to/image.img
 ```
 
 <a id="links-1"></a>
