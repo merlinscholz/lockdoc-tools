@@ -30,9 +30,9 @@ then
 	INDEV=/dev/ttyu1
 	OUTDEV=/dev/ttyu0
 	KERNEL_VERSION=`uname -r`
-
+	POOL=`zpool list -o name -H`
 	echo "Remount RW" | tee ${OUTDEV}
-	/sbin/mount -o rw /
+	zfs set readonly=off ${POOL}/ROOT/default
 fi
 
 if [ ! -d ${DIR} ];
@@ -226,7 +226,8 @@ then
 	/bin/mount -o remount,ro /
 elif [ ${OS} == "FreeBSD" ];
 then
-	/sbin/mount -o ro /
+	POOL=`zpool list -o name -H`
+	zfs set readonly=on ${POOL}/ROOT/default
 fi
 
 echo "Syncing" | tee ${OUTDEV}
