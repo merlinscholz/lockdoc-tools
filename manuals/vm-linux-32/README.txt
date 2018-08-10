@@ -38,8 +38,8 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
 		update-grub
 	- Achtung: Ab sofort muss bei einem Neustart im Grub-Menü der entsprechende Eintrag für das gewöhnliche Userland ausgewählt werden. Ansonsten startet automatisch der Benchmark.
 6. Benchmark-Skript installieren
-	- Aus dem tools-Repo aus manuals/vm-linux-32/scripts/ das Skript 'run-bench.sh' in das Home des Nutzer schieben.
-	- Sollte der Nutzer *nicht* al heißen, muss der o.g. Pfad zum Init-Skript aktualisiert werden.
+	- Aus dem tools-Repo aus manuals/vm-linux-32/scripts/ das Skript 'run-bench.sh' in das Verzeichnis /lockdoc schieben.
+	- Außerdem das Verzeichnis /lockdoc/bench-out anlegen und dort die Datei fork.c aus manuals/vm-linux-32/scripts/ kopieren. Diese ist für den Pipe-Test nötig.
 7. Benchmark-Suite vorbereiten
 	- git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
 	- git checkout -b lockdoc-ltp 5f8ca6cf
