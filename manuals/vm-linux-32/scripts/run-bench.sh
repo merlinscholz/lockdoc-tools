@@ -5,8 +5,6 @@ BENCH_OUTDEV=/dev/null
 BENCH="dummy"
 export PATH=/opt/kernel/ltp/bin/testcases/bin/:$PATH
 
-cd ${DIR}
-
 OS=`uname`
 DEFAULT_USER=1000
 DEFAULT_GROUP=1000
@@ -36,6 +34,13 @@ then
 	echo "Remount RW" | tee ${OUTDEV}
 	/sbin/mount -o rw /
 fi
+
+if [ ! -d ${DIR} ];
+then
+	mkdir -p ${DIR}
+fi
+
+cd ${DIR}
 
 echo "requestbench" | tee ${OUTDEV}
 BENCH=`head -n1 ${INDEV} | sed 's/^.*&//g'`
