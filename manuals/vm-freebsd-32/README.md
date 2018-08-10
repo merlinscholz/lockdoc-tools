@@ -262,11 +262,12 @@ Die dafür nötigen Kernel-Module sollten automatisch geladen werden.
 <a id="installation-des-init-skripts"></a>
 ## Installation des Init-Skripts
 
-Die Skripte finden sich im tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese müssen in die VM nach `/home/$NUTZER` kopiert werden.
+Die Skripte finden sich im tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese müssen in die VM nach `/lockdoc` kopiert werden.
 Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei `/boot/loader.conf` eingetragen werden:
+Da das ZFS-Dateisystem für `/home` einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.
 
 ```
-init_script="/home/$NUTZER/boot.init.sh"
+init_script="/lockdoc/boot.init.sh"
 ```
 
 Ggf. sind die Zeilen, die ebensfalls `init_script` setzen, auszukommentieren.

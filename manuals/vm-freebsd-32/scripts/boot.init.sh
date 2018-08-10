@@ -1,1 +1,1 @@
-bash /home/al/boot.init.bash.sh
+bash /lockdoc/boot.init.bash.sh

@@ -195,9 +195,10 @@ tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0</code><
 <p>Die dafür nötigen Kernel-Module sollten automatisch geladen werden.</p>
 <p><a id="installation-des-init-skripts"></a></p>
 <h2 id="installation-des-init-skripts">Installation des Init-Skripts</h2>
-<p>Die Skripte finden sich im tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese müssen in die VM nach <code>/home/$NUTZER</code> kopiert werden.<br />
-Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei <code>/boot/loader.conf</code> eingetragen werden:</p>
-<pre><code>init_script=&quot;/home/$NUTZER/boot.init.sh&quot;</code></pre>
+<p>Die Skripte finden sich im tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese müssen in die VM nach <code>/lockdoc</code> kopiert werden.<br />
+Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei <code>/boot/loader.conf</code> eingetragen werden:<br />
+Da das ZFS-Dateisystem für <code>/home</code> einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.</p>
+<pre><code>init_script=&quot;/lockdoc/boot.init.sh&quot;</code></pre>
 <p>Ggf. sind die Zeilen, die ebensfalls <code>init_script</code> setzen, auszukommentieren.<br />
 Jetzt wird bei jedem Start, nachdem der Kernel geladen wurde, als erstes dieses Script ausgeführt.<br />
 <strong>Achtung:</strong> Sollte der Nutzer <strong>nicht</strong> <code>al</code> lauten, müssen die Init-Skripte angepasst werden.<br />
@@ -216,7 +217,7 @@ Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM ko
 <p><a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a></p>
 <h2 id="konfiguration-und-ubersetzen-des-freebsd-kernels">Konfiguration und Übersetzen des FreeBSD Kernels</h2>
 <p>Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.</p>
-<pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/11.2 /opt/kernel/freebsd/src</code></pre>
+<pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/11.2-lockdoc /opt/kernel/freebsd/src</code></pre>
 <p>** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:</p>
 <pre><code>sudo cp -r /boot/kernel /boot/kernel.bak</code></pre>
 <p>Bei einem <code>make install</code> wird der aktuelle Kernel nach <code>/boot/kernel.old</code> kopiert und der neue Kernel in <code>/boot/kernel</code> installiert.<br />
