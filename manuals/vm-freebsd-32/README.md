@@ -280,7 +280,7 @@ Andernfalls wird das gewöhnliche FreeBSD-Userland gestartet.
 <a id="installation-des-benchmark-skripts"></a>
 ## Installation des Benchmark-Skripts
 
-Das Skript `run-bench.sh` befindet sich im tools-Repo unter `manuals/vm-linux-32/scripts`. Dies muss in der VM nach `/home/$NUTZER` kopiert werden.
+Das Skript `run-bench.sh` befindet sich im tools-Repo unter `manuals/vm-linux-32/scripts`. Dies muss in der VM nach `/lockdoc` kopiert werden.
 
 <a id="installation-der-benchmark-tools"></a>
 ## Installation der Benchmark-Tools

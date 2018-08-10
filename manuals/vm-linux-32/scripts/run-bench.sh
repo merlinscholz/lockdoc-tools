@@ -1,5 +1,5 @@
 #!/bin/bash
-DIR=/home/al/bench-out
+DIR=/lockdoc/bench-out
 CWD=`pwd`
 BENCH_OUTDEV=/dev/null
 BENCH="dummy"

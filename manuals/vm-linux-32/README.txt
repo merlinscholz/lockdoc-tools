@@ -27,7 +27,7 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
           search --no-floppy --fs-uuid --set=root a6a47d48-af9e-4c65-b249-ac1fad11cd2b
         fi
         echo    'Loading Linux 4.10.0-al+ ...'
-        linux   /boot/vmlinuz-4.10.0-al+ root=UUID=a6a47d48-af9e-4c65-b249-ac1fad11cd2b ro quiet loglevel=0 init=/home/al/run-bench.sh
+        linux   /boot/vmlinuz-4.10.0-al+ root=UUID=a6a47d48-af9e-4c65-b249-ac1fad11cd2b ro quiet loglevel=0 init=/lockdoc/run-bench.sh
         echo    'Loading initial ramdisk ...'
         initrd  /boot/initrd.img-4.10.0-al+
 }
