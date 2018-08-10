@@ -8,11 +8,11 @@ export PATH=/opt/kernel/ltp/bin/testcases/bin/:$PATH
 cd ${DIR}
 
 OS=`uname`
+DEFAULT_USER=1000
+DEFAULT_GROUP=1000
 
 if [ ${OS} == "Linux" ];
 then
-	DEFAULT_USER=1000
-	DEFAULT_GROUP=1000
 	INDEV=/dev/ttyS1
 	OUTDEV=/dev/ttyS0
 	KERNEL_VERSION=`cat /proc/version-git`
@@ -29,8 +29,6 @@ then
 	DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
 elif [ ${OS} == "FreeBSD" ];
 then
-	DEFAULT_USER=1001
-	DEFAULT_GROUP=1001
 	INDEV=/dev/ttyu1
 	OUTDEV=/dev/ttyu0
 	KERNEL_VERSION=`uname -r`
