@@ -97,6 +97,11 @@ inode;\N;proc_setup_thread_self
 inode;\N;debugfs_create_dir
 inode;\N;get_pipe_inode
 inode;\N;proc_pident_instantiate
+inode;\N;cd_forget
+inode;\N;bd_forget
+inode;\N;proc_sys_make_inode
+inode;\N;proc_fd_instantiate
+inode;\N;__debugfs_create_file
 inode;i_bdev;bdget
 super_block;\N;alloc_super
 super_block;\N;ext4_fill_super
