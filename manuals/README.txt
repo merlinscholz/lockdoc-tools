@@ -44,6 +44,13 @@ Fail
 		For more details have a look at $BOCHS/iodev/harddrv.c:{288-291,347}
 	- Passiert das nicht, erscheint folgende Fehlermeldung in der Datei bochsout.txt: "00000000000p[HD   ] >>PANIC<< ata0-0 disk size doesn't match specified geometry"
 	  BOCHS bricht die Ausführung deshalb aber *nicht* ab, stattdessen wird keine Festplatte emuliert.
+- Empfohlene Einstellungen:
+	- Linux-Image (25G):	ata0-master: type=disk, mode=volatile, path="$virtuos-vms/lockdoc-fbsd.img", cylinders=102400, heads=16, spt=32, biosdetect=auto
+	- FreeBSD-Image (26GB): ata0-master: type=disk, mode=volatile, path="$virtuos-vms/lock-debugging.img", cylinders=163840, heads=16, spt=32, biosdetect=auto
+		($virtuos-vms = virtuos:/home/vms)
+	- Auch wenn es sinnvoll erscheinen mag, die Systemzeit auf eine bestimmte Uhrzeit bzw. ein bestimmtes Datum festzulegen, um ein deterministisches Verhalten zu erzeugen, ist es das nicht.
+	  Da das Plattenabbild für Veränderungen ggf. in QEMU benutzt wird, werden alle Zeitstempel, die irgendwo im Dateisystem gesetzt werden, neuer sein als das gesetzte Datum.
+	  Dadurch wird beim Start immer ein Dateisystemcheck ausgelöst. Daher: clock: sync=none, time0=local
 
 VM
 ==
