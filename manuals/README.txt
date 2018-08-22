@@ -7,7 +7,7 @@ Kernel
 - Nach einem neu Bauen des Kernels:
 	* installieren: make install (modules_install is nicht nötig, da es ein statischer Kernel ist)
 	* VMLINUX sichern: scp vmlinux ios:/fs/scratch/al/coccinelle/tools/data/vmlinux-4-10-nococci-20170402 (vmlinux-<Kernel-Version>-<mit oder ohne Coccinelle>-<Datum>)
-
+- Es ist ggf. sinnvoll, einen aktuellen Compiler, wie z.B. GCC8.1, zu verwenden, damit jeder Instruktionptr korrekt aufgelöst werden kann.
 
 Benchmarks:
 ===========
