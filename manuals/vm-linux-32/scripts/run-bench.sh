@@ -31,12 +31,17 @@ then
 	stty -f /dev/ttyu0.init gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
 	stty -f /dev/ttyu1.lock gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
 	stty -f /dev/ttyu1.init gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
-	INDEV=/dev/ttyu1
+	INDEV=/dev/cuau1
 	OUTDEV=/dev/ttyu0
-	KERNEL_VERSION=`uname -r`
+	KERNEL_VERSION=`cat /dev/lockdoc/version`
+	echo "kernelversion=${KERNEL_VERSION}" | tee ${OUTDEV}
 	POOL=`zpool list -o name -H`
 	echo "Remount RW" | tee ${OUTDEV}
 	zfs set readonly=off ${POOL}/ROOT/default
+
+	LOCKDOC_TEST_CTL="/dev/lockdoc/control"
+	LOCKDOC_TEST_ITER="/dev/lockdoc/iterations"
+	DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
 fi
 
 if [ ! -d ${DIR} ];
@@ -53,7 +58,7 @@ echo "Running "${BENCH} | tee ${OUTDEV}
 
 if [[ ${BENCH} =~ ^lockdoc-test.*$ ]];
 then
-	if [ ! -f ${LOCKDOC_TEST_CTL} ] || [ ! -f ${LOCKDOC_TEST_ITER} ];
+	if [ ! -e ${LOCKDOC_TEST_CTL} ] || [ ! -e ${LOCKDOC_TEST_ITER} ];
 	then
 		echo "Either ${LOCKDOC_TEST_CTL} or ${LOCKDOC_TEST_ITER} does not exist!" >&2
 	else
@@ -77,7 +82,7 @@ then
 		fi
 		echo "Using ${ITERATIONS} iterations" | tee ${OUTDEV}
 		echo "Starting LockDoc test" | tee ${OUTDEV}
-		if [ -f ${LOCKDOC_TEST_CTL} ];
+		if [ -e ${LOCKDOC_TEST_CTL} ];
 		then
 			echo 1 > ${LOCKDOC_TEST_CTL}
 		else
