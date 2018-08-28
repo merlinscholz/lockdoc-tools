@@ -75,10 +75,12 @@ else
 fi
 
 cat <<EOT
-SELECT dt_name, sl_member, ac_type, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held, COUNT(*) AS num
+SELECT dt_name, sl_member, ac_type, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held, 
+		GROUP_CONCAT(ac_id ORDER BY ac_id SEPARATOR ';') AS accesses, COUNT(*) AS num
 FROM
 (
 	SELECT
+		ac_id,
 		dt_name,
 		sl_member,
 		ac_type,
