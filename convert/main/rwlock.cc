@@ -234,7 +234,10 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 		lockType.compare(PSEUDOLOCK_NAME_SOFTIRQ) == 0 ||
 		lockType.compare(PSEUDOLOCK_NAME_HARDIRQ) == 0 ||
 		lockType.compare("semaphore") == 0 ||
-		lockType.compare("bit_spin_lock") == 0) {
+		lockType.compare("bit_spin_lock") == 0 ||
+		lockType.compare("sleep mutex") == 0 ||
+		lockType.compare("spin mutex") == 0
+		) {
 		ret = new WLock(lockAddress, allocID, lockType, lockVarName);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
@@ -249,7 +252,9 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 			exit(1);
 		}
 	} else if (lockType.compare("rwlock_t") == 0 ||
-			   lockType.compare("rw_semaphore") == 0) {
+			   lockType.compare("rw_semaphore") == 0 ||
+			   lockType.compare("sx") == 0 ||
+			   lockType.compare("rw") == 0) {
 		ret = new RWLock(lockAddress, allocID, lockType, lockVarName);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
