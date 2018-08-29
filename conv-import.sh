@@ -1,14 +1,10 @@
 #!/bin/bash
 TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
-DATA_TYPES=${TOOLS_PATH}/data/data_types.csv
-FN_BLACK_LIST=${TOOLS_PATH}/data/function_blacklist.csv
-MEMBER_BLACK_LIST=${TOOLS_PATH}/data/member_blacklist.csv
 CONVERT_BINARY=${TOOLS_PATH}/convert/build/convert
 DB_SCHEME=${TOOLS_PATH}/queries/db-scheme.sql
 CONV_OUTPUT=conv-out.txt
 # The config file must contain two variable definitions: (1) DATA which describes the path to the input data, and (2) KERNEL the path to the kernel image
-
 
 if [ ! -f ${CONFIGFILE} ];
 then
@@ -26,10 +22,23 @@ MEMBER_BLACK_LIST Blacklisted members" >&2
 fi
 . ${CONFIGFILE}
 
-if [ -z ${DATA} ] || [ -z ${KERNEL} ] || [ -z ${DELIMITER} ] || [ -z ${KERNEL_TREE} ];
+if [ -z ${DATA} ] || [ -z ${KERNEL} ] || [ -z ${DELIMITER} ] || [ -z ${KERNEL_TREE} ] || [ -z ${GUEST_OS} ];
 then
 	echo "Vars DATA, KERNEL, DELIMITER, or KERNEL_TREE are not set!" >&2
 	exit 1
+fi
+
+if [ -z ${DATA_TYPES} ];
+then
+	DATA_TYPES=${TOOLS_PATH}/data/${GUEST_OS}/data_types.csv
+fi
+if [ -z ${FN_BLACK_LIST} ];
+then
+	FN_BLACK_LIST=${TOOLS_PATH}/data/${GUEST_OS}/function_blacklist.csv
+fi
+if [ -z ${MEMBER_BLACK_LIST} ];
+then
+	MEMBER_BLACK_LIST=${TOOLS_PATH}/data/${GUEST_OS}/member_blacklist.csv
 fi
 
 if [ ! -f ${DATA_TYPES} ] || [ ! -f ${FN_BLACK_LIST} ] || [ ! -f ${MEMBER_BLACK_LIST} ];
