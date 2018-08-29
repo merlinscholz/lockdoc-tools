@@ -271,8 +271,15 @@ const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, u
 			functionAddresses[addr].codeLocation.line = bfdSearchCtx.line;
 			if (bfdSearchCtx.file) {
 				const char *tmp = strstr(bfdSearchCtx.file, compDir);
+				size_t len = strlen(compDir);
 				if (tmp) {
-					functionAddresses[addr].codeLocation.file = bfdSearchCtx.file + strlen(compDir);
+					// If compDir does *not* end with a slash, remove one more char from the filename.
+					// Otherwise, the resulting filename will start with a slash.
+					if (compDir[len - 1] != '/') {
+						functionAddresses[addr].codeLocation.file = bfdSearchCtx.file + len + 1;
+					} else {
+						functionAddresses[addr].codeLocation.file = bfdSearchCtx.file + len;
+					}
 				} else {
 					functionAddresses[addr].codeLocation.file = bfdSearchCtx.file;
 				}
