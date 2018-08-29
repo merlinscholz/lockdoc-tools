@@ -243,11 +243,12 @@ struct RWLock {
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile) {
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir) {
 		if (lockOP == P_WRITE || lockOP == V_WRITE) {
-			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile);
+			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 		} else if (lockOP == P_READ || lockOP == V_READ) {
-			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile);
+			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 		} else {
 			stringstream ss;
 			ss << "Invalid op(" << lockOP << "," << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << ts << endl;
@@ -278,7 +279,8 @@ struct RWLock {
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile);
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir);
 
 	/**
 	 * Perform the lock operation {@param lockOP} on the read sub lock.
@@ -296,7 +298,8 @@ struct RWLock {
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile);
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir);
 
 	virtual void writeWriterLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << write_id << delimiter << lockAddress;

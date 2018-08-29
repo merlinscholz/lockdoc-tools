@@ -43,8 +43,9 @@ struct WLock : public RWLock {
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile) {
-		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile);
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir) {
+		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 	}
 };
 

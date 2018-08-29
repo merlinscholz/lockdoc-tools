@@ -16,7 +16,8 @@ void RWLock::writeTransition(
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile) {
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir) {
 		
 	switch (lockOP) {
 		case P_WRITE:
@@ -64,7 +65,15 @@ void RWLock::writeTransition(
 				tempLockPos.subLock = WRITER_LOCK;
 				tempLockPos.start = ts;
 				tempLockPos.lastLine = line;
-				tempLockPos.lastFile = file;
+				string tmp = kernelDir;
+				if (tmp.back() != '/') {
+					tmp.append("/");
+				}
+				if (file.find(tmp) != string::npos) {
+					tempLockPos.lastFile = file.substr(tmp.length());
+				} else {
+					tempLockPos.lastFile = file;
+				}
 				tempLockPos.lastFn = fn;
 				tempLockPos.lastPreemptCount = preemptCount;
 				tempLockPos.lastIRQSync = irqSync;
@@ -124,7 +133,8 @@ void RWLock::readTransition(
 	enum IRQ_SYNC irqSync,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile) {
+	std::ofstream& locksHeldOFile,
+	const char *kernelDir) {
 
 	switch (lockOP) {
 		case P_WRITE:
@@ -165,7 +175,15 @@ void RWLock::readTransition(
 				tempLockPos.subLock = READER_LOCK;
 				tempLockPos.start = ts;
 				tempLockPos.lastLine = line;
-				tempLockPos.lastFile = file;
+				string tmp = kernelDir;
+				if (tmp.back() != '/') {
+					tmp.append("/");
+				}
+				if (file.find(tmp) != string::npos) {
+					tempLockPos.lastFile = file.substr(tmp.length());
+				} else {
+					tempLockPos.lastFile = file;
+				}
 				tempLockPos.lastFn = fn;
 				tempLockPos.lastPreemptCount = preemptCount;
 				tempLockPos.lastIRQSync = irqSync;

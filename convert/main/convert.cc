@@ -331,7 +331,8 @@ static void handlePV(
 	unsigned long long pseudoAllocID,
 	ofstream& locksOFile,
 	ofstream& txnsOFile,
-	ofstream& locksHeldOFile
+	ofstream& locksHeldOFile,
+	const char *kernelBaseDir
 	)
 {
 	RWLock *tempLock;
@@ -393,7 +394,7 @@ static void handlePV(
 		// Write the lock to disk (aka locks.csv)
 		tempLock->writeLock(locksOFile, delimiter);
 	}
-	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile);
+	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelBaseDir);
 }
 
 /* taken from Linux 4.10 include/linux/preempt.h */
@@ -426,7 +427,8 @@ static void handlePreemptCountChange(
 	unsigned long long pseudoAllocID,
 	ofstream& locksOFile,
 	ofstream& txnsOFile,
-	ofstream& locksHeldOFile
+	ofstream& locksHeldOFile,
+	const char *kernelBaseDir
 	)
 {
 	
@@ -443,21 +445,21 @@ static void handlePreemptCountChange(
 	if (!prev_softirq && cur_softirq) {
 		/* P(softirq_pseudo_lock) */
 		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	} else if (prev_softirq && !cur_softirq) {
 		/* V(softirq_pseudo_lock) */
 		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	}
 
 	if (!prev_hardirq && cur_hardirq) {
 		/* P(hardirq_pseudo_lock) */
 		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	} else if (prev_hardirq && !cur_hardirq) {
 		/* V(hardirq_pseudo_lock) */
 		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	}
 }
 
@@ -920,7 +922,7 @@ int main(int argc, char *argv[]) {
 					handlePreemptCountChange(
 						processPreemptCount, prevPreemptCount, curPreemptCount,
 						ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
-						locksOFile, txnsOFile,locksHeldOFile);
+						locksOFile, txnsOFile,locksHeldOFile, kernelBaseDir);
 					break;
 				}
 			case 'r':
@@ -938,7 +940,7 @@ int main(int argc, char *argv[]) {
 						handlePreemptCountChange(
 							processPreemptCount, prevPreemptCount, curPreemptCount,
 							ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
-							locksOFile, txnsOFile,locksHeldOFile);
+							locksOFile, txnsOFile,locksHeldOFile, kernelBaseDir);
 					} else {
 						preemptCount = -1;
 					}
@@ -1015,7 +1017,7 @@ int main(int argc, char *argv[]) {
 				}
 		case 'l':
 			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
-				preemptCount, irqSync, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile);
+				preemptCount, irqSync, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 			break;
 		case 'w':
 		case 'r':
