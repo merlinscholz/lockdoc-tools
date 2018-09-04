@@ -225,7 +225,7 @@ void RWLock::readTransition(
 	}	
 }
 
-RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, string lockType, const char *lockVarName) {
+RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, string lockType, const char *lockVarName, unsigned flags) {
 	// Insert virgin lock into map, and write entry to file
 	RWLock *ret;
 	
@@ -238,14 +238,14 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 		lockType.compare("sleep mutex") == 0 ||
 		lockType.compare("spin mutex") == 0
 		) {
-		ret = new WLock(lockAddress, allocID, lockType, lockVarName);
+		ret = new WLock(lockAddress, allocID, lockType, lockVarName, flags);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
 			// This is a severe error. Abort immediately!
 			exit(1);
 		}
 	} else if (lockType.compare(PSEUDOLOCK_NAME_RCU) == 0) {
-		ret = new RLock(lockAddress, allocID, lockType, lockVarName);
+		ret = new RLock(lockAddress, allocID, lockType, lockVarName, flags);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
 			// This is a severe error. Abort immediately!
@@ -255,7 +255,7 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 			   lockType.compare("rw_semaphore") == 0 ||
 			   lockType.compare("sx") == 0 ||
 			   lockType.compare("rw") == 0) {
-		ret = new RWLock(lockAddress, allocID, lockType, lockVarName);
+		ret = new RWLock(lockAddress, allocID, lockType, lockVarName, flags);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
 			// This is a severe error. Abort immediately!

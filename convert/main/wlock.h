@@ -4,7 +4,7 @@
 #include "rwlock.h"
 
 struct WLock : public RWLock {
-	WLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName) {
+	WLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags) {
 			
 	}
 

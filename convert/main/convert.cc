@@ -327,6 +327,7 @@ static void handlePV(
 	string const& lockType,
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
+	unsigned flags,
 	bool includeAllLocks,
 	unsigned long long pseudoAllocID,
 	ofstream& locksOFile,
@@ -379,7 +380,7 @@ static void handlePV(
 			return;
 		}
 		// Instantiate the corresponding class ...
-		tempLock = RWLock::allocLock(lockAddress, allocation_id, lockType, lockVarName);
+		tempLock = RWLock::allocLock(lockAddress, allocation_id, lockType, lockVarName, flags);
 		// ... , and assign ids to the sub locks
 		tempLock->initIDs(curLockID);
 		PRINT_DEBUG("", "Created lock: " << tempLock);
@@ -445,21 +446,21 @@ static void handlePreemptCountChange(
 	if (!prev_softirq && cur_softirq) {
 		/* P(softirq_pseudo_lock) */
 		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	} else if (prev_softirq && !cur_softirq) {
 		/* V(softirq_pseudo_lock) */
 		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	}
 
 	if (!prev_hardirq && cur_hardirq) {
 		/* P(hardirq_pseudo_lock) */
 		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	} else if (prev_hardirq && !cur_hardirq) {
 		/* V(hardirq_pseudo_lock) */
 		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 	}
 }
 
@@ -624,7 +625,7 @@ int main(int argc, char *argv[]) {
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,RWLock*>::iterator itLock, itTemp;
-	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
 	unsigned long long prevPreemptCount = 0, curPreemptCount = 0;
 	int lineCounter, isGZ;
 	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
@@ -781,7 +782,8 @@ int main(int argc, char *argv[]) {
 
 	locksOFile << "id" << delimiter << "address" << delimiter;
 	locksOFile << "embedded_in" << delimiter << "lock_type_name" << delimiter;
-	locksOFile << "sub_lock" << delimiter << "lock_var_name" << endl;
+	locksOFile << "sub_lock" << delimiter << "lock_var_name" << delimiter;
+	locksOFile << "flags" << endl;
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
@@ -850,7 +852,7 @@ int main(int argc, char *argv[]) {
 			cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
 			return EXIT_FAILURE;
 		}
-		address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa;
+		address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
 		lockType = file = stacktrace = fn = "empty";
 		try {
 			action = lineElems.at(1).at(0);
@@ -876,6 +878,7 @@ int main(int argc, char *argv[]) {
 					curPreemptCount =
 						preemptCount = std::stoull(lineElems.at(12),NULL,16);
 					temp = std::stoi(lineElems.at(13),NULL,10);
+					flags = std::stoi(lineElems.at(15),NULL,10);
 					switch(temp) {
 						case LOCK_NONE:
 							irqSync = LOCK_NONE;
@@ -1017,7 +1020,7 @@ int main(int argc, char *argv[]) {
 				}
 		case 'l':
 			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
-				preemptCount, irqSync, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+				preemptCount, irqSync, flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 			break;
 		case 'w':
 		case 'r':

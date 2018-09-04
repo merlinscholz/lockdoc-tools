@@ -20,6 +20,7 @@ CREATE TABLE `locks` (
   `lock_type_name` varchar(255) DEFAULT NULL,		-- describes the lock type
   `sub_lock` enum('r','w') NOT NULL,
   `lock_var_name` varchar(255) DEFAULT NULL,		-- the variable name of the global lock.
+  `flags` int(11) UNSIGNED NOT NULL,		-- Specifies options for a particular lock, e.g., beeing recursive
   PRIMARY KEY (`id`),
   KEY `embedded_in` (`embedded_in`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8

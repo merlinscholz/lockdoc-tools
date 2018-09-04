@@ -89,6 +89,7 @@ struct RWLock {
 	unsigned long long read_id;									// A unique id which describes a particular lock within our dataset
 	unsigned long long write_id;								// A unique id which describes a particular lock within our dataset
 	unsigned long long lockAddress;								// The pointer to the memory area where the lock resides
+	unsigned flags;												// A bitmask indicating special feature of a lock, e.g., a recursive lock
 	int reader_count;											// Indicates whether the lock is held or not (may be > 1 for recursive locks)
 	int writer_count;											// Indicates whether the lock is held or not (0 or 1)
 	unsigned allocation_id;										// ID of the allocation this lock resides in (0 if not embedded)
@@ -96,8 +97,8 @@ struct RWLock {
 	std::string lockVarName;									// The variable name of the lock, e.g., console_sem, if static (allocation_id == 0)
 	std::stack<LockPos> lastNPos;								// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
 	
-	RWLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName) : 
-		lockAddress(_lockAddress), reader_count(0), writer_count(0), 
+	RWLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : 
+		lockAddress(_lockAddress), flags(_flags), reader_count(0), writer_count(0), 
 		allocation_id(_allocID), lockType(_lockType) {
 		if (_lockVarName) {
 			lockVarName = string(_lockVarName);
@@ -260,7 +261,7 @@ struct RWLock {
 	 * Create and init an instance of 
 	 * 
 	 */
-	static RWLock* allocLock(unsigned long long lockAddress, unsigned allocID, string lockType, const char *lockVarName);
+	static RWLock* allocLock(unsigned long long lockAddress, unsigned allocID, string lockType, const char *lockVarName, unsigned flags);
 
 	protected:
 	/**
@@ -304,13 +305,15 @@ struct RWLock {
 	virtual void writeWriterLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << write_id << delimiter << lockAddress;
 		oFile << delimiter << sql_null_if(allocation_id, allocation_id == 0) << delimiter << lockType << delimiter;
-		oFile << 'w' << delimiter << sql_null_if(lockVarName, lockVarName.empty()) << "\n";
+		oFile << 'w' << delimiter << sql_null_if(lockVarName, lockVarName.empty()) << delimiter;
+		oFile << flags << "\n";
 	}
 
 	virtual void writeReaderLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << read_id << delimiter << lockAddress;
 		oFile << delimiter << sql_null_if(allocation_id, allocation_id == 0) << delimiter << lockType << delimiter;
-		oFile << 'r' << delimiter << sql_null_if(lockVarName, lockVarName.empty()) << "\n";
+		oFile << 'r' << delimiter << sql_null_if(lockVarName, lockVarName.empty()) << delimiter;
+		oFile << flags << "\n";
 	}
 };
 

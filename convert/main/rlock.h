@@ -7,7 +7,7 @@
 using std::dec;
 
 struct RLock : public RWLock {
-	RLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName) {
+	RLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags) {
 			
 	}
 
