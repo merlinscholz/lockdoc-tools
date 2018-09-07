@@ -28,7 +28,7 @@ CREATE TABLE `locks` (
 
 CREATE TABLE `allocations` (
   `id` int(11) UNSIGNED NOT NULL,		-- identifies a certain allocation
-  `data_type_id` int(11) UNSIGNED NOT NULL,		-- describes the data type of an allocation. References table datatypes
+  `subclass_id` int(11) UNSIGNED NOT NULL,		-- describes the data type of an allocation. References table subclasses
   `base_address` int(11) UNSIGNED NOT NULL,		-- the start address of an allocation
   `size` int(11) UNSIGNED NOT NULL,		-- size of the memory area
   `start` bigint(20) UNSIGNED DEFAULT NULL,	-- Start of lifetime
@@ -76,6 +76,14 @@ CREATE TABLE `data_types` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 
+CREATE TABLE `subclasses` (
+  `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a data type
+  `data_type_id` int(11) UNSIGNED NOT NULL,		-- Refers to the datatype to which a member belongs to
+  `name` varchar(255) DEFAULT NULL,			-- A humand-readable id of a datat type
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8
+;
+
 CREATE TABLE `member_names` (
   `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a member name
   `name` varchar(255) NOT NULL,			-- A humand-readable id of a member name
@@ -96,19 +104,20 @@ CREATE TABLE `stacktraces` (
 
 CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
   `id` int(11) NOT NULL AUTO_INCREMENT,		-- Refers to a data type
-  `data_type_id` int(11) unsigned DEFAULT NULL,
+  `subclass_id` int(11) unsigned DEFAULT NULL,
   `member_name_id` int(11) DEFAULT NULL,
   `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
   PRIMARY KEY (`id`),
-  UNIQUE KEY `fn_bl_entry` (`data_type_id`,`member_name_id`,`fn`)
+  UNIQUE KEY `fn_bl_entry` (`subclass_id`,`member_name_id`,`fn`),
+  KEY `fn_idx` (`fn`)
 ) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
 ;
 
 CREATE TABLE `member_blacklist` (			-- A per datatype list of blacklisted functions. We want to ignore memory accesses from these functions.
-  `data_type_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
+  `subclass_id` int(11) UNSIGNED NOT NULL,		-- Refers to a data type
   `member_name_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`data_type_id`,`member_name_id`),
-  KEY `fk_datatype_id` (`data_type_id`)
+  PRIMARY KEY (`subclass_id`,`member_name_id`),
+  KEY `fk_datatype_id` (`subclass_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8
 ;
 

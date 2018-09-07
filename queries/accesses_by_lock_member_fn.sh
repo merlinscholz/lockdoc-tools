@@ -9,14 +9,22 @@ then
 	exit 1
 fi
 
-DATATYPE=${1}; shift
+COMBINED_DATATYPE=${1}; shift
 MEMBER=${1}; shift
 ACCESS_TYPE=${1}; shift
 IGNORE_FUNCTION_BLACKLIST=${1}; shift
 
-if [ ! -z ${DATATYPE} ];
+if [ ! -z ${COMBINED_DATATYPE} ];
 then
-	DATATYPE_FILTER="AND a.data_type_id = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
+	RET=`echo ${COMBINED_DATATYPE} | grep -q ":"`
+	if [ ${?} -eq 0 ];
+	then
+		DATATYPE=`echo ${COMBINED_DATATYPE} | cut -d ":" -f1`
+		SUBCLASS=`echo ${COMBINED_DATATYPE} | cut -d ":" -f2`
+		DATATYPE_FILTER="AND sc.id = (SELECT id FROM subclasses WHERE name = '${SUBCLASS}') AND sc.data_type_id = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
+	else
+		DATATYPE_FILTER="AND sc.data_type_id = (SELECT id FROM data_types WHERE name = '${COMBINED_DATATYPE}')"
+	fi
 fi
 
 if [ ! -z ${MEMBER} ] && [ ${MEMBER} != "any" ];
@@ -39,32 +47,34 @@ else
 					FROM accesses ac
 					JOIN allocations a
 					  ON ac.alloc_id = a.id
+					JOIN subclasses sc
+					  ON a.subclass_id = sc.id
 					JOIN stacktraces AS st
 					  ON ac.stacktrace_id = st.id
 					LEFT JOIN structs_layout_flat sl
-					  ON a.data_type_id = sl.data_type_id
+					  ON sc.data_type_id = sl.data_type_id
 					 AND ac.address - a.base_address = sl.helper_offset
 					LEFT JOIN member_names mn
 					  ON mn.id = sl.member_name_id
 					LEFT JOIN function_blacklist fn_bl
 					  ON fn_bl.fn = st.function
-					 AND 
+					 AND
 					 (
-					   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					   (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 					 )
 					LEFT JOIN member_blacklist m_bl
-					  ON m_bl.data_type_id = a.data_type_id
+					  ON m_bl.subclass_id = a.subclass_id
 					 AND m_bl.member_name_id = sl.member_name_id
 					WHERE 1
 					${DATATYPE_FILTER}
 					${MEMBER_FILTER}
 					${ACCESS_TYPE_FILTER}
 					-- === FOR NOW: skip task_struct ===
-					AND a.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
+					AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 					-- ====================================
 					AND
 					(
@@ -113,7 +123,7 @@ FROM
 			ac.alloc_id AS alloc_id,
 			ac.type AS ac_type,
 			mn.name AS sl_member,
-			dt.name AS dt_name,
+			IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) AS dt_name,
 			GROUP_CONCAT(
 				CONCAT(lower(hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line,
 					'@m_bl:', m_bl.subclass_id IS NOT NULL, '@fn_bl:', fn_bl.fn IS NOT NULL)
@@ -125,12 +135,14 @@ FROM
 		FROM accesses AS ac
 		INNER JOIN allocations AS a
 		  ON a.id = ac.alloc_id
+		INNER JOIN subclasses AS sc
+		  ON sc.id = a.subclass_id
 		INNER JOIN data_types AS dt
-		  ON dt.id = a.data_type_id
+		  ON dt.id = sc.data_type_id
 		INNER JOIN stacktraces AS st
 		  ON ac.stacktrace_id = st.id
 		LEFT JOIN structs_layout_flat sl
-		  ON a.data_type_id = sl.data_type_id
+		  ON sc.data_type_id = sl.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names AS mn
 		  ON mn.id = sl.member_name_id
@@ -161,10 +173,12 @@ FROM
 	  ON l.id = lh.lock_id
 	LEFT JOIN allocations AS lock_a
 	  ON lock_a.id = l.embedded_in
-	LEFT JOIN data_types lock_a_dt
-	  ON lock_a.data_type_id = lock_a_dt.id
+	LEFT JOIN subclasses lock_sc
+	  ON lock_a.subclass_id = lock_sc.id
+	LEFT JOIN data_types lock_dt
+	  ON lock_sc.data_type_id = lock_dt.id
 	LEFT JOIN structs_layout_flat lock_member
-	  ON lock_a.data_type_id = lock_member.data_type_id
+	  ON lock_sc.data_type_id = lock_member.data_type_id
 	  AND l.address - lock_a.base_address = lock_member.helper_offset
 	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_name_id

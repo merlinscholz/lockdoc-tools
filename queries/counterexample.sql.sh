@@ -33,10 +33,21 @@ if [ $# -lt 5 ]; then
 	exit 1
 fi
 
-DATATYPE=$1; shift
+COMBINED_DATATYPE=$1; shift
 COMBINED_MEMBER=$1; shift
 MODE=$1; shift
 LOCKCONNECTOR=$1; shift
+
+RET=`echo ${COMBINED_DATATYPE} | grep -q ":"`
+if [ ${?} -eq 0 ];
+then
+	DATATYPE=`echo ${COMBINED_DATATYPE} | cut -d ":" -f1`
+	SUBCLASS=`echo ${COMBINED_DATATYPE} | cut -d ":" -f2`
+	SUBCLASS_FILTER=" AND sc.name = '${SUBCLASS}'"
+else
+	DATATYPE=${COMBINED_DATATYPE}
+	SUBCLASS_FILTER=" AND sc.name IS NULL"
+fi
 
 ACCESSTYPE=${COMBINED_MEMBER:0:1}
 SANITYCHECK=${COMBINED_MEMBER:1:1}
@@ -66,7 +77,7 @@ SELECT data_type, member, accesstype, stacktrace,
 	) AS locks_held
 FROM
 (
-	SELECT '${DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, 
+	SELECT '${COMBINED_DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, 
 			stacktrace_id, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held
 	FROM
 	(
@@ -99,14 +110,17 @@ FROM
 				JOIN allocations a
 				  ON ac.alloc_id = a.id
 				 AND ac.type = '$ACCESSTYPE'
+				JOIN subclasses sc
+				  ON a.subclass_id = sc.id
+				${SUBCLASS_FILTER}
 				JOIN data_types dt
-				  ON a.data_type_id = dt.id
+				  ON sc.data_type_id = dt.id
 				 AND dt.name = '$DATATYPE'
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				 AND st.sequence = 0
 				JOIN structs_layout_flat sl
-				  ON sl.data_type_id = a.data_type_id
+				  ON sl.data_type_id = sc.data_type_id
 				 AND sl.helper_offset = ac.address - a.base_address
 				JOIN member_names mn
 				  ON mn.id = sl.member_name_id
@@ -132,11 +146,14 @@ cat <<EOT
 					JOIN allocations a
 					  ON ac.alloc_id = a.id
 					 AND ac.type = '$ACCESSTYPE'
+					JOIN subclasses sc
+					  ON a.subclass_id = sc.id
+					${SUBCLASS_FILTER}
 					JOIN data_types dt
-					  ON a.data_type_id = dt.id
+					  ON sc.data_type_id = dt.id
 					 AND dt.name = '$DATATYPE'
 					JOIN structs_layout_flat sl
-					  ON sl.data_type_id = a.data_type_id
+					  ON sl.data_type_id = sc.data_type_id
 					 AND sl.helper_offset = ac.address - a.base_address
 					JOIN member_names mn
 					  ON mn.id = sl.member_name_id
@@ -148,8 +165,8 @@ LAST_EMBOTHER=0
 for LOCK in "$@"; do
 	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\1/')
-		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
+		SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBSAME locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -163,8 +180,10 @@ cat <<EOT
 					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
+					JOIN subclasses l_sbh_sc${LOCKNR}
+					  ON l_sbh_a${LOCKNR}.subclass_id = l_sbh_sc${LOCKNR}.id
 					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
+					  ON l_sbh_sc${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
 					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
 					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
@@ -172,7 +191,7 @@ cat <<EOT
 EOT
 
 	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
-		LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
+		 LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
 		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
 		cat <<EOT
 					-- lock #$LOCKNR
@@ -185,8 +204,8 @@ EOT
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\1/')
-		SUBLOCK=$(echo $LOCK | sed -e 's/^.*(.*:\(.*\)\[\([rw]\)\])$/\2/')
+		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
+		 SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBOTHER locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -201,8 +220,10 @@ cat <<EOT
 					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
+					JOIN subclasses l_sbh_sc${LOCKNR}
+					  ON l_sbh_a${LOCKNR}.subclass_id = l_sbh_sc${LOCKNR}.id
 					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
+					  ON l_sbh_sc${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
 					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
 					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
@@ -237,13 +258,16 @@ cat <<EOT
 					JOIN allocations a
 					  ON ac.alloc_id = a.id
 					 AND ac.type = '$ACCESSTYPE'
+					JOIN subclasses sc
+					  ON a.subclass_id = sc.id
+					${SUBCLASS_FILTER}
 					JOIN data_types dt
-					  ON a.data_type_id = dt.id
+					  ON sc.data_type_id = dt.id
 					 AND dt.name = '$DATATYPE'
 					JOIN stacktraces AS st
 					  ON ac.stacktrace_id = st.id
 					JOIN structs_layout_flat sl
-					  ON sl.data_type_id = a.data_type_id
+					  ON sl.data_type_id = sc.data_type_id
 					 AND sl.helper_offset = ac.address - a.base_address
 					JOIN member_names mn
 					  ON mn.id = sl.member_name_id
@@ -252,11 +276,11 @@ cat <<EOT
 					  ON fn_bl.fn = st.function
 					 AND
 					 (
-					   (fn_bl.data_type_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					   (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
 					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					   OR
-					   (fn_bl.data_type_id = a.data_type_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
 					 )
 					WHERE
 						fn_bl.fn IS NOT NULL
@@ -280,8 +304,10 @@ cat <<EOT
 		-- member or contained-in member in case of a complex member)
 		LEFT JOIN allocations lock_a
 		  ON l.embedded_in = lock_a.id
+		LEFT JOIN subclasses lock_sc
+		  ON lock_a.subclass_id = lock_sc.id
 		LEFT JOIN structs_layout_flat lock_member
-		  ON lock_a.data_type_id = lock_member.data_type_id
+		  ON lock_sc.data_type_id = lock_member.data_type_id
 		 AND l.address - lock_a.base_address = lock_member.helper_offset
 		LEFT JOIN member_names lock_member_name
 		  ON lock_member_name.id = lock_member.member_name_id

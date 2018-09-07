@@ -51,11 +51,21 @@ enum AccessTypes {
  */
 struct Allocation {
 	unsigned long long start;									// Timestamp when it has been allocated
-	unsigned long long id;										// A unique id which refers to that particular instance
+	unsigned long long id;										// A nunique id which refers to that particular instance
 	int size;													// Size in bytes
-	int idx;													// An index into the types array, which describes the datatype of this allocation
+	int subclass_idx;											// An index into the subclass array, which describes the datatype of this allocation
 };
-
+/**
+ * Describes a subclass of the observed data types.
+ */
+struct Subclass {
+	Subclass (unsigned long long _id, std::string _name, int _data_type_idx, bool _real_subclass) :
+		id(_id), name(_name), data_type_idx(_data_type_idx), real_subclass(_real_subclass) {}
+	unsigned long long id;										// An unique id which refers to that particular instance
+	std::string name;											// An unique name that describes this type of subclass
+	int data_type_idx;											// An index into the types array, which describes the data type of this allocation
+	bool real_subclass;
+};
 /**
  * Represents a memory access
  */
@@ -87,6 +97,10 @@ static map<unsigned long long,Allocation> activeAllocs;
  * Contains all observed datatypes.
  */
 static std::vector<DataType> types;
+/**
+ * Contains all observed subclasses.
+ */
+static std::vector<Subclass> subclasses;
 /**
  * The list of the LOOK_BEHIND_WINDOW last memory accesses.
  */
@@ -125,6 +139,10 @@ static unsigned long long curLockID = 1;
  * The next id for a new allocation.
  */
 static unsigned long long curAllocID = 1;
+/**
+ * The next id for a new subclass.
+ */
+static unsigned long long curSubclassID = 1;
 /**
  * The next id for a new memory access.
  */
@@ -768,11 +786,12 @@ int main(int argc, char *argv[]) {
 	ofstream memberblacklistOFile("member_blacklist.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream stacktracesOFile("stacktraces.csv",std::ofstream::out | std::ofstream::trunc);
+	ofstream subclassesOFile("subclasses.csv", std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << delimiter << "name" << endl;
 
-	allocOFile << "id" << delimiter << "data_type_id" << delimiter << "base_address" << delimiter;
+	allocOFile << "id" << delimiter << "subclass_id" << delimiter << "base_address" << delimiter;
 	allocOFile << "size" << delimiter << "start" << delimiter << "end" << endl;
 
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
@@ -792,14 +811,16 @@ int main(int argc, char *argv[]) {
 
 	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
 
-	fnblacklistOFile << "id" << delimiter << "data_type_id" << delimiter << "member_name_id"
+	fnblacklistOFile << "id" << delimiter << "subclass_id" << delimiter << "member_name_id"
 		<< delimiter << "fn" << endl;
 
-	memberblacklistOFile << "datatype_id" << delimiter << "datatype_member_id" << endl;
+	memberblacklistOFile << "subclass_id" << delimiter << "member_name_id" << endl;
 		
 	membernamesOFile << "id" << delimiter << "member_name" << endl;
 	
 	stacktracesOFile << "id" << delimiter << "sequence" << delimiter << "instruction_ptr" << delimiter << "function" << delimiter << "line" << delimiter << "file" << endl;
+
+	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
@@ -966,14 +987,57 @@ int main(int argc, char *argv[]) {
 					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase,"Found active allocation at address.");
 					continue;
 				}
-				// Do we know that datatype?
-				const auto it = find_if(types.cbegin(), types.cend(),
-					[&typeStr](const DataType& type) { return type.name == typeStr; } );
-				if (it == types.cend()) {
-					PRINT_ERROR("ts=" << ts,"Found unknown datatype: " << typeStr);
-					continue;
+				string subclassName, dataTypeName;
+				/*
+				 * This flag just speeds up the lookup of a subclass.
+				 * If a data type does *not* have a real subclass, e.g., journal_t,
+
+				 * and we leave the subclass name empty,
+				 * the lookup in the lines below would fail.
+				 * Furthermore, we would have to look into the types array as well to find the appropriate data type.
+				 * If realSubclass is not set, the subclass will be NULL in the corresponding csv output.
+				 */
+				bool realSubclass;
+				if (typeStr.find(DELIMITER_SUBCLASS) != string::npos) {
+					dataTypeName = typeStr.substr(0, typeStr.find(DELIMITER_SUBCLASS));
+					subclassName = typeStr.substr(typeStr.find(DELIMITER_SUBCLASS) + 1);
+					realSubclass = true;
+					PRINT_DEBUG("dataTypeName=" << dataTypeName << ",subclassName=" << subclassName, "Names extracted");
+				} else {
+					dataTypeName = subclassName = typeStr;
+					realSubclass = false;
 				}
-				int datatype_idx = it - types.cbegin();
+				int subclass_idx;
+				// Do we know that subclass?
+				const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
+					[&subclassName](const Subclass& subclass) { return subclass.name == subclassName; } );
+				if (itSubclass == subclasses.cend()) {
+					// Do we know that data type?
+					auto itDataType = find_if(types.begin(), types.end(),
+						[&dataTypeName](const DataType& type) { return type.name == dataTypeName; } );
+					if (itDataType == types.cend()) {
+						PRINT_ERROR("ts=" << ts,"Found unknown datatype: " << typeStr);
+						continue;
+					}
+					/*
+					 * Sanity check: Does this data type have a dummy subclass?
+					 * Either *each* allocation/free must specify a subclass
+					 * or no memory operations does it.
+					 * Mixing it up is not allowed!
+					 */
+					const auto itSubclass_ = find_if(subclasses.cbegin(), subclasses.cend(),
+						[&dataTypeName](const Subclass& subclass) { return subclass.name == dataTypeName; } );
+					if (itSubclass_ != subclasses.cend()) {
+						PRINT_ERROR("ts=" << ts,"Found dummy subclass, although dedicated subclass exists: " << typeStr);
+						exit(-1);
+					}
+					int data_type_idx = itDataType - types.cbegin();
+					subclasses.emplace_back(curSubclassID++, subclassName, data_type_idx, realSubclass);
+					subclass_idx = subclasses.size() - 1;
+					PRINT_DEBUG("subclass=\"" << subclasses[subclass_idx].name << "\",data_type=\"" << types[data_type_idx].name << "\",idx=" << subclass_idx << ",real_subclass=" << realSubclass, "Created subclass");
+				} else {
+					subclass_idx = itSubclass - subclasses.cbegin();
+				}
 				// Remember that allocation
 				pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
 					activeAllocs.insert(pair<unsigned long long,Allocation>(baseAddress,Allocation()));
@@ -983,7 +1047,7 @@ int main(int argc, char *argv[]) {
 				Allocation& tempAlloc = retAlloc.first->second;
 				tempAlloc.id = curAllocID++;
 				tempAlloc.start = ts;
-				tempAlloc.idx = datatype_idx;
+				tempAlloc.subclass_idx = subclass_idx;
 				tempAlloc.size = size;
 				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size,"Added allocation");
 				break;
@@ -997,7 +1061,7 @@ int main(int argc, char *argv[]) {
 				}
 				Allocation& tempAlloc = itAlloc->second;
 				// An allocations datatype is
-				allocOFile << tempAlloc.id << delimiter << tempAlloc.idx + 1 << delimiter << baseAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
+				allocOFile << tempAlloc.id << delimiter << subclasses[tempAlloc.subclass_idx].id << delimiter << baseAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
 				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
 				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
 					if (itLock->second->lockAddress >= itAlloc->first && itLock->second->lockAddress < (itAlloc->first + tempAlloc.size)) {
@@ -1060,7 +1124,7 @@ int main(int argc, char *argv[]) {
 	// Hence, print every allocation, which is still stored in the map, and set the freed timestamp to NULL.
 	for (itAlloc = activeAllocs.begin(); itAlloc != activeAllocs.end(); itAlloc++) {
 		Allocation& tempAlloc = itAlloc->second;
-		allocOFile << tempAlloc.id << delimiter << types[tempAlloc.idx].id << delimiter << itAlloc->first << delimiter;
+		allocOFile << tempAlloc.id << delimiter << subclasses[tempAlloc.subclass_idx].id << delimiter << itAlloc->first << delimiter;
 		allocOFile << dec << tempAlloc.size << delimiter << dec << tempAlloc.start << delimiter << "\\N" << "\n";
 	}
 
@@ -1083,16 +1147,31 @@ int main(int argc, char *argv[]) {
 
 	binaryread_destroy();
 
-	// Helper: type -> ID mapping
-	std::map<std::string, decltype(DataType::id)> type2id;
-	for (const auto& type : types) {
-		type2id[type.name] = type.id;
+	// Dump all observed subclasses
+	int i = 1;
+	for (const auto &subclass : subclasses) {
+		subclassesOFile << i << delimiter << types[subclass.data_type_idx].id << delimiter;
+		subclassesOFile << sql_null_if(subclass.name, !subclass.real_subclass) << endl;
+		i++;
 	}
 
+	// Helper: type -> IDs mapping
+	std::map<std::string, vector<std::string> > type2id;
+	for (const auto& subclass : subclasses) {
+		const auto& type = types[subclass.data_type_idx];
+		type2id[type.name].push_back(std::to_string(subclass.id));
+	}
+	// Helper: subclass -> ID mapping
+	std::map<std::string, decltype(Subclass::id)> subclass2id;
+	for (const auto& subclass : subclasses) {
+		subclass2id[subclass.name] = subclass.id;
+	}
+
+	vector<std::string> blacklistIDs;
 	// Process function blacklist
 	for (lineCounter = 0;
 		getline(fnBlacklistInfile, inputLine);
-		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+		ss.clear(), ss.str(""), lineElems.clear(), blacklistIDs.clear(), lineCounter++) {
 
 		// Skip the CSV header
 		if (lineCounter == 0) {
@@ -1112,17 +1191,37 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		string dataTypeID;
 		if (lineElems.at(0) != "\\N") {
-			auto itType = type2id.find(lineElems.at(0));
-			if (itType == type2id.end()) {
-				cerr << "Unknown type in blacklist (function) line " << (lineCounter + 1)
-					<< ": " << lineElems.at(0) << endl;
-				continue;
+			string subclassName, dataTypeName, temp = lineElems.at(0);
+			bool isRealSubclass;
+			if (temp.find(DELIMITER_SUBCLASS) != string::npos) {
+				dataTypeName = temp.substr(0, temp.find(DELIMITER_SUBCLASS));
+				subclassName = temp.substr(temp.find(DELIMITER_SUBCLASS) + 1);
+				isRealSubclass = true;
+			} else {
+				dataTypeName = subclassName = temp;
+				isRealSubclass = false;
 			}
-			dataTypeID = std::to_string(itType->second);
+
+			if (isRealSubclass) {
+				auto itSubclass = subclass2id.find(subclassName);
+				if (itSubclass == subclass2id.end()) {
+					cerr << "Unknown subclass in blacklist (function) line " << (lineCounter + 1)
+						<< ": " << subclassName << endl;
+					continue;
+				}
+				blacklistIDs.push_back(std::to_string(itSubclass->second));
+			} else {
+				auto itType = type2id.find(dataTypeName);
+				if (itType == type2id.end()) {
+					cerr << "Unknown data type in blacklist (function) line " << (lineCounter + 1)
+						<< ": " << dataTypeName << endl;
+					continue;
+				}
+				blacklistIDs.insert(blacklistIDs.end(), itType->second.begin(), itType->second.end());
+			}
 		} else {
-			dataTypeID = lineElems.at(0);
+			blacklistIDs.push_back(lineElems.at(0));
 		}
 		
 		string memberID;
@@ -1138,16 +1237,19 @@ int main(int argc, char *argv[]) {
 			memberID = lineElems.at(1);
 		}
 
-		// Write a MySQL NULL for the id which forces MySQL to allocate a new unique id for this entry
-		fnblacklistOFile << "\\N" << delimiter << dataTypeID << delimiter
-			<< memberID << delimiter
-			<< lineElems.at(2) << endl;
+		for (auto id : blacklistIDs) {
+			// Write a MySQL NULL for the id which forces MySQL to allocate a new unique id for this entry
+			fnblacklistOFile << "\\N" << delimiter << id << delimiter
+				<< memberID << delimiter
+				<< lineElems.at(2) << endl;
+		}
 	}
 
+	blacklistIDs.clear();
 	// Process member blacklist
 	for (lineCounter = 0;
 		getline(memberBlacklistInfile, inputLine);
-		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+		ss.clear(), ss.str(""), lineElems.clear(), blacklistIDs.clear(), lineCounter++) {
 
 		// Skip the CSV header
 		if (lineCounter == 0) {
@@ -1167,11 +1269,38 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		auto itType = type2id.find(lineElems.at(0));
-		if (itType == type2id.end()) {
-			cerr << "Unknown type in blacklist (member) line " << (lineCounter + 1)
-				<< ": " << lineElems.at(0) << endl;
-			continue;
+		string dataTypeBl = lineElems.at(0);
+		if (dataTypeBl != "\\N") {
+			string subclassName, dataTypeName;
+			bool isRealSubclass;
+			if (dataTypeBl.find(DELIMITER_SUBCLASS) != string::npos) {
+				dataTypeName = dataTypeBl.substr(0, dataTypeBl.find(DELIMITER_SUBCLASS));
+				subclassName = dataTypeBl.substr(dataTypeBl.find(DELIMITER_SUBCLASS) + 1);
+				isRealSubclass = true;
+			} else {
+				dataTypeName = subclassName = dataTypeBl;
+				isRealSubclass = false;
+			}
+
+			if (isRealSubclass) {
+				auto itSubclass = subclass2id.find(subclassName);
+				if (itSubclass == subclass2id.end()) {
+					cerr << "Unknown subclass in blacklist (function) line " << (lineCounter + 1)
+						<< ": " << subclassName << endl;
+					continue;
+				}
+				blacklistIDs.push_back(std::to_string(itSubclass->second));
+			} else {
+				auto itType = type2id.find(dataTypeName);
+				if (itType == type2id.end()) {
+					cerr << "Unknown data type in blacklist (function) line " << (lineCounter + 1)
+						<< ": " << dataTypeName << endl;
+					continue;
+				}
+				blacklistIDs.insert(blacklistIDs.end(), itType->second.begin(), itType->second.end());
+			}
+		} else {
+			blacklistIDs.push_back(dataTypeBl);
 		}
 
 		auto itMember = memberNames.find(lineElems.at(1));
@@ -1181,8 +1310,9 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		memberblacklistOFile << itType->second << delimiter
-			<< itMember->second << endl;
+		for (auto id : blacklistIDs) {
+			memberblacklistOFile << id << delimiter << itMember->second << endl;
+		}
 	}
 
 	cerr << "Finished." << endl;

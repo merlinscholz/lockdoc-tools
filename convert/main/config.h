@@ -11,6 +11,7 @@
 //#define DEBUG_DATASTRUCTURE_GROWTH
 #define DELIMITER_MSG_ERROR	":"
 #define DELIMITER_MSG_DEBUG	":"
+#define DELIMITER_SUBCLASS	":"
 
 // The PRINT_* macros are a bit ugly... At least they ensure a consistent format.
 // However, they induce less overhead than a dedicated logger class which performs runtime checks.

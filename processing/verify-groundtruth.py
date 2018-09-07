@@ -161,10 +161,10 @@ if __name__ == '__main__':
 			# '$key in $dict' syntax does *not* do the job, because locksHeld is a regex.
 			# We therefore need to use re.match().
 			for locksHeld, locksHeldEntry in locksHeldDict.iteritems():
-				LOGGER.debug('SEARCHRULE:%s: Checking %s and %s', key, lockingRule,locksHeld)
+				#LOGGER.debug('SEARCHRULE:%s: Checking %s and %s', key, lockingRule,locksHeld)
 				if re.match('^' + lockingRule + '$',locksHeld):
 					matchFound = True
-					LOGGER.debug('SEARCHRULE: %s %s matches %s by %d', key, lockingRule, locksHeld, locksHeldEntry['percentage'])
+					LOGGER.debug('SEARCHRULE:%s,%d', key, locksHeldEntry['percentage'])
 					if locksHeldEntry['percentage'] == 100:
 						resultsEntry['full'] += 1
 						_color = 'green'
@@ -172,15 +172,15 @@ if __name__ == '__main__':
 						resultsEntry['found'] += 1
 						_color = 'yellow'
 					_locksHeldEntry = locksHeldEntry
-					LOGGER.debug('Added new entry for key %s and locking rule %s: %s\n %s', key, lockingRule, resultsEntry, locksHeldEntry)
+					#LOGGER.debug('Added new entry for key %s and locking rule %s: %s\n %s', key, lockingRule, resultsEntry, locksHeldEntry)
 					break
-				else:
-					LOGGER.debug('SEARCHRULE: No match %s and %s',lockingRule,locksHeld)
+				#else:
+					#LOGGER.debug('SEARCHRULE: No match %s and %s',lockingRule,locksHeld)
 			if not matchFound:
 				resultsEntry['notfound'] += 1
 				_color = 'red'
 				_locksHeldEntry = None
-				LOGGER.debug('SEARCHRULE: Lock combination %s not found for %s', lockingRule, key)
+				LOGGER.debug('SEARCHRULE:%s,%d', key, 0)
 			membersDict = resultsEntry['members']
 			membersDictKey = (key[1], key[2])
 			if membersDictKey not in membersDict:
