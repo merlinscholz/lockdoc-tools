@@ -76,7 +76,9 @@ fi
 
 cat <<EOT
 SELECT dt_name, sl_member, ac_type, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held, 
-		GROUP_CONCAT(ac_id ORDER BY ac_id SEPARATOR ';') AS accesses, COUNT(*) AS num
+		GROUP_CONCAT(ac_id ORDER BY ac_id SEPARATOR ';') AS accesses,
+		GROUP_CONCAT(m_bl ORDER BY ac_id SEPARATOR ';') AS m_bl,
+		GROUP_CONCAT(fn_bl ORDER BY ac_id SEPARATOR ';') AS fn_bl, COUNT(*) AS num
 FROM
 (
 	SELECT
@@ -91,14 +93,16 @@ FROM
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT(lock_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
+--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), ')', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
 			END
 			ORDER BY lh.start
 			SEPARATOR ' -> '
 		) AS locks_held,
-		stacktrace
+		stacktrace,
+		m_bl,
+		fn_bl
 	FROM
 	(
 		-- Get all accesses. Add information about the accessed member, data type, and the function the memory has been accessed from.
@@ -111,10 +115,13 @@ FROM
 			mn.name AS sl_member,
 			dt.name AS dt_name,
 			GROUP_CONCAT(
-				CONCAT(lower(hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line)
+				CONCAT(lower(hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line,
+					'@m_bl:', m_bl.subclass_id IS NOT NULL, '@fn_bl:', fn_bl.fn IS NOT NULL)
 				ORDER BY st.sequence
 				SEPARATOR ','
-			) AS stacktrace
+			) AS stacktrace,
+			MAX(m_bl.subclass_id IS NOT NULL) AS m_bl,
+			MAX(fn_bl.fn IS NOT NULL) AS fn_bl
 		FROM accesses AS ac
 		INNER JOIN allocations AS a
 		  ON a.id = ac.alloc_id
@@ -127,6 +134,19 @@ FROM
 		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names AS mn
 		  ON mn.id = sl.member_name_id
+		LEFT JOIN member_blacklist m_bl
+		  ON m_bl.subclass_id = a.subclass_id
+		 AND m_bl.member_name_id = sl.member_name_id
+		LEFT JOIN function_blacklist fn_bl
+		  ON fn_bl.fn = st.function
+		 AND 
+		 (
+			(fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+			OR
+			(fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			OR
+			(fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+		 )
 		WHERE 1
 			-- Name the data type of interest here
 			${DATATYPE_FILTER}
