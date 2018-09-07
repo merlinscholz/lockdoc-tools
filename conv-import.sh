@@ -139,6 +139,8 @@ if echo $DATA | egrep -q '.bz2$'; then
 	$VALGRIND $GDB ${CONVERT_BINARY} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 elif echo $DATA | egrep -q '.gz$'; then
 	$VALGRIND $GDB ${CONVERT_BINARY} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+elif echo $DATA | egrep -q '.csv$'; then
+	$VALGRIND $GDB ${CONVERT_BINARY} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval cat $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 else
 	echo "no idea what to do with filename extension of $DATA" >&2
 	exit 1
