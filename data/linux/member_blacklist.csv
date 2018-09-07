@@ -23,8 +23,8 @@ transaction_t;t_handle_lock
 super_block;s_vfs_rename_mutex
 super_block;s_inode_list_lock
 super_block;s_inode_wblist_lock
-backing_dev_info;wb_lock
 backing_dev_info;wb.list_lock
+backing_dev_info;wb.work_lock
 block_device;bd_mutex
 block_device;bd_fsfreeze_mutex
 pipe_inode_info;mutex
