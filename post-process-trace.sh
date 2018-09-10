@@ -51,16 +51,18 @@ then
 	echo "Cannot run hypothesizer!">&2 
 	exit 1
 fi
-${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} stack
-if [ ${?} -ne 0 ];
-then
-	echo "Cannot run hypothesizer!">&2 
-	exit 1
-fi
 ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} any nostack
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run get-process-cex.sh for nostack!">&2 
+	exit 1
+fi
+echo "Finished processing variant nostack"
+echo "-----------------------------------"
+${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} stack
+if [ ${?} -ne 0 ];
+then
+	echo "Cannot run hypothesizer!">&2 
 	exit 1
 fi
 ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} any stack
@@ -69,3 +71,5 @@ then
 	echo "Cannot run get-process-cex.sh for stack!">&2 
 	exit 1
 fi 
+echo "Finished processing variant stack"
+echo "-----------------------------------"
