@@ -1,7 +1,7 @@
 #!/bin/bash
 CONFIGFILE="convert.conf"
 TOOLS_PATH=`dirname ${0}`
-BASE_URL="https://ess.cs.tu-dortmund.de/pferd/linux-lockdoc/lockdebug-v4.10-0.10"
+BASE_URL="https://ess.cs.tu-dortmund.de/pferd/linux-lockdoc/lockdebug-v4.10-0.11"
 
 function usage() {
 	echo "usage: $0 <database> <data_type> <variant: nostack vs. stack>" >&2
@@ -54,7 +54,7 @@ else
 fi
 
 
-${TOOLS_PATH}/get-counterexamples.sh all_txns_members_locks_hypo_bugs_${VARIANT}.txt ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
+time ${TOOLS_PATH}/get-counterexamples.sh all_txns_members_locks_hypo_bugs_${VARIANT}.txt ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run get-counterexamples.sh for ${VARIANT}!">&2 
