@@ -87,8 +87,8 @@ FROM
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
-            JOIN subclasses sc
-              ON sc.id=a.subclass_id
+			JOIN subclasses sc
+			  ON a.subclass_id = sc.id
 			LEFT JOIN structs_layout_flat sl
 			  ON sc.data_type_id = sl.data_type_id
 			 AND ac.address - a.base_address = sl.helper_offset
@@ -103,15 +103,15 @@ FROM
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
 			(
-			-- Get all accesses that happened on an init path or accessed a blacklisted member
+				-- Get all accesses that happened on an init path or accessed a blacklisted member
 				SELECT ac.id
 				FROM accesses ac
 				JOIN allocations a
 				  ON ac.alloc_id = a.id
-                JOIN subclasses sc
-                  ON sc.id=a.subclass_id
-                LEFT JOIN structs_layout_flat sl
-                  ON sc.data_type_id = sl.data_type_id
+				JOIN subclasses sc
+				  ON a.subclass_id = sc.id
+				LEFT JOIN structs_layout_flat sl
+				  ON sc.data_type_id = sl.data_type_id
 				 AND ac.address - a.base_address = sl.helper_offset
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
@@ -145,8 +145,8 @@ FROM
 			GROUP BY ac.alloc_id, ac.txn_id, sc.id, sl.offset
 		) AS fac -- = Folded ACcesses
 
-        JOIN subclasses sc
-          ON sc.id = fac.subclass_id
+		JOIN subclasses sc
+		  ON fac.subclass_id = sc.id
 		JOIN data_types dt
 		  ON dt.id = sc.data_type_id
 		GROUP BY fac.alloc_id, fac.txn_id, fac.subclass_id
@@ -161,8 +161,8 @@ FROM
 	-- member or contained-in member in case of a complex member)
 	LEFT JOIN allocations lock_a
 	  ON l.embedded_in = lock_a.id
-    LEFT JOIN subclasses lock_sc
-      ON lock_sc.id=lock_a.subclass_id
+	LEFT JOIN subclasses lock_sc
+	  ON lock_a.subclass_id = lock_sc.id
 	LEFT JOIN data_types lock_a_dt
 	  ON lock_sc.data_type_id = lock_a_dt.id
 	LEFT JOIN structs_layout_flat lock_member
@@ -185,11 +185,11 @@ FROM
 	FROM accesses ac
 	JOIN allocations a
 	  ON ac.alloc_id = a.id
-    JOIN subclasses sc
-      ON sc.id=a.subclass_id
+	JOIN subclasses sc
+	  ON a.subclass_id = sc.id
 	JOIN data_types dt
 	  ON dt.id = sc.data_type_id
-    LEFT JOIN structs_layout_flat sl
+	LEFT JOIN structs_layout_flat sl
 	  ON sc.data_type_id = sl.data_type_id
 	 AND ac.address - a.base_address = sl.helper_offset
 	LEFT JOIN member_names mn
@@ -203,15 +203,15 @@ FROM
 	AND ac.txn_id IS NULL
 	AND ac.id NOT IN
 	(
-	-- Get all accesses that happened on an init path or accessed a blacklisted member
+		-- Get all accesses that happened on an init path or accessed a blacklisted member
 		SELECT ac.id
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
-        JOIN subclasses sc
-          ON sc.id=a.subclass_id
-        LEFT JOIN structs_layout_flat sl
-	      ON sc.data_type_id = sl.data_type_id
+		JOIN subclasses sc
+		  ON a.subclass_id = sc.id
+		LEFT JOIN structs_layout_flat sl
+		  ON sl.data_type_id = sc.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
 		JOIN stacktraces AS st
 		  ON ac.stacktrace_id = st.id
@@ -282,8 +282,8 @@ FROM
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
-            JOIN subclasses sc
-              ON sc.id=a.subclass_id
+			JOIN subclasses sc
+			  ON a.subclass_id = sc.id
 			LEFT JOIN structs_layout_flat sl
 			  ON sc.data_type_id = sl.data_type_id
 			 AND ac.address - a.base_address = sl.helper_offset
@@ -298,15 +298,15 @@ FROM
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
 			(
-			-- Get all accesses that happened on an init path or accessed a blacklisted member
+				-- Get all accesses that happened on an init path or accessed a blacklisted member
 				SELECT ac.id
 				FROM accesses ac
 				JOIN allocations a
 				  ON ac.alloc_id = a.id
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
-                JOIN subclasses sc
-                  ON sc.id=a.subclass_id
+				JOIN subclasses sc
+				  ON a.subclass_id = sc.id
 				LEFT JOIN structs_layout_flat sl
 				  ON sc.data_type_id = sl.data_type_id
 				 AND ac.address - a.base_address = sl.helper_offset
@@ -339,10 +339,10 @@ FROM
 			)
 			GROUP BY ac.id -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
 		) AS fac
-        JOIN subclasses sc
-          ON sc.id = fac.subclass_id
+		JOIN subclasses sc
+		  ON fac.subclass_id = sc.id
 		JOIN data_types dt
-			ON dt.id = sc.data_type_id
+		  ON dt.id = sc.data_type_id
 		JOIN locks_held lh
 		  ON lh.txn_id = fac.txn_id
 		JOIN locks l
@@ -351,8 +351,8 @@ FROM
 		-- member or contained-in member in case of a complex member)
 		LEFT JOIN allocations lock_a
 		  ON l.embedded_in = lock_a.id
-        LEFT JOIN subclasses lock_sc
-          ON lock_sc.id=lock_a.subclass_id
+		LEFT JOIN subclasses lock_sc
+		  ON lock_a.subclass_id = lock_sc.id
 		LEFT JOIN data_types lock_a_dt
 		  ON lock_sc.data_type_id = lock_a_dt.id
 		LEFT JOIN structs_layout_flat lock_member
@@ -371,15 +371,15 @@ FROM
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
-        JOIN subclasses sc
-          ON sc.id=a.subclass_id
+		JOIN subclasses sc
+		  ON a.subclass_id = sc.id
 		LEFT JOIN structs_layout_flat sl
 		  ON sc.data_type_id = sl.data_type_id
 		 AND ac.address - a.base_address = sl.helper_offset
 		LEFT JOIN member_names mn
 		  ON mn.id = sl.member_name_id
 		JOIN data_types dt
-			ON dt.id = sc.data_type_id
+		  ON dt.id = sc.data_type_id
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
@@ -394,8 +394,8 @@ FROM
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
-            JOIN subclasses sc
-              ON sc.id=a.subclass_id
+			JOIN subclasses sc
+			  ON a.subclass_id = sc.id
 			JOIN stacktraces AS st
 			  ON ac.stacktrace_id = st.id
 			LEFT JOIN structs_layout_flat sl
