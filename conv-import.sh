@@ -24,7 +24,7 @@ fi
 
 if [ -z ${DATA} ] || [ -z ${KERNEL} ] || [ -z ${DELIMITER} ] || [ -z ${KERNEL_TREE} ] || [ -z ${GUEST_OS} ];
 then
-	echo "Vars DATA, KERNEL, DELIMITER, or KERNEL_TREE are not set!" >&2
+	echo "Vars DATA, KERNEL, DELIMITER, KERNEL_TREE, or GUEST_OS are not set!" >&2
 	exit 1
 fi
 
