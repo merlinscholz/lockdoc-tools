@@ -12,6 +12,9 @@ function usage() {
         exit 1
 }
 
+SKIP_IMPORT=${SKIP_IMPORT:-0}
+SKIP_HYPO=${SKIP_HYPO:-0}
+
 if [ -z ${1} ];
 then
         usage
@@ -37,25 +40,28 @@ then
 	done
 fi
 
-${TOOLS_PATH}/conv-import.sh ${DB} -1
-if [ ${?} -ne 0 ];
+if [ ${SKIP_IMPORT} -eq 0 ];
 then
-	echo "Cannot convert and import trace!">&2 
-	exit 1
-fi 
-echo "Flatten structs layout..."
-${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
-if [ ${?} -ne 0 ];
-then
-	echo "Cannot flatten structs layout!">&2 
-	exit 1
-fi 
-echo "Deleting accesses to atomic members..."
-${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
-if [ ${?} -ne 0 ];
-then
-	echo "Cannot delete atomic members!">&2 
-	exit 1
+	${TOOLS_PATH}/conv-import.sh ${DB} -1
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot convert and import trace!">&2
+		exit 1
+	fi
+	echo "Flatten structs layout..."
+	${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot flatten structs layout!">&2
+		exit 1
+	fi
+	echo "Deleting accesses to atomic members..."
+	${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot delete atomic members!">&2
+		exit 1
+	fi
 fi
 
 PREFIX="all_txns_members_locks"
@@ -78,12 +84,17 @@ do
 			VARIANT="${VARIANT}-subclasses"
 		fi
 
-		${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX}
-		if [ ${?} -ne 0 ];
+		echo "Start processing '${VARIANT}'"
+		if [ ${SKIP_HYPO} -eq 0 ];
 		then
-			echo "Cannot run hypothesizer for ${VARIANT}!">&2 
-			exit 1
+			${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX}
+			if [ ${?} -ne 0 ];
+			then
+				echo "Cannot run hypothesizer for ${VARIANT}!">&2
+				exit 1
+			fi
 		fi
+		echo "Retrieving counterexamples..."
 		${TOOLS_PATH}/processing/get-process-cex.sh ${DB} any ${PREFIX}_hypo_bugs_${VARIANT}.txt ${PREFIX}_hypo_winner_${VARIANT}.csv ${VARIANT}
 		if [ ${?} -ne 0 ];
 		then
