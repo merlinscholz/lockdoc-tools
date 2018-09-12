@@ -1,6 +1,5 @@
 #!/bin/bash
 # Extract txns from database, and runs the hypothesizer various times.
-# All members having a percentage of NO_LOCK_THRESHOLD of accesses without locks are assumed to not require any locking. 
 # (1) Run the hypothesizer to generate the normal humand-readable output
 # (2) Run it to get a csv file with the winning hypotheses (cut-off threshold is 0.0)
 # (3) Run it to get the parameter list for counterexample.sql.sh
@@ -8,27 +7,45 @@
 TOOLS_PATH=`dirname ${0}`
 
 function usage() {
-        echo "usage: $0 <database> <variant>" >&2
+        echo "usage: $0 <database> <use stack> <use subclasses> <prefix for the output fname>" >&2
         exit 1
 }
 
-if [ -z ${1} ];
+if [ ${#} -lt 4 ];
 then
         usage
 fi
-DB=$1
-shift
 
-if [ -z ${1} ] || { [ ${1} != "stack" ] && [ ${1} != "nostack" ]; };
+DB=$1;shift
+
+USE_STACK=${1};shift
+if [ -z ${USE_STACK} ] || { [ ${USE_STACK} -ne 0 ] && [ ${USE_STACK} -ne 1 ]; };
 then
         usage
 fi
-VARIANT=`echo ${1}| tr '[:upper:]' '[:lower:]'`
-shift
+if [ ${USE_STACK} -eq 0 ];
+then
+	VARIANT="nostack"
+else
+	VARIANT="stack"
+fi
 
-HYPO_INPUT=all_txns_members_locks_db_${VARIANT}.csv
-NO_LOCK_THRESHOLD=5.0
+USE_SUBCLASSES=${1};shift
+if [ -z ${USE_SUBCLASSES} ] || { [ ${USE_SUBCLASSES} -ne 0 ] && [ ${USE_SUBCLASSES} -ne 1 ]; };
+then
+        usage
+fi
+if [ ${USE_SUBCLASSES} -eq 0 ];
+then
+	VARIANT="${VARIANT}-nosubclasses"
+else
+	VARIANT="${VARIANT}-subclasses"
+fi
 
-echo "Retrieving txns members locks (${VARIANT})..."
-time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${VARIANT} | mysql ${DB} > ${HYPO_INPUT}"
-${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT}
+PREFIX=${1};shift
+
+HYPO_INPUT=${PREFIX}_db_${VARIANT}.csv
+
+echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
+time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | mysql ${DB} > ${HYPO_INPUT}"
+${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}

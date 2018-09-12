@@ -11,26 +11,39 @@
 
 if [ ! -z ${1} ];
 then
-	MODE=${1}
+	USE_STACK=${1}
 fi
 
-MODE=${MODE:-nostack}
+USE_STACK=${USE_STACK:-0}
 shift
 DATATYPE=${1}
 shift
 MEMBER=${1}
+shift
+USE_SUBCLASSES=${1:-0}
 
-if [ ! -z ${DATATYPE} ];
+if [ ! -z ${DATATYPE} ] && [ "${DATATYPE}" != "any" ];
 then
 	DATATYPE_FILTER="AND sc.data_type_id = (SELECT id FROM data_types WHERE name = '${DATATYPE}')"
 fi
 
-if [ ! -z ${MEMBER} ];
+if [ ! -z ${MEMBER} ] && [ "${MEMBER}" != "any" ];
 then
 	MEMBER_FILTER="AND mn.id = (SELECT id FROM member_names WHERE name = '${MEMBER}')"
 fi
 
-if [ ${MODE} == "nostack" ];
+if [ ${USE_SUBCLASSES} -eq 1 ];
+then
+	TYPE_NAME_COLUMN="IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name))"
+	TYPE_ID_ALIAS="subclass_id_group"
+	TYPE_ID_COLUMN="sc.id"
+else
+	TYPE_NAME_COLUMN="dt.name"
+	TYPE_ID_ALIAS="data_type_id_group"
+	TYPE_ID_COLUMN="sc.data_type_id"
+fi
+
+if [ ${USE_STACK} -eq 0 ];
 then
 cat <<EOT
 -- Count member-access combinations within distinct TXNs, allocations, and
@@ -51,7 +64,7 @@ FROM
 
 (
 	-- add GROUP_CONCAT of all held locks (in locking order) to each list of accessed members
-	SELECT concatgroups.subclass_id, concatgroups.type_name, concatgroups.members_accessed,
+	SELECT concatgroups.${TYPE_ID_ALIAS}, concatgroups.type_name, concatgroups.members_accessed,
 		GROUP_CONCAT(
 			CASE
 --			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.data_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation)
@@ -73,7 +86,7 @@ FROM
 
 	(
 		-- GROUP_CONCAT all member accesses within a TXN and a specific allocation
-		SELECT sc.id AS subclass_id, IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) AS type_name, fac.alloc_id, fac.txn_id,
+		SELECT ${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, fac.alloc_id, fac.txn_id,
 			GROUP_CONCAT(CONCAT(fac.type, ':', fac.member) ORDER BY fac.offset) AS members_accessed
 		FROM
 
@@ -83,7 +96,7 @@ FROM
 			-- access is a write, otherwise a read.
 			-- NOTE: The above property does *NOT* apply if the the results are grouped by stacktrace_id.
 			-- NOTE: This does not fold accesses to two different allocations.
-			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, sc.id AS subclass_id, mn.name AS member, sl.offset, sl.size
+			SELECT ac.alloc_id, ac.txn_id, MAX(ac.type) AS type, sc.id AS subclass_id, ${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, mn.name AS member, sl.offset, sl.size
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
@@ -142,14 +155,14 @@ FROM
 				)
 				GROUP BY ac.id
 			)
-			GROUP BY ac.alloc_id, ac.txn_id, sc.id, sl.offset
+			GROUP BY ac.alloc_id, ac.txn_id, ${TYPE_ID_COLUMN}, sl.offset
 		) AS fac -- = Folded ACcesses
 
 		JOIN subclasses sc
 		  ON fac.subclass_id = sc.id
 		JOIN data_types dt
 		  ON dt.id = sc.data_type_id
-		GROUP BY fac.alloc_id, fac.txn_id, fac.subclass_id
+		GROUP BY fac.alloc_id, fac.txn_id, fac.${TYPE_ID_ALIAS}
 	) AS concatgroups
 
 	JOIN locks_held lh
@@ -174,14 +187,14 @@ FROM
 	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_name_id
 
-	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.subclass_id
+	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.${TYPE_ID_ALIAS}
 
 	UNION ALL
 
 	-- Memory accesses to known allocations without any locks held: We
 	-- cannot group these into TXNs, instead we assume them each in their
 	-- own TXN for the purpose of this query.
-	SELECT sc.id AS subclass_id, IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) AS type_name, CONCAT(ac.type, ':', mn.name) AS members_accessed, '' AS locks_held
+	SELECT ${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, CONCAT(ac.type, ':', mn.name) AS members_accessed, '' AS locks_held
 	FROM accesses ac
 	JOIN allocations a
 	  ON ac.alloc_id = a.id
@@ -244,11 +257,11 @@ FROM
 	)
 ) AS withlocks
 
-GROUP BY subclass_id, members_accessed, locks_held
-ORDER BY subclass_id, occurrences, members_accessed, locks_held
+GROUP BY ${TYPE_ID_ALIAS}, members_accessed, locks_held
+ORDER BY ${TYPE_ID_ALIAS}, occurrences, members_accessed, locks_held
 ;
 EOT
-elif [ ${MODE} == "stack" ];
+elif [ ${USE_STACK} -eq 1 ];
 then
 cat <<EOT
 SELECT 
@@ -258,11 +271,11 @@ SELECT
 FROM
 (
 	SELECT 
-		type_name, subclass_id,
+		type_name, ${TYPE_ID_ALIAS},
 		member, locks_held
 	FROM
 	(
-		SELECT fac.subclass_id, IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) AS type_name, fac.member, fac.stacktrace_id,
+		SELECT fac.${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, fac.member, fac.stacktrace_id,
 			GROUP_CONCAT(
 				CASE
 				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
@@ -278,7 +291,7 @@ FROM
 			) AS locks_held
 		FROM
 		(
-			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, sc.id AS subclass_id, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.stacktrace_id
+			SELECT ac.id, ac.alloc_id, ac.txn_id, ac.type AS ac_type, sc.id AS subclass_id, ${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, CONCAT(ac.type, ':', mn.name) AS member, sl.offset, ac.stacktrace_id
 			FROM accesses ac
 			JOIN allocations a
 			  ON ac.alloc_id = a.id
@@ -367,7 +380,7 @@ FROM
 		
 		UNION ALL
 		
-		SELECT sc.id AS subclass_id, IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.stacktrace_id, '' AS locks_held
+		SELECT ${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, CONCAT(ac.type, ':', mn.name) AS member, ac.stacktrace_id, '' AS locks_held
 		FROM accesses ac
 		JOIN allocations a
 		  ON ac.alloc_id = a.id
@@ -430,10 +443,10 @@ FROM
 		)
 		GROUP BY ac.id
 	) AS concatlocks
-	GROUP BY concatlocks.subclass_id, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id
+	GROUP BY concatlocks.${TYPE_ID_ALIAS}, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id
 ) AS fstacks
-GROUP BY fstacks.subclass_id, fstacks.member, fstacks.locks_held
-ORDER BY fstacks.subclass_id, fstacks.member, fstacks.locks_held, occurrences
+GROUP BY fstacks.${TYPE_ID_ALIAS}, fstacks.member, fstacks.locks_held
+ORDER BY fstacks.${TYPE_ID_ALIAS}, fstacks.member, fstacks.locks_held, occurrences
 ;
 EOT
 else
