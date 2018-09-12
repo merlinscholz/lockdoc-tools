@@ -109,7 +109,7 @@ CREATE TABLE `function_blacklist` (			-- A per datatype list of blacklisted func
   `fn` varchar(80) NOT NULL,		-- The function name (aka resolved instruction pointer) which we want to ignore
   PRIMARY KEY (`id`),
   UNIQUE KEY `fn_bl_entry` (`subclass_id`,`member_name_id`,`fn`),
-  KEY `fn_idx` (`fn`)
+  KEY `fn_class_idx` (`fn`,`subclass_id`)
 ) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
 ;
 
