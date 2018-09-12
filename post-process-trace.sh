@@ -3,6 +3,7 @@
 # If required, it will wait for the fail-client to terminate, and automatically start the post processing.
 # 
 TOOLS_PATH=`dirname ${0}`
+CONFIGFILE="convert.conf"
 STACK_USAGE=(0 1)
 SUBCLASS_USAGE=(0 1)
 
@@ -17,6 +18,15 @@ then
 fi
 DB=$1
 shift
+
+if [ ! -f ${CONFIGFILE} ];
+then
+	echo "${CONFIGFILE} does not exist!" >&2
+	exit 1
+fi
+set -a
+. ${CONFIGFILE}
+set +a
 
 if [ ! -z ${1} ];
 then

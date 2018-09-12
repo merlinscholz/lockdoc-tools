@@ -20,7 +20,14 @@ FN_BLACK_LIST	Blacklisted functions
 MEMBER_BLACK_LIST Blacklisted members" >&2
 	exit 1
 fi
-. ${CONFIGFILE}
+
+if [ ! -z ${DATA} ] && [ ! -z ${KERNEL} ] && [ ! -z ${DELIMITER} ] && [ ! -z ${KERNEL_TREE} ] && [ ! -z ${GUEST_OS} ];
+then
+	echo "All variable are already set by the caller. Skipping '${CONFIGFILE}'..."
+else
+	echo "At least one variable is NOT set. Using '${CONFIGFILE}'."
+	. ${CONFIGFILE}
+fi
 
 if [ -z ${DATA} ] || [ -z ${KERNEL} ] || [ -z ${DELIMITER} ] || [ -z ${KERNEL_TREE} ] || [ -z ${GUEST_OS} ];
 then
