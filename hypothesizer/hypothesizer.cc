@@ -41,7 +41,7 @@ const option::Descriptor usage[] = {
   "-t/--cutoff-threshold n  \tSet hypothesis cutoff threshold to n% (default: 10.0)"
 }, {
   DATATYPE, 0, "d", "datatype", Arg::Required,
-  "-d/--datatype typename  \tOnly create/test hypotheses for a specific data structure; may be used more than once"
+  "-d/--datatype typename  \tOnly create/test hypotheses for a specific data structure that name starts with $datatype; may be used more than once"
 }, {
   MEMBER, 0, "m", "member", Arg::Required,
   "-m/--member member  \tOnly create/test hypotheses for specific data-structure member; may be used more than once"
@@ -705,11 +705,15 @@ int main(int argc, char **argv)
 		Member& member = *it;
 
 		// Skip if user has specified datatypes + this one is not in the list
-		if (accepted_datatypes.size() > 0 &&
-			accepted_datatypes.find(member.datatype) == accepted_datatypes.end()) {
-			member.clear();
-			member.show = false;
-			continue;
+		if (accepted_datatypes.size() > 0) {
+			const auto dataTypeName = member.datatype;
+			const auto it = find_if(accepted_datatypes.cbegin(), accepted_datatypes.cend(),
+					[&dataTypeName](const std::string& curDataTypeName) { return dataTypeName.find(curDataTypeName) == 0; } );
+			if (it == accepted_datatypes.cend()) {
+				member.clear();
+				member.show = false;
+				continue;
+			}
 		}
 
 		// Skip if user has specified members + this one is not in the list
