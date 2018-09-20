@@ -1,9 +1,7 @@
 datatype;datatype_member
-inode;i_fop
 inode;i_lock
 inode;i_mutex
 inode;i_rwsem
-inode;i_private
 inode;i_data.i_mmap_mutex
 inode;i_data.i_mmap_rwsem
 inode;i_data.private_lock
