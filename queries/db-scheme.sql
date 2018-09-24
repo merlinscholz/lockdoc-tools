@@ -95,6 +95,7 @@ CREATE TABLE `stacktraces` (
   `id` int(11) UNSIGNED NOT NULL,		-- An unique id identifying a stacktrace
   `sequence` int(11) NOT NULL,			-- The n-th stackframe
   `instruction_ptr` int(11) UNSIGNED NOT NULL,			-- The instruction pointer
+  `instruction_ptr_prev` int(11) UNSIGNED NOT NULL,			-- The instruction pointer
   `function` varchar(80) NOT NULL,			-- Function name corresponding to the instruction pointer
   `line` int(11) DEFAULT NULL,			-- A line corresponding to the instruction pointer
   `file` varchar(255) DEFAULT NULL,			-- The filename corresponding to the instruction pointer

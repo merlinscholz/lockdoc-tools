@@ -591,17 +591,19 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 
 		ret = curStacktraceID++;
 		subStacktraces.emplace(stacktrace,ret);
-		
 		ss << stacktrace;
 		do {
-			instrPtr = std::stoull(token,NULL,16);
-			const struct ResolvedInstructionPtr &resolvedInstrPtr = get_function_at_addr(kernelBaseDir, instrPtr);
-			stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
+			auto instrPtrPrev = instrPtr = std::stoull(token,NULL,16);
+			if (sequence > 0) {
+				instrPtrPrev--;
+			}
+			const struct ResolvedInstructionPtr &resolvedInstrPtr = get_function_at_addr(kernelBaseDir, instrPtrPrev);
+			stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter << instrPtrPrev << delimiter;
 			stacktracesOFile << resolvedInstrPtr.codeLocation.fn << delimiter << resolvedInstrPtr.codeLocation.line << delimiter << resolvedInstrPtr.codeLocation.file << "\n";
 			sequence++;
 			if (resolvedInstrPtr.inlinedBy.size() > 0) {
 				for (auto &inlinedFn : resolvedInstrPtr.inlinedBy) {
-					stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter;
+					stacktracesOFile << ret << delimiter << sequence << delimiter << instrPtr << delimiter << instrPtrPrev << delimiter;
 					stacktracesOFile << inlinedFn.fn << delimiter << inlinedFn.line << delimiter << inlinedFn.file << "\n";
 					sequence++;
 				}
@@ -818,7 +820,8 @@ int main(int argc, char *argv[]) {
 		
 	membernamesOFile << "id" << delimiter << "member_name" << endl;
 	
-	stacktracesOFile << "id" << delimiter << "sequence" << delimiter << "instruction_ptr" << delimiter << "function" << delimiter << "line" << delimiter << "file" << endl;
+	stacktracesOFile << "id" << delimiter << "sequence" << delimiter << "instruction_ptr" << delimiter;
+	stacktracesOFile << "instruction_ptr_prev" << delimiter << "function" << delimiter << "line" << delimiter << "file" << endl;
 
 	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
 
