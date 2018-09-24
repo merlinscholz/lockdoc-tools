@@ -159,8 +159,8 @@ inode;i_bytes;r;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
 inode;i_bytes;w;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
 inode;i_state;r;EMBSAME\(inode.i_lock\);;fs/inode.c:27
 inode;i_state;w;EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_hash;r;[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_hash;w;[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
+inode;i_hash;r;([a-zA-Z0-9_]*:)[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
+inode;i_hash;w;([a-zA-Z0-9_]*:)[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
 inode;i_count;r;EMBSAME\(inode.i_lock\);;fs/inode.c:1535
 inode;i_count;w;EMBSAME\(inode.i_lock\);;fs/inode.c:1535
 inode;i_lru;r;EMBSAME\(inode.i_lock\);;fs/inode.c:413,fs/inode.c:27
