@@ -48,4 +48,4 @@ HYPO_INPUT=${PREFIX}_db_${VARIANT}.csv
 
 echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
 time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | mysql ${DB} > ${HYPO_INPUT}"
-${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
+time ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
