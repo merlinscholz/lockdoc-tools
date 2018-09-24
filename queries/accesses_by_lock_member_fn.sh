@@ -85,6 +85,8 @@ else
 fi
 
 cat <<EOT
+SET SESSION group_concat_max_len = 8192;
+
 SELECT dt_name, sl_member, ac_type, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held, 
 		GROUP_CONCAT(ac_id ORDER BY ac_id SEPARATOR ';') AS accesses,
 		GROUP_CONCAT(m_bl ORDER BY ac_id SEPARATOR ';') AS m_bl,
