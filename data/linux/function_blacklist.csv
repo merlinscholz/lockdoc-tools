@@ -55,6 +55,7 @@ datatype;datatype_member;fn
 \N;\N;__raw_cmpxchg_none_w
 \N;\N;__raw_cmpxchg_none_l
 \N;\N;__raw_cmpxchg_none_q
+\N;\N;kernel_init
 inode;\N;alloc_anon_inode
 inode;\N;clear_inode
 inode;\N;configfs_fill_super
