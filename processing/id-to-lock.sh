@@ -13,7 +13,7 @@ shift
 LOCK_ID=${1}
 shift
 
-LOCK_ADDR=`mysql --batch --skip-column-names --execute="SELECT HEX(l.ptr) FROM locks AS l WHERE l.id = ${LOCK_ID} AND l.embedded_in IS NULL;" ${DB}`
+LOCK_ADDR=`mysql --batch --skip-column-names --execute="SELECT HEX(l.address) FROM locks AS l WHERE l.id = ${LOCK_ID} AND l.embedded_in IS NULL;" ${DB}`
 if [ -z ${LOCK_ADDR} ];
 then
 	echo "No such global lock!"
@@ -29,6 +29,6 @@ then
 fi
 echo "No proper symbol found. Trying it again with a more coarse-grained addr..."
 
-LOCK_ADDR=`mysql --batch --skip-column-names --execute="SELECT HEX(l.ptr >> 8) FROM locks AS l WHERE l.id = ${LOCK_ID} AND l.embedded_in IS NULL;" ${DB}`
+LOCK_ADDR=`mysql --batch --skip-column-names --execute="SELECT HEX(l.address >> 8) FROM locks AS l WHERE l.id = ${LOCK_ID} AND l.embedded_in IS NULL;" ${DB}`
 echo "Using address ${LOCK_ADDR}"
 nm -n ${VMLINUX} | grep -i "${LOCK_ADDR}"
