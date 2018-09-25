@@ -51,6 +51,14 @@ struct lockVarSearch {
  */
 static asymbol **bfdSyms;
 /**
+ * Size of symbol table @bfdSyms
+ */
+static long bfdSymcount;
+/**
+ * A cache for global symbols: addr --> symbol name
+ */
+static map<uint64_t, const char*> addrToSym;
+/**
  * address -> code location cache
  */
 static std::map<uint64_t, ResolvedInstructionPtr> functionAddresses;
@@ -97,6 +105,12 @@ const char* getGlobalLockVar(uint64_t addr) {
 
 	cus__for_each_cu(kernelCUs, findGlobalLockVar, &lockVar, NULL);
 
+	if (lockVar.lockVarName == NULL) {
+		auto it = addrToSym.find(addr);
+		if (it != addrToSym.end()) {
+			lockVar.lockVarName = it->second;
+		}
+	}
 	return lockVar.lockVarName;
 }
 
@@ -176,7 +190,6 @@ int extractStructDefs(const char *outFname, char delimiter, std::vector<DataType
 static int slurp_symtab (bfd *abfd)
 { 
 	long storage;
-	long symcount;
 	bfd_boolean dynamic = FALSE;
 
 	if ((bfd_get_file_flags (abfd) & HAS_SYMS) == 0) {
@@ -194,27 +207,27 @@ static int slurp_symtab (bfd *abfd)
 
 	bfdSyms = (asymbol **) malloc (storage);
 	if (dynamic) {
-		symcount = bfd_canonicalize_dynamic_symtab (abfd, bfdSyms);
+		bfdSymcount = bfd_canonicalize_dynamic_symtab (abfd, bfdSyms);
 	} else {
-		symcount = bfd_canonicalize_symtab (abfd, bfdSyms);
+		bfdSymcount = bfd_canonicalize_symtab (abfd, bfdSyms);
 	}
-	if (symcount < 0) {
+	if (bfdSymcount < 0) {
 		return 1;
 	}
 
 	/* If there are no symbols left after canonicalization and
 	 we have not tried the dynamic symbols then give them a go.  */
-	if (symcount == 0
+	if (bfdSymcount == 0
 	  && ! dynamic
 	  && (storage = bfd_get_dynamic_symtab_upper_bound (abfd)) > 0) { 
 		free (bfdSyms);
 		bfdSyms = (asymbol**)malloc (storage);
-		symcount = bfd_canonicalize_dynamic_symtab (abfd, bfdSyms);
+		bfdSymcount = bfd_canonicalize_dynamic_symtab (abfd, bfdSyms);
 	}
 
 	/* PR 17512: file: 2a1d3b5b.
 	 Do not pretend that we have some symbols when we don't.  */
-	if (symcount <= 0) {
+	if (bfdSymcount <= 0) {
 		free (bfdSyms);
 		bfdSyms = NULL;
 		return 1;
@@ -353,6 +366,9 @@ int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uin
 
 
 int binaryread_init(const char *vmlinuxName) {
+	int i;
+	symbol_info syminfo;
+
 	// Init bfd
 	bfd_init();
 	kernelBfd = bfd_openr(vmlinuxName,"elf32-i386");
@@ -370,6 +386,13 @@ int binaryread_init(const char *vmlinuxName) {
 	if (slurp_symtab(kernelBfd)) {
 		fprintf(stderr, "slurp_symtab(..) failed!\n");
 		return 1;
+	}
+
+	for (i = 0; i < bfdSymcount; i++) {
+		if (bfdSyms[i]->flags & BSF_GLOBAL) {
+			bfd_symbol_info(bfdSyms[i], &syminfo);
+			addrToSym.emplace(syminfo.value, bfdSyms[i]->name);
+		}
 	}
 
 	// Init dwarves
