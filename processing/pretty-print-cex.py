@@ -187,8 +187,8 @@ tr.line_heading {
 			# E.g.: 94.6% (19069 out of 20155 mem accesses under locks): EMBOTHER(inode:i_rwsem)
 			locksHeldKey = hypothesesEntry['locks'].keys()[0]
 			locksHeldEntry = hypothesesEntry['locks'][locksHeldKey]
-			print('				<td colspan="5"><b>Hypothesis %d</b>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>'
-				% (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'], locksHeldKey), end='')
+			print('				<td colspan="5"><a id="HYPO%d"><b>Hypothesis %d</b></a>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>'
+				% (hypothesisID, hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'], locksHeldKey), end='')
 			print('<b>%2.2f%%</b> (%d out of %d mem accesses under locks)</td>' % (locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total']))
 			print('		</tr>')
 			print("""		<tr>
@@ -261,7 +261,7 @@ tr.line_heading {
 					innerLineStyle = 'b'
 				else:
 					innerLineStyle = 'a'
-			print('			<td>%d.%d</td><td>%s</td>' % (hypothesisID, cexID, occurences), end='')
+			print('			<td><a href="#HYPO%d">%d</a>.%d</td><td>%s</td>' % (hypothesisID, hypothesisID, cexID, occurences), end='')
 			print('<td>', end='')
 			# Split locks_held
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
