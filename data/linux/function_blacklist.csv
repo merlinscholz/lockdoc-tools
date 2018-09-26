@@ -76,7 +76,6 @@ inode:proc;\N;proc_get_inode
 inode;\N;ramfs_get_inode
 inode;\N;shmem_get_inode
 inode;\N;simple_fill_super
-inode;i_count;ihold
 inode;i_count;_atomic_dec_and_lock
 inode:ext4;\N;ext4_iget
 inode;\N;sock_alloc
