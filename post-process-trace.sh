@@ -64,7 +64,7 @@ then
 	fi
 fi
 
-PREFIX="all_txns_members_locks"
+PREFIX="all-txns-members-locks"
 
 for USE_STACK in "${STACK_USAGE[@]}"
 do
@@ -99,7 +99,7 @@ do
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
-			time ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}_hypo_bugs_${VARIANT}.txt ${PREFIX}_hypo_winner_${VARIANT}.csv ${VARIANT}
+			time ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
