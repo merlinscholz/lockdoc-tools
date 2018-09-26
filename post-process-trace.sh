@@ -94,14 +94,18 @@ do
 				exit 1
 			fi
 		fi
-		echo "Retrieving counterexamples..."
-		time ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} any ${PREFIX}_hypo_bugs_${VARIANT}.txt ${PREFIX}_hypo_winner_${VARIANT}.csv ${VARIANT}
-		if [ ${?} -ne 0 ];
-		then
-			echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2 
-			exit 1
-		fi
 
+		DATA_TYPES=`echo "SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, '_', sc.name)) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | mysql -N ${DB}`
+		for data_type in ${DATA_TYPES}
+		do
+			echo "Retrieving counterexamples for '${data_type}'..."
+			time ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}_hypo_bugs_${VARIANT}.txt ${PREFIX}_hypo_winner_${VARIANT}.csv ${VARIANT}
+			if [ ${?} -ne 0 ];
+			then
+				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
+				exit 1
+			fi
+		done
 		echo "Finished processing '${VARIANT}'"
 		echo "-----------------------------------"
 	done
