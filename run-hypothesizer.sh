@@ -23,7 +23,7 @@ VARIANT=`echo ${1}| tr '[:upper:]' '[:lower:]'`;shift
 PREFIX=${1};shift
 
 echo "Running hypothesizer (${VARIANT})..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo_${VARIANT}.txt        &
+${TOOLS_PATH}/hypothesizer/hypothesizer -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.txt        &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-winner-${VARIANT}.csv &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -r normal    -s member --bugsql ${HYPO_INPUT} > ${PREFIX}-hypo-bugs-${VARIANT}.txt   &
 ${TOOLS_PATH}/hypothesizer/hypothesizer -r csv       -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.csv   &
