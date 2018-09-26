@@ -48,6 +48,14 @@ then
 	exit 1
 fi
 
+SIZE=`stat --printf="%s" ${CEX_CSV}`
+if [ ${SIZE} -eq 0 ];
+then
+	echo "${CEX_CSV} is empty. Stop processing '${INPUT_BUGS}' for '${DATA_TYPE}'"
+	rm ${CEX_CSV}
+	exit 0
+fi
+
 ${TOOLS_PATH}/pretty-print-cex.py -u ${BASE_URL} ${CEX_CSV} ${KERNEL} ${INPUT_WINNER} > ${CEX_HTML}
 if [ ${?} -ne 0 ];
 then
