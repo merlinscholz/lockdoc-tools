@@ -37,14 +37,14 @@ journal_t;j_revoke_table;r;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/l
 journal_t;j_revoke_table;w;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/linux/jbd2.h:795
 journal_t;j_average_commit_time;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
 journal_t;j_average_commit_time;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
-transaction_t;t_journal;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_journal;w;nolock;;include/linux/jbd2.h:543
-transaction_t;t_tid;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_tid;w;nolock;;include/linux/jbd2.h:543
+transaction_t;t_journal;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_journal;w;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_tid;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_tid;w;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_state;r;EMBOTHER\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_state;w;EMBOTHER\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_log_start;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_log_start;w;nolock;;include/linux/jbd2.h:543
+transaction_t;t_log_start;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_log_start;w;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_nr_buffers;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_nr_buffers;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_reserved_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
@@ -71,14 +71,14 @@ transaction_t;t_cpnext;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linu
 transaction_t;t_cpnext;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_cpprev;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_cpprev;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_expires;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_expires;w;nolock;;include/linux/jbd2.h:543
-transaction_t;t_start_time;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_start_time;w;nolock;;include/linux/jbd2.h:543
+transaction_t;t_expires;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_expires;w;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_start_time;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_start_time;w;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_handle_count;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_handle_count;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_need_data_flush;r;nolock;;include/linux/jbd2.h:543
-transaction_t;t_need_data_flush;w;nolock;;include/linux/jbd2.h:543
+transaction_t;t_need_data_flush;r;\(no locks held\);;include/linux/jbd2.h:543
+transaction_t;t_need_data_flush;w;\(no locks held\);;include/linux/jbd2.h:543
 inode;i_blocks;r;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
 inode;i_blocks;w;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
 inode;i_bytes;r;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
