@@ -23,6 +23,7 @@ datatype;datatype_member;fn
 \N;\N;atomic_fetch_or
 \N;\N;atomic_fetch_xor
 \N;\N;atomic_inc_short
+\N;\N;_atomic_dec_and_lock
 \N;\N;__atomic_add_unsless
 \N;\N;set_bit
 \N;\N;__set_bit
@@ -76,7 +77,6 @@ inode:proc;\N;proc_get_inode
 inode;\N;ramfs_get_inode
 inode;\N;shmem_get_inode
 inode;\N;simple_fill_super
-inode;i_count;_atomic_dec_and_lock
 inode:ext4;\N;ext4_iget
 inode;\N;sock_alloc
 inode;\N;shmem_fill_super
