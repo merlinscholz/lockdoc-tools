@@ -106,7 +106,6 @@ if __name__ == '__main__':
 		else:
 			LOGGER.error('Lock combination (%s) does already exist for key %s', line['locks'], key)
 	LOGGER.debug('Read %d locking predictions for %d different (struct,member,accesstype) tuples from "%s"', count, len(hypothesisDict), hypothesisCSV)
-
 	resultsDict = dict()
 
 	# resultsDict layout
@@ -155,36 +154,41 @@ if __name__ == '__main__':
 		# Do we have at least one hypothesis for the current tuple (datatype,member,accesstype)?
 		if key in hypothesisDict:
 			locksHeldDict = hypothesisDict[key]['locks']
-			matchFound = False
 			resultsEntry['count'] += 1
+			tempLocksHeldEntry = None
 			# Iterate over the complete dictionary of possible lock combinations.
 			# '$key in $dict' syntax does *not* do the job, because locksHeld is a regex.
 			# We therefore need to use re.match().
+			LOGGER.debug('%s: %d hypotheses', key, len(locksHeldDict))
 			for locksHeld, locksHeldEntry in locksHeldDict.iteritems():
-				#LOGGER.debug('SEARCHRULE:%s: Checking %s and %s', key, lockingRule,locksHeld)
 				if re.match('^' + lockingRule + '$',locksHeld):
-					matchFound = True
-					LOGGER.debug('SEARCHRULE:%s,%d', key, locksHeldEntry['percentage'])
-					if locksHeldEntry['percentage'] == 100:
-						resultsEntry['full'] += 1
-						_color = 'green'
-					else:
-						resultsEntry['found'] += 1
-						_color = 'yellow'
-					_locksHeldEntry = locksHeldEntry
-					#LOGGER.debug('Added new entry for key %s and locking rule %s: %s\n %s', key, lockingRule, resultsEntry, locksHeldEntry)
-					break
-				#else:
-					#LOGGER.debug('SEARCHRULE: No match %s and %s',lockingRule,locksHeld)
-			if not matchFound:
+					# If a member is protected by a rw lock, the documented locking rules do not specify 
+					# which part of the lock (read vs. write) should be used.
+					# Our locking rule regex therefore matches both.
+					# However, it might be possible that both variants are oberserved for a certain (datatype,member,accesstype)
+					# tuple. We choose the one having the higher relative support.
+					if tempLocksHeldEntry is None:
+						tempLocksHeldEntry = locksHeldEntry
+					elif locksHeldEntry['percentage'] > tempLocksHeldEntry['percentage']:
+						tempLocksHeldEntry = locksHeldEntry
+				else:
+					LOGGER.debug('%s:no match:\'%s\',\'%s\'',key,lockingRule,locksHeld)
+			if tempLocksHeldEntry is None:
 				resultsEntry['notfound'] += 1
 				_color = 'red'
-				_locksHeldEntry = None
 				LOGGER.debug('SEARCHRULE:%s,%d', key, 0)
+			else:
+				if tempLocksHeldEntry['percentage'] == 100:
+					resultsEntry['full'] += 1
+					_color = 'green'
+				else:
+					resultsEntry['found'] += 1
+					_color = 'yellow'
+				LOGGER.debug('SEARCHRULE:%s,%d', key, tempLocksHeldEntry['percentage'])
 			membersDict = resultsEntry['members']
 			membersDictKey = (key[1], key[2])
 			if membersDictKey not in membersDict:
-				membersDict[membersDictKey] = {'results': _locksHeldEntry, 'lockingrule': lockingRule,'color': _color}
+				membersDict[membersDictKey] = {'results': tempLocksHeldEntry, 'lockingrule': lockingRule,'color': _color}
 			else:
 				LOGGER.error('Found another matching rule (%s) for %s in datatype ', lockingRule, membersKey, key[0])
 		else:
