@@ -25,40 +25,48 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-	parser.add_argument('cexcsv', help='Input file containing the ground truth')
+	parser.add_argument('cexcsv', nargs='*', help='Input file containing the ground truth')
 	args = parser.parse_args()
 
-	cexcsv = args.cexcsv
 	separator = ';'
-	count = 0
+	totalCount = 0
 	cexDict = dict()
 	if args.verbose:
 		LOGGER.setLevel(logging.DEBUG)
 	else:
 		LOGGER.setLevel(logging.INFO)
 
-	tempFile = open(cexcsv,'rb')
-	tempReader = csv.DictReader(tempFile, delimiter=';')
+	for cexFile in args.cexcsv:
+		tempFile = open(cexFile,'rb')
+		tempReader = csv.DictReader(tempFile, delimiter=';')
+		count = 0
 
-	for line in tempReader:
-            count += 1
-            if line['data_type'] in cexDict:
-                cexEntry = cexDict[line['data_type']]
-            else:
-                cexEntry = {'members': dict(), 'count': 0, 'locations': dict()}
-                cexDict[line['data_type']] = cexEntry
-            cexEntry['count'] += 1
-            if line['member'] not in cexEntry['members']:
-                cexEntry['members'][line['member']] = 1
-            locKey = (line['stacktrace'])
-            if locKey not in cexEntry['locations']:
-                cexEntry['locations'][locKey] = 1
+		for line in tempReader:
+			count += 1
+			if line['data_type'] in cexDict:
+				cexEntry = cexDict[line['data_type']]
+			else:
+				cexEntry = {'members': dict(), 'count': 0, 'locations': dict()}
+				cexDict[line['data_type']] = cexEntry
+			
+			lockCombinations = line['locks_held'].split('+')
+			for lockComb in lockCombinations:
+				locksHeld = lockComb.split('#')[0]
+				occurences = lockComb.split('#')[1]
+				cexEntry['count'] += int(occurences)
+			if line['member'] not in cexEntry['members']:
+				cexEntry['members'][line['member']] = 1
+			locKey = (line['stacktrace'])
+			if locKey not in cexEntry['locations']:
+				cexEntry['locations'][locKey] = 1
 
-	tempFile.close()
-	LOGGER.debug('Read %d locking rules from "%s"', count, cexcsv)
+		totalCount = totalCount + count
+		tempFile.close()
+		LOGGER.debug('Read %03d locking rules from "%s"', count, cexFile)
+	LOGGER.debug('Read %03d locking rules in total', totalCount)
 
-        print('data_type,cex,members,locations')
-        for key, cexEntry in cexDict.iteritems():
-            print('%s,%d,%d,%d' %
-                (key, cexEntry['count'], len(cexEntry['members']), len(cexEntry['locations'])))
+	print('data_type,cex,members,locations')
+	for key, cexEntry in cexDict.iteritems():
+		print('%s,%d,%d,%d' %
+			(key, cexEntry['count'], len(cexEntry['members']), len(cexEntry['locations'])))
 
