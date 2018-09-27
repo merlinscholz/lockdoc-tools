@@ -3,7 +3,7 @@
 # This script generates a complete callgraph for one particular trace donated by the database name.
 # Each edge is labeled with number of calls made by the source node.
 # The script might be called like this:
-# ./generate-callgraph.py --host manos --database lockdebugging_mixed_fs_al --vmlinux ../vmlinux-4-10-nococci-20171226-g8b231ad --user <user> --password <pw> | dot -Tsvg -o foo.svg
+# ./generate-callgraph.py --host manos --database lockdebugging_mixed_fs_al --user <user> --password <pw> | dot -Tsvg -o foo.svg
 
 # ToDo
 # - Find root nodes
@@ -22,20 +22,6 @@ nodes = dict()
 
 logging.basicConfig()                               
 LOGGER = logging.getLogger(__name__)  
-
-def addrToFn(vmlinux, addr):
-	cmd = ['addr2line', '-s', '-f', '-e', vmlinux, str(addr)]
-	addrProcess = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-	out, err = addrProcess.communicate()
-	if addrProcess.returncode != 0:
-		LOGGER.error("Cannot resolve function name:\n%s", err)
-	# The first line contains the function name
-	# The second one contains the filename followed by the linenumber.
-	lines = out.split('\n')
-	lineNo = lines[1].split(':')[1] # Get the line number: <file>:<lineno>
-	lineNo = lineNo.split('(')[0].strip() # Strip of unwanted chars, e.g., ' (discriminator 5)'
-	LOGGER.debug("%s --> %s:%s", addr, lines[0], lineNo)
-	return {'node': lines[0] + '_' + lineNo, 'label': '[label="' + lines[0] + ':' + lineNo + '"]'}
 
 def main():
 	
