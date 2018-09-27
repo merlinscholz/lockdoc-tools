@@ -177,6 +177,7 @@ cat <<EOT
 					  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
+					 AND l_sbh${LOCKNR}.embedded_in = a.id
 					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
