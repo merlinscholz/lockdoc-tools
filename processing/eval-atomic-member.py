@@ -14,10 +14,10 @@ import argparse
 import subprocess
 from pprint import pprint, pformat
 
+noLockString = '(no locks held)'
 
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)  
-
 
 def main():
 	parser = argparse.ArgumentParser()
@@ -121,7 +121,7 @@ def main():
 				if key in hypothesesDict:
 					entry[atype]['found'] += 1
 					hypothesesEntry = hypothesesDict[key]
-					if hypothesesEntry['locks']['(no locks held)']['accepted'] == 1:
+					if hypothesesEntry['locks'][noLockString]['accepted'] == 1:
 						entry[atype]['notlocked'] += 1
 					else:
 						entry[atype]['locked'] += 1
