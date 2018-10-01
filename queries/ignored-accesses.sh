@@ -66,8 +66,6 @@ WHERE 1
 ${DATATYPE_FILTER}
 ${MEMBER_FILTER}
 ${ACCESS_TYPE_FILTER}
--- === FOR NOW: skip task_struct ===
-AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 -- ====================================
 AND 
 (

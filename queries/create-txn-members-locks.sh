@@ -110,8 +110,6 @@ FROM
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
-			-- === FOR NOW: skip task_struct ===
-			AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
@@ -146,8 +144,6 @@ FROM
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
-				-- === FOR NOW: skip task_struct ===
-				AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 				-- ====================================
 				AND
 				(
@@ -210,8 +206,6 @@ FROM
 	WHERE 1
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
-	-- === FOR NOW: skip task_struct ===
-	AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 	-- ====================================
 	AND ac.txn_id IS NULL
 	AND ac.id NOT IN
@@ -246,8 +240,6 @@ FROM
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
-		-- === FOR NOW: skip task_struct ===
-		AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 		-- ====================================
 		AND
 		(
@@ -305,8 +297,6 @@ FROM
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
-			-- === FOR NOW: skip task_struct ===
-			AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND ac.txn_id IS NOT NULL
 			AND ac.id NOT IN
@@ -341,8 +331,6 @@ FROM
 				WHERE 1
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
-				-- === FOR NOW: skip task_struct ===
-				AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 				-- ====================================
 				AND
 				(
@@ -396,8 +384,6 @@ FROM
 		WHERE 1
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
-		-- === FOR NOW: skip task_struct ===
-		AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 		-- ====================================
 		AND ac.txn_id IS NULL
 		AND ac.id NOT IN
@@ -432,8 +418,6 @@ FROM
 			WHERE 1
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
-			-- === FOR NOW: skip task_struct ===
-			AND sc.data_type_id != (SELECT id FROM data_types WHERE name = 'task_struct')
 			-- ====================================
 			AND
 			(
