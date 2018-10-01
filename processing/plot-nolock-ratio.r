@@ -22,14 +22,12 @@ mySavePlot <- function(plot, name, directory=NULL) {
   }
   
   cat(sprintf("Creating: %s\n",fname))
-  ggsave(file=fname,plot,units="cm")
+  ggsave(file=fname,plot,units="cm", width=13, height=10)
 }
 
 # Parameters for the development of accepted hypotheses plot
-startThreshold=90
-stepSize=1
+startThreshold=70
 endThreshold=100
-numSteps=11
 noLockString='(no locks held)'
 
 args <- commandArgs(trailingOnly=T)
@@ -37,7 +35,9 @@ args <- commandArgs(trailingOnly=T)
 spec = matrix(c(
   'inputfile', 'i', 1, 'character',
   'type'   , 't', 1, 'character',
-  'acceptanceThreshold'   , 's', 1, 'integer'
+  'startThreshold'   , 's', 1, 'integer',
+  'acceptanceThreshold'   , 'a', 1, 'integer',
+  'stepSize'   , 'z', 1, 'integer'
 ), byrow=TRUE, ncol=4);
 opt = getopt(spec);
 
@@ -53,20 +53,31 @@ if (is.null(opt$type)) {
   typeFilter = opt$type
 }
 
+if (is.null(opt$startThreshold)) {
+  startThreshold = 70
+} else {
+  startThreshold = opt$startThreshold
+}
+
 if (is.null(opt$acceptanceThreshold)) {
   acceptanceThreshold = 90
 } else {
   acceptanceThreshold = opt$acceptanceThreshold
 }
-startThreshold = acceptanceThreshold
-numSteps <- endThreshold - startThreshold / stepSize + 1
+
+if (is.null(opt$stepSize)) {
+  stepSize = 2
+} else {
+  stepSize = opt$stepSize
+}
+numSteps <- ((endThreshold - startThreshold) / stepSize) + 1
 
 raw <- read.csv(inputfname,sep=";")
 # Filter out the task_struct since it does not belong to the observed fs subsystem.
 raw <- raw[raw$type != 'task_struct',]
 raw <- cbind(raw, idx=paste(raw$accesstype,raw$member,sep=":"))
 steps <- seq(from=startThreshold,to=endThreshold,by=stepSize)
-breaks <- seq(from=startThreshold,to=endThreshold,by=stepSize*2)
+breaks <- seq(from=startThreshold,to=endThreshold,by=5)
 # Extract all unique access types
 accessTypes <- unlist(raw$accesstype)
 accessTypes <- accessTypes[!duplicated(accessTypes)]
@@ -85,7 +96,7 @@ if (is.null(typeFilter)) {
   }
   nameThresholds = sprintf("nolock-ratio-%s",typeFilter)
 }
-cat(sprintf("Acceptance threshold: %d\n",acceptanceThreshold))
+cat(sprintf("Start threshold: %d, Step size: %d, Num steps: %d\n",startThreshold, stepSize, numSteps))
 numTypes = length(dataTypes)
 numAccessTypes = length(accessTypes)
 extractMemberName <- function(x) sub("[^_]*:","",x )  
@@ -112,7 +123,7 @@ for(dataType in dataTypes) {
   # Compute the percentage of accepted hypotheses for each cut-off threshold (aka. steps) by access type
   for (accessType in accessTypes) {
     data[data$datatype == dataType & data$accesstype == accessType,3] <- steps
-    totalMembersLocked <- raw[raw$type == dataType & raw$accesstype == accessType & raw$percentage >= acceptanceThreshold,]$member
+    totalMembersLocked <- raw[raw$type == dataType & raw$accesstype == accessType & raw$percentage >= startThreshold,]$member
     totalMembersLocked <- unlist(totalMembersLocked)
     totalMembersLocked <- totalMembersLocked[!duplicated(totalMembersLocked)]
     totalObs <- length(totalMembersLocked)
@@ -131,11 +142,12 @@ for(dataType in dataTypes) {
 }
 
 plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) + 
-        ylab('Fraction of \'no lock\' hypothesis') +
+        ylab('Fraction of "no lock" hypotheses') +
         labs(colour='Data Type') +
         geom_line() +
         geom_point() +
         scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=breaks) +
+        geom_hline(yintercept=acceptanceThreshold, colour="red") +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
 mySavePlot(plot,nameThresholds)
