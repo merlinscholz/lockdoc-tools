@@ -126,27 +126,30 @@ def main():
 					else:
 						entry[atype]['locked'] += 1
 
-	totalCount = 0
-	totalFound = 0
-	totalLocked = 0
-	totalNotLocked = 0
+	totalCount = {'r': 0, 'w': 0}
+	totalFound = {'r': 0, 'w': 0}
+	totalLocked = {'r': 0, 'w': 0}
+	totalNotLocked = {'r': 0, 'w': 0}
 
 	LOGGER.debug(pformat(atomicMembers))
 
-	print('type_name,count,found,locked,notlocked')
+	print('type_name,count_r,found_r,locked_r,notlocked_r,count_w,found_w,locked_w,notlocked_w')
 	for datatype, entry in atomicMembers.iteritems():
-		totalCount += len(entry['members']) * 2
-		totalFound += entry['r']['found']
-		totalFound += entry['w']['found']
-		totalLocked += entry['r']['locked']
-		totalLocked += entry['w']['locked']
-		totalNotLocked += entry['r']['notlocked']
-		totalNotLocked += entry['w']['notlocked']
+		totalCount['r'] += len(entry['members'])
+		totalCount['w'] += len(entry['members'])
+		totalFound['r'] += entry['r']['found']
+		totalFound ['w']+= entry['w']['found']
+		totalLocked['r'] += entry['r']['locked']
+		totalLocked['w'] += entry['w']['locked']
+		totalNotLocked['r'] += entry['r']['notlocked']
+		totalNotLocked['w'] += entry['w']['notlocked']
 		if args.report == 'detailed':
-			print('%s,%d,%d,%d,%d' % (datatype, totalCount, totalFound, totalLocked, totalNotLocked))
+			print('%s,%d,%d,%d,%d,%d,%d,%d,%d' % (datatype, len(entry['members']), entry['r']['found'], entry['r']['locked'], entry['r']['notlocked'],
+				len(entry['members']), entry['w']['found'], entry['w']['locked'], entry['w']['notlocked']))
 
 	if args.report == 'summary':
-		print('any,%d,%d,%d,%d' % (totalCount, totalFound, totalLocked, totalNotLocked))
+		print('any,%d,%d,%d,%d,%d,%d,%d,%d' % (totalCount['r'], totalFound['r'], totalLocked['r'], totalNotLocked['r'],
+			totalCount['w'], totalFound['w'], totalLocked['w'], totalNotLocked['w']))
 
 	db.close()
 
