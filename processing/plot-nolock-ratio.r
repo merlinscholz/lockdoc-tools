@@ -43,7 +43,7 @@ spec = matrix(c(
 opt = getopt(spec);
 
 if (is.null(opt$inputfile)) {
-  inputfname = "all-txns-members-locks-hypo-nostack-nosubclasses.csv"
+  inputfname = "all-txns-members-locks-hypo-nostack-subclasses.csv"
 } else {
   inputfname = opt$inputfile
 }
@@ -83,14 +83,14 @@ if (is.null(typeFilter)) {
   dataTypes <- raw[grep('.*:.*', raw$type, invert=TRUE),]$type
   dataTypes <- unlist(dataTypes)
   dataTypes <- dataTypes[!duplicated(dataTypes)]
-  nameThresholds = sprintf("thresholds")
+  nameThresholds = sprintf("nolock-ratio")
 } else {
   dataTypes <- c(typeFilter)
   if (length(raw[raw$type==typeFilter,]) == 0) {
     cat(sprintf("No data found for type %s\n",typeFilter))
     quit(status=1)
   }
-  nameThresholds = sprintf("thresholds-%s",typeFilter)
+  nameThresholds = sprintf("nolock-ratio-%s",typeFilter)
 }
 cat(sprintf("Acceptance threshold: %d\n",acceptanceThreshold))
 numTypes = length(dataTypes)
@@ -138,7 +138,7 @@ for(dataType in dataTypes) {
 }
 
 plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)) + 
-        ylab('Percentage of \'no lock\' hypothesis') +
+        ylab('Fraction of \'no lock\' hypothesis') +
         labs(colour='Data Type') +
         geom_line() +
         geom_point() +
