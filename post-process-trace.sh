@@ -55,13 +55,6 @@ then
 		echo "Cannot flatten structs layout!">&2
 		exit 1
 	fi
-#	echo "Deleting accesses to atomic members..."
-#	time ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
-#	if [ ${?} -ne 0 ];
-#	then
-#		echo "Cannot delete atomic members!">&2
-#		exit 1
-#	fi
 fi
 
 PREFIX="all-txns-members-locks"
