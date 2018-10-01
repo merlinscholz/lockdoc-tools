@@ -55,13 +55,13 @@ then
 		echo "Cannot flatten structs layout!">&2
 		exit 1
 	fi
-	echo "Deleting accesses to atomic members..."
-	time ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
-	if [ ${?} -ne 0 ];
-	then
-		echo "Cannot delete atomic members!">&2
-		exit 1
-	fi
+#	echo "Deleting accesses to atomic members..."
+#	time ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
+#	if [ ${?} -ne 0 ];
+#	then
+#		echo "Cannot delete atomic members!">&2
+#		exit 1
+#	fi
 fi
 
 PREFIX="all-txns-members-locks"
@@ -95,7 +95,13 @@ do
 			fi
 		fi
 
-		DATA_TYPES=`echo "SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | mysql -N ${DB}`
+
+		if [ ${USE_SUBCLASSES} -eq 0 ];
+		then
+			DATA_TYPES=`echo "SELECT dt.name FROM data_types AS dt;" | mysql -N ${DB}`
+		else
+			DATA_TYPES=`echo "SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | mysql -N ${DB}`
+		fi
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
