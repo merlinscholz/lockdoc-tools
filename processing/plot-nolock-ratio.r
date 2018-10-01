@@ -37,7 +37,6 @@ args <- commandArgs(trailingOnly=T)
 spec = matrix(c(
   'inputfile', 'i', 1, 'character',
   'type'   , 't', 1, 'character',
-  'directory'   , 'd', 1, 'character',
   'acceptanceThreshold'   , 's', 1, 'integer'
 ), byrow=TRUE, ncol=4);
 opt = getopt(spec);
@@ -52,12 +51,6 @@ if (is.null(opt$type)) {
   typeFilter = NULL
 } else {
   typeFilter = opt$type
-}
-
-if (is.null(opt$directory)) {
-  directory = NULL
-} else {
-  directory = opt$directory
 }
 
 if (is.null(opt$acceptanceThreshold)) {
@@ -145,5 +138,5 @@ plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)
         scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=breaks) +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
-mySavePlot(plot,nameThresholds,directory)
+mySavePlot(plot,nameThresholds)
 
