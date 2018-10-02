@@ -45,7 +45,15 @@ fi
 PREFIX=${1};shift
 
 HYPO_INPUT=${PREFIX}-db-${VARIANT}.csv
+DURATION_FILE=`mktemp /tmp/output.XXXXX`
 
 echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
-time bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | mysql ${DB} > ${HYPO_INPUT}"
-time ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
+/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | mysql ${DB} > ${HYPO_INPUT}"
+EXEC_TIME=`cat ${DURATION_FILE}`
+echo "Generating hypothesizer input took ${EXEC_TIME} secs."
+
+/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
+EXEC_TIME=`cat ${DURATION_FILE}`
+echo "Hypothesizer took ${EXEC_TIME} secs."
+
+rm ${DURATION_FILE}

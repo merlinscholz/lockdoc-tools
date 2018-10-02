@@ -40,21 +40,46 @@ then
 	done
 fi
 
+OVERALL_EXEC_TIME=0.0
+DURATION_FILE=`mktemp /tmp/output.XXXXX`
+
 if [ ${SKIP_IMPORT} -eq 0 ];
 then
-	time ${TOOLS_PATH}/conv-import.sh ${DB} -1
+	IMPORT_EXEC_TIME=0
+
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/conv-import.sh ${DB} -1
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot convert and import trace!">&2
 		exit 1
 	fi
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
+
 	echo "Flatten structs layout..."
-	time ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot flatten structs layout!">&2
 		exit 1
 	fi
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
+
+	echo "Deleting accesses to atomic members..."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot delete atomic members!">&2
+		exit 1
+	fi
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
+
+	echo "Import and atomic handling took ${IMPORT_EXEC_TIME} secs."
 fi
 
 PREFIX="all-txns-members-locks"
@@ -80,12 +105,15 @@ do
 		echo "Start processing '${VARIANT}'"
 		if [ ${SKIP_HYPO} -eq 0 ];
 		then
-			time ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX}
+			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run hypothesizer for ${VARIANT}!">&2
 				exit 1
 			fi
+			HYPO_EXEC_TIME=`cat ${DURATION_FILE}`
+			OVERALL_EXEC_TIME=`echo ${HYPO_EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+			echo "Running hypothesizer and generating the input took ${HYPO_EXEC_TIME} secs."
 		fi
 
 
@@ -95,18 +123,25 @@ do
 		else
 			DATA_TYPES=`echo "SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | mysql -N ${DB}`
 		fi
+		CEX_EXEC_TIME=0.0
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
-			time ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
+			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
 				exit 1
 			fi
+			EXEC_TIME=`cat ${DURATION_FILE}`
+			CEX_EXEC_TIME=`echo ${EXEC_TIME}+${CEX_EXEC_TIME} | bc`
 		done
-		echo "Finished processing '${VARIANT}'"
+
+		echo "Processing of CEXs took ${CEX_EXEC_TIME} secs."
+		VARIANT_EXEC_TIME=`echo ${HYPO_EXEC_TIME}+${CEX_EXEC_TIME} | bc`
+		echo "Finished processing '${VARIANT}'. Took ${VARIANT_EXEC_TIME} secs."
 		echo "-----------------------------------"
 	done
 done
-
+echo "Overall exec time: ${OVERALL_EXEC_TIME} secs."
+rm ${DURATION_FILE}
