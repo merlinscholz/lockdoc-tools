@@ -115,31 +115,6 @@ tr.line_heading {
 	text-align:center;
 }
 
-.accordion {
-	background-color: #eee;
-	color: #444;
-	cursor: pointer;
-	padding: 18px;
-	width: 100%;
-	text-align: left;
-	border: none;
-	outline: none;
-	transition: 0.4s;
-}
-
-/* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
-.active, .accordion:hover {
-	background-color: #ccc;
-}
-
-/* Style the accordion panel. Note: hidden by default */
-.stacktrace {
-	/*padding: 0 18px;*/
-	background-color: white;
-	display: none;
-	overflow: hidden;
-}
-
 /* The sidebar menu - Thx to https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
 .sidenav {
 	height: 100%; /* Full-height: remove this if you want "auto" height */
@@ -243,7 +218,6 @@ tr.line_heading {
 		# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1+EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
 		lockCombinations = line['locks_held'].split('+')
 		print('		<tr class="line_%s">' % ('a' if outerLineStyle == 'a' else 'b'))
-		#print('			<td rowspan="%d"><button class="accordion">Stacktrace</button>\n\t\t\t\t<div class="stacktrace">\n' % (len(lockCombinations)), end='')
 		print('			<td rowspan="%d">' % (len(lockCombinations)), end='')
 		# Extract stacktrace
 		traceElems = line['stacktrace'].split(',')
@@ -265,7 +239,6 @@ tr.line_heading {
 			# Mark the first stacktrace entry since it corresponds
 			# to the suspicious memory access.
 			if i == (traceElemsLen - 1):
-				#print('					</div>\n', end='')
 				print('						%02d: <a class="memaccess" ' % (traceElemsLen - (i + 1)), end='')
 			else:
 				print('						%02d: <a class="stacktraceelem" ' % (traceElemsLen - (i + 1)), end='')
@@ -338,24 +311,6 @@ tr.line_heading {
 	for value in hypothesesList:
 		print('		<a href="#HYPO%d">%s</a>' % (value[1], value[0]))
 	print("""	</div>
-<script type='text/javascript'>
-var acc = document.getElementsByClassName("accordion");
-var i;
-for (i = 0; i < acc.length; i++) {
-	acc[i].addEventListener("click", function() {
-		/* Toggle between adding and removing the "active" class,
-		to highlight the button that controls the panel */
-		this.classList.toggle("active");
-		/* Toggle between hiding and showing the active panel */
-		var panel = this.nextElementSibling;
-		if (panel.style.display === "block") {
-			panel.style.display = "none";
-		} else {
-			panel.style.display = "block";
-		}
-	});
-}
-</script>
 </body>
 </html>""")
 	tempFile.close()
