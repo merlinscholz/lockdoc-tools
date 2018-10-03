@@ -139,37 +139,78 @@ tr.line_heading {
 	display: none;
 	overflow: hidden;
 }
+
+/* The sidebar menu - Thx to https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
+.sidenav {
+	height: 100%; /* Full-height: remove this if you want "auto" height */
+	width: 170px; /* Set the width of the sidebar */
+	position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+	z-index: 1; /* Stay on top */
+	top: 0; /* Stay at the top */
+	left: 0;
+	background-color: #eee; /* Black */
+	overflow-x: hidden; /* Disable horizontal scroll */
+	padding-top: 20px;
+}
+
+/* The navigation menu links */
+.sidenav a {
+	padding: 6px 8px 6px 16px;
+	text-decoration: none;
+	font-size: 12px;
+	color: #111;
+	display: block;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav a:hover {
+	color: #7D7D7D;
+}
+
+/* Style page content */
+.main {
+	margin-left: 160px; /* Same as the width of the sidebar */
+	padding: 0px 10px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+    .sidenav a {font-size: 18px;}
+}
 </style>
 </head>
 <body>
-	<h1>Counterexamples</h1>
-	<h2>Legend</h2>
-	<table>
-		<tr>
-			<td>EMBSAME(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of the same instance was held.<td></td>
-		</tr>
-		<tr>
-			<td>EMOTHER(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of another instance of <k>x</k> was held.</td>
-		</tr>
-		<tr>
-			<td>EMB:x(y:z)</td><td>While accessing a member of an instance of struct <k>y</k>, the lock <k>z</k> of another instance with id <k>x</k> was held.</td>
-		</tr>
-		<tr>
-			<td>x(y)</td><td>A global lock of type <k>y</k> was held. It has the id <k>x</k>.</td>
-		</tr>
-		<tr>
-			<td>x:y(z)</td><td>The global <k>x</k> lock of type <k>z</k> was held. It has the id <k>y</k>.</td>
-		</tr>
-		<tr>
-			<td colspan="2">The square brackets specify wether the read or the write side of a lock was held, e.g., [w]. This information is present even if the lock is a reader-only or writer-only lock.</td>
-		</tr>
-	</table>
-	<h2>Results</h2>
-	<table>""")
+	<div class="main">
+		<h1>Counterexamples</h1>
+		<h2>Legend</h2>
+		<table>
+			<tr>
+				<td>EMBSAME(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of the same instance was held.<td></td>
+			</tr>
+			<tr>
+				<td>EMOTHER(x:y)</td><td>While accessing a member of an instance of struct <k>x</k>, the lock <k>y</k> of another instance of <k>x</k> was held.</td>
+			</tr>
+			<tr>
+				<td>EMB:x(y:z)</td><td>While accessing a member of an instance of struct <k>y</k>, the lock <k>z</k> of another instance with id <k>x</k> was held.</td>
+			</tr>
+			<tr>
+				<td>x(y)</td><td>A global lock of type <k>y</k> was held. It has the id <k>x</k>.</td>
+			</tr>
+			<tr>
+				<td>x:y(z)</td><td>The global <k>x</k> lock of type <k>z</k> was held. It has the id <k>y</k>.</td>
+			</tr>
+			<tr>
+				<td colspan="2">The square brackets specify wether the read or the write side of a lock was held, e.g., [w]. This information is present even if the lock is a reader-only or writer-only lock.</td>
+			</tr>
+		</table>
+		<h2>Results</h2>
+		<table>""")
 	lastKey = None
 	cexID = 1
 	hypothesisID = 0
 	outerLineStyle = 'a'
+	hypothesesList = []
 	for line in tempReader:
 		key = (line['data_type'], line['member'], line['accesstype'])
 		if key not in hypothesesDict:
@@ -187,13 +228,14 @@ tr.line_heading {
 			# E.g.: 94.6% (19069 out of 20155 mem accesses under locks): EMBOTHER(inode:i_rwsem)
 			locksHeldKey = hypothesesEntry['locks'].keys()[0]
 			locksHeldEntry = hypothesesEntry['locks'][locksHeldKey]
+			hypothesesList.append((line['accesstype'] + ':' + line['member'], hypothesisID))
 			print('				<td colspan="5"><a id="HYPO%d"><b>Hypothesis %d</b></a>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>'
 				% (hypothesisID, hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'], locksHeldKey), end='')
 			print('<b>%2.2f%%</b> (%d out of %d mem accesses under locks)</td>' % (locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total']))
 			print('		</tr>')
-			print("""		<tr>
-			<th>Stacktrace<br/>(00 = stackframe where access occurred)</th><th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
-		</tr>""")
+			print("""			<tr>
+				<th>Stacktrace<br/>(00 = stackframe where access occurred)</th><th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
+			</tr>""")
 			cexID = 1
 		lastKey = key
 
@@ -223,15 +265,15 @@ tr.line_heading {
 			# Mark the first stacktrace entry since it corresponds
 			# to the suspicious memory access.
 			if i == (traceElemsLen - 1):
-				#print('				</div>\n', end='')
-				print('					%02d: <a class="memaccess" ' % (traceElemsLen - (i + 1)), end='')
+				#print('					</div>\n', end='')
+				print('						%02d: <a class="memaccess" ' % (traceElemsLen - (i + 1)), end='')
 			else:
-				print('					%02d: <a class="stacktraceelem" ' % (traceElemsLen - (i + 1)), end='')
+				print('						%02d: <a class="stacktraceelem" ' % (traceElemsLen - (i + 1)), end='')
 			print('href="%s/source/%s#L%s">%s:%s</a>' % (crossRefURL, codePos['file'], codePos['line'], codePos['fn'], codePos['line']), end='')
 			if i < (traceElemsLen - 1):
 				print('<br/>\n', end='')
 			i=i+1
-		print('\n			</td>')
+		print('\n				</td>')
 
 		# Set the inner line style
 		if outerLineStyle == 'a':
@@ -261,7 +303,7 @@ tr.line_heading {
 					innerLineStyle = 'b'
 				else:
 					innerLineStyle = 'a'
-			print('			<td><a href="#HYPO%d">%d</a>.%d</td><td>%s</td>' % (hypothesisID, hypothesisID, cexID, occurences), end='')
+			print('				<td><a href="#HYPO%d">%d</a>.%d</td><td>%s</td>' % (hypothesisID, hypothesisID, cexID, occurences), end='')
 			print('<td>', end='')
 			# Split locks_held
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
@@ -283,13 +325,19 @@ tr.line_heading {
 						print('<br/>', end='')
 					k = k + 1
 			else:
-				print('No locks')
+				print('No locks', end='')
 			print('</td>')
-			print('		</tr>')
+			print('			</tr>')
 			cexID = cexID + 1
 			i = i + 1
 
-	print("""	</table>
+	print("""		</table>
+	</div>
+	<div class="sidenav">
+		<h1>Members</h1>""")
+	for value in hypothesesList:
+		print('		<a href="#HYPO%d">%s</a>' % (value[1], value[0]))
+	print("""	</div>
 <script type='text/javascript'>
 var acc = document.getElementsByClassName("accordion");
 var i;
