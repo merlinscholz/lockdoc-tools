@@ -213,7 +213,7 @@ std::string locks2string(const std::vector<myid_t>& l, const std::string separat
 	return ss.str();
 }
 
-void evaluate_hypothesis(Member& member, std::vector<myid_t>& hypothesis)
+void evaluate_hypothesis(Member& member, const std::vector<myid_t>& hypothesis)
 {
 	auto ret = member.hypotheses.emplace(std::piecewise_construct,
 		std::forward_as_tuple(hypothesis), std::forward_as_tuple());
