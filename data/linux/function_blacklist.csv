@@ -78,6 +78,7 @@ inode;\N;ramfs_get_inode
 inode;\N;shmem_get_inode
 inode;\N;simple_fill_super
 inode:ext4;\N;ext4_iget
+inode:ext4;\N;ext4_iget_normal
 inode;\N;sock_alloc
 inode;\N;shmem_fill_super
 inode;\N;hugetlbfs_fill_super
