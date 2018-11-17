@@ -8,10 +8,12 @@ function usage() {
 	exit 1
 }
 
+SKIP_QUERIES=${SKIP_QUERIES:-0}
 if [ ${#} -lt 5 ];
 then
 	usage ${0}
 fi
+
 DB=${1};shift
 DATA_TYPE=${1};shift
 INPUT_BUGS=${1};shift
@@ -40,12 +42,20 @@ else
 	CEX_HTML="cex-${OUTPUT_SUFFIX}-${DATA_TYPE}.html"
 fi
 
-
-${TOOLS_PATH}/get-counterexamples.sh ${INPUT_BUGS} ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
-if [ ${?} -ne 0 ];
+if [ ${SKIP_QUERIES} -eq 0 ];
 then
-	echo "Cannot run get-counterexamples.sh!">&2 
-	exit 1
+	${TOOLS_PATH}/get-counterexamples.sh ${INPUT_BUGS} ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot run get-counterexamples.sh!">&2
+		exit 1
+	fi
+fi
+
+if [ ! -f ${CEX_CSV} ];
+then
+	echo "${CEX_CSV} does not exist. Stop processing '${INPUT_BUGS}' for '${DATA_TYPE}'"
+	exit 0
 fi
 
 SIZE=`stat --printf="%s" ${CEX_CSV}`

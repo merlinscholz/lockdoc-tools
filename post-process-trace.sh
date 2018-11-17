@@ -14,6 +14,7 @@ function usage() {
 
 SKIP_IMPORT=${SKIP_IMPORT:-0}
 SKIP_HYPO=${SKIP_HYPO:-0}
+SKIP_CEX_QUERIES=${SKIP_CEX_QUERIES:-0}
 
 if [ -z ${1} ];
 then
@@ -127,7 +128,7 @@ do
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
-			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
+			SKIP_QUERIES=${SKIP_CEX_QUERIES} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
