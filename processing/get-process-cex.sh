@@ -9,6 +9,14 @@ function usage() {
 }
 
 SKIP_QUERIES=${SKIP_QUERIES:-0}
+DISPLAY_VARIANT=${DISPLAY_VARIANT:-tree}
+
+if [ ${DISPLAY_VARIANT} != "tree" ] && [ ${DISPLAY_VARIANT} != "graph" ];
+then
+	echo "Unknown display variant: ${DISPLAY_VARIANT}" >&2
+	exit 1
+fi
+
 if [ ${#} -lt 5 ];
 then
 	usage ${0}
@@ -66,7 +74,7 @@ then
 	exit 0
 fi
 
-${TOOLS_PATH}/pretty-print-cex.py -u ${BASE_URL} ${CEX_CSV} ${KERNEL} ${INPUT_WINNER} > ${CEX_HTML}
+${TOOLS_PATH}/pretty-print-cex.py -c cex-temp/ -d ${DISPLAY_VARIANT} -u ${BASE_URL} ${CEX_CSV} ${KERNEL} ${INPUT_WINNER} > ${CEX_HTML}
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run pretty-print-cex.py!">&2 
