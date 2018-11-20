@@ -103,6 +103,7 @@ do
 			VARIANT="${VARIANT}-subclasses"
 		fi
 
+		HYPO_EXEC_TIME=0.0
 		echo "Start processing '${VARIANT}'"
 		if [ ${SKIP_HYPO} -eq 0 ];
 		then
@@ -113,7 +114,6 @@ do
 				exit 1
 			fi
 			HYPO_EXEC_TIME=`cat ${DURATION_FILE}`
-			OVERALL_EXEC_TIME=`echo ${HYPO_EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 			echo "Running hypothesizer and generating the input took ${HYPO_EXEC_TIME} secs."
 		fi
 
@@ -140,6 +140,7 @@ do
 
 		echo "Processing of CEXs took ${CEX_EXEC_TIME} secs."
 		VARIANT_EXEC_TIME=`echo ${HYPO_EXEC_TIME}+${CEX_EXEC_TIME} | bc`
+		OVERALL_EXEC_TIME=`echo ${VARIANT_EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 		echo "Finished processing '${VARIANT}'. Took ${VARIANT_EXEC_TIME} secs."
 		echo "-----------------------------------"
 	done
