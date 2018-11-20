@@ -101,6 +101,9 @@ extContent = {
 	]
 }
 
+def toNodeID(codePos):
+	return codePos['fn'] + '_' + codePos['line']
+
 # tree-specific functions --- BEGIN
 def newTreeNode():
 	return { 'id': 0, 'name': '', 'codePos': dict(), 'lockCombTable': [], 'children': dict(), 'pseudo': False}
@@ -164,8 +167,8 @@ def findTree(curTree, treeName):
 				break
 		return found
 
-def toTreeNodeID(fnName, fnLine):
-	return fnName + '_' + fnLine
+def toTreeNodeID(codePos):
+	return toNodeID(codePos)
 
 def printIndentation(lvl):
 	for i in range(0, lvl):
@@ -234,8 +237,8 @@ def createInitGraphNode(name, codePos):
 	temp['codePos'] = codePos
 	return temp
 
-def toNodeID(codePos):
-	return codePos['fn'] + '_' + codePos['line']
+def toGraphNodeID(codePos):
+	return toNodeID(codePos)
 
 def toEdgeID(parentNode, childNode):
 	return parentNode['id'] + '_' + childNode['id']
@@ -247,7 +250,7 @@ def emplaceGraphNode(nodeDict, traceElem):
 	codePos['line'] = elems[2].split(':')[1]
 	codePos['fn'] = elems[1]
 
-	nodeID = toNodeID(codePos)
+	nodeID = toGraphNodeID(codePos)
 	if nodeID in nodeDict:
 		node = nodeDict[nodeID]
 	else:
@@ -678,7 +681,7 @@ a:visited {
 				codePos['file'] = elems[2].split(':')[0]
 				codePos['line'] = elems[2].split(':')[1]
 				codePos['fn'] = elems[1]
-				parentID = toNodeID(codePos)
+				parentID = toTreeNodeID(codePos)
 				parentIter = findTree(treeIter, parentID)
 
 				# Found another root node
@@ -691,7 +694,7 @@ a:visited {
 				codePos['file'] = elems[2].split(':')[0]
 				codePos['line'] = elems[2].split(':')[1]
 				codePos['fn'] = elems[1]
-				childID = toNodeID(codePos)
+				childID = toTreeNodeID(codePos)
 				if childID in parentIter['children']:
 					childIter = parentIter['children'][childID]
 				else:
