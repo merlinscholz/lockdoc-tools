@@ -105,20 +105,19 @@ def toNodeID(codePos):
 	return codePos['fn'] + '_' + codePos['line']
 
 # tree-specific functions --- BEGIN
-def newTreeNode():
-	return { 'id': 0, 'name': '', 'codePos': dict(), 'lockCombTable': [], 'children': dict(), 'pseudo': False}
+def newTreeNode(treeID):
+	return { 'id': treeID, 'name': '', 'codePos': dict(), 'lockCombTable': [], 'children': dict(), 'pseudo': False}
 
 def newTree(treeID):
-	temp = newTreeNode()
-	temp['id'] = treeID
+	temp = newTreeNode(treeID)
 	temp['name'] = 'userspace_root'
 	temp['codePos']['file'] = None
 	temp['codePos']['line'] = None
 	temp['codePos']['fn'] = 'userspace'
 	return temp
 
-def createInitTreeNode(name, codePos):
-	temp = newTreeNode()
+def createInitTreeNode(name, codePos, treeID):
+	temp = newTreeNode(treeID)
 	temp['name'] = name
 	temp['codePos'] = codePos
 	return temp
@@ -131,17 +130,17 @@ def treeDepth(curTree):
 			maxChildDepth = temp
 	return maxChildDepth + 1
 
-def addPseudoNodes(child, num):
+def addPseudoNodes(child, num, treeID):
 	if num == 0:
 		return child
-	pseudoNode = newTreeNode()
+	pseudoNode = newTreeNode(treeID)
 	pseudoNode['pseudo'] = True
 	pseudoNode['name'] = 'pseudo_node'
 	pseudoNode['codePos']['file'] = None
 	pseudoNode['codePos']['line'] = None
 	pseudoNode['codePos']['fn'] = 'pseudo_fn'
 
-	temp = addPseudoNodes(child, num - 1)
+	temp = addPseudoNodes(child, num - 1, treeID)
 	pseudoNode['children'][temp['name']] = temp
 
 	return pseudoNode
@@ -150,7 +149,7 @@ def adjustSubtreeDepth(curTree, maxDepth, curDepth):
 	for child in curTree['children'].values():
 		# Found a leaf?
 		if len(child['children']) == 0:
-			pseudoTree = addPseudoNodes(child, maxDepth - (curDepth + 2))
+			pseudoTree = addPseudoNodes(child, maxDepth - (curDepth + 2), curTree['id'])
 			del curTree['children'][child['name']]
 			curTree['children'][pseudoTree['name']] = pseudoTree
 		else:
@@ -686,7 +685,7 @@ a:visited {
 
 				# Found another root node
 				if parentIter is None:
-					parentIter = createInitTreeNode(parentID, codePos)
+					parentIter = createInitTreeNode(parentID, codePos, tree['id'])
 					tree['children'][parentID] = parentIter
 				treeIter = parentIter
 
@@ -698,7 +697,7 @@ a:visited {
 				if childID in parentIter['children']:
 					childIter = parentIter['children'][childID]
 				else:
-					childIter = createInitTreeNode(childID, codePos)
+					childIter = createInitTreeNode(childID, codePos, tree['id'])
 					parentIter['children'][childID] = childIter
 				# Reached the last edge of the stacktrace: parentIter -> childIter
 				# childIter is the stacktrace entry that corresponds to the actual memory access
