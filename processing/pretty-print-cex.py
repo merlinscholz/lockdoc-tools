@@ -1012,7 +1012,7 @@ a:visited {
 		}}
 		linkCode = makeTag('a', {{ target: '_blank',
 			href: '{crossRefURL}/source/'+n.data('file') + '#L' + n.data('line'),
-			'class': 'source-link' }}, [ makeText(n.data('file') + ':' + n.data('line')) ]);
+			'class': 'source-link' }}, [ makeText(n.data('fn') + '@' + n.data('file') + ':' + n.data('line')) ]);
 		var tippy = makeTippy(n, makeTag('div', {{}}, [linkCode]));
 		n.data('tippy', tippy);
 		n.on('mouseover', function(e) {{
