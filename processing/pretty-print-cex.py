@@ -187,12 +187,12 @@ def printTree(baseURL, tree, depth, indentLvl):
 	if len(tree['lockCombTable']) > 0 :
 		print("\\")
 		printIndentation(indentLvl + 2)
-		print("""<div class="cexlist node-desc">\\
+		print("""<div class="cexlist node-desc cexlist_{hypoID:d}">\\
 		<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{codeFile}#L{codeLine}" title="{codeFile}:{codeLine}">{codeFN}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>\\
 	<table>\\
 		<tr>\\
 			<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>\\
-		</tr>\\""".format(crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
+		</tr>\\""".format(hypoID=tree['id'], crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
 		for table in tree['lockCombTable']:
 			printIndentation(indentLvl + 2)
 			print(table)
@@ -352,12 +352,18 @@ h1, h2 {
 
 .cexlists {
 	margin-bottom: 20px;
+	text-align: center;
 }
 
 .cexlistcontainer {
 	display: inline-block;
-	margin: auto;
-	text-align: center;
+	/*
+	 * If one ever changes one of these margins below, 
+	 * he or she has to adapt the factor in resizeCexList() as well.
+	 * In line: sumWidth + cexListArr.length * 8 <-- this one.
+	 */
+	margin-left: 4px;
+	margin-right: 4px;
 }
 
 .cexlist {
@@ -715,7 +721,7 @@ a:visited {
 		<h1>Members</h1>""")
 	for value in hypothesesList:
 		if displayMode == GRAPH:
-			print('			<a href="#" onClick="toogleCexGraph({hypoID:d}, cexGraph_{hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
+			print('			<a href="#" onClick="toogleCexGraph({hypoID:d}, cexGraph_{hypoID:d});resizeCexList({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
 		elif displayMode == TREE:
 			print('			<a href="#" onClick="toogleCexTree({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
 	print("""	</div>
@@ -737,7 +743,9 @@ a:visited {
 				if len(node['lockCombTable']) > 0:
 					lockCombsDistinct = lockCombsDistinct + 1
 
-			print('			<div class="cexlists">')
+			print('			<div class="cexlists" id="cexlists_%d">' % (value['id']))
+			i = 0
+			nodesLen = len(value['nodes'])
 			for nodeID, node in value['nodes'].iteritems():
 				lenLockCombs = len(node['lockCombTable'])
 				if lenLockCombs == 0:
@@ -745,18 +753,25 @@ a:visited {
 				width = 100
 				if lockCombsDistinct > 1:
 					width = (100 / lockCombsDistinct) - 1
-				print("""				<div class="cexlistcontainer" style="width: %f%%"><!-- %d, %f -->
-						<div class="cexlist">
-							<p class="cexlist-title"><a target="_blank" href="%s/source/%s#L%s" title="%s:%s">%s</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>
+				if i == 0:
+					print(util.genIndentation(3))
+				print("""<div class="cexlistcontainer">
+						<div class="cexlist cexlist_{hypoID:d}">
+							<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{file}#L{line}" title="{file}:{line}">{fn}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>
 							<table>
 								<tr>
 									<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
-								</tr>""" % (width, lockCombsDistinct, width, crossRefURL, node['codePos']['file'], node['codePos']['line'], node['codePos']['file'], node['codePos']['line'], node['codePos']['fn']))
+								</tr>""".format(hypoID=value['id'], width=width, lockCombs=lockCombsDistinct, crossRefURL=crossRefURL,
+								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']),end="")
 				for lockComTable in node['lockCombTable']:
 					print(lockComTable, end="")
-				print("""						</table>
+				print("""
+							</table>
 						</div>
-					</div>""")
+					</div>""", end="")
+				if i == nodesLen - 1:
+					print('')
+				i = i +1
 			print('			</div>')
 			print('			<div class="cexgraph" id="cexgraph_%d"></div>' % (value['id']))
 		elif displayMode == TREE:
@@ -827,6 +842,18 @@ a:visited {
 		// Redraw the graph and fit it into the container
 		window.visibleCexGraph = cexGraph;
 		resizeGraph();
+	};
+	function resizeCexList(hypoID) {
+		var cexLists = document.getElementById('cexlists_' + hypoID);
+		var cexListArr = document.getElementsByClassName('cexlist_' + hypoID);
+		var i, sumWidth = 0;
+		for (i = 0; i < cexListArr.length; i++) {
+			sumWidth += cexListArr[i].offsetWidth;
+		}
+		if (sumWidth > cexLists.clientWidth) {
+			var temp = sumWidth + cexListArr.length * 8;
+			cexLists.style.width = temp + 'px';
+		}
 	};
 	function makeTag(tag, attrs, children) {
 		var el = document.createElement(tag);
