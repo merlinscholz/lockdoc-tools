@@ -587,14 +587,9 @@ a:visited {
 		# Print a header for each tuple of (data_type, member, accesstype)
 		if lastKey != key:
 			# Save hypothesis info (id, text, description and {graph,tree}) before we process a new hypothesis
-			if displayMode == GRAPH:
-				if edges is not None and nodes is not None:
-					temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'nodes': nodes, 'edges': edges}
-					hypothesesList.append(temp)
-			elif displayMode == TREE:
-				if tree is not None:
-					temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree}
-					hypothesesList.append(temp)
+			if edges is not None and nodes is not None and tree is not None:
+				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges}
+				hypothesesList.append(temp)
 			hypothesisID = hypothesisID + 1
 			# The header contains information about the accessed member like
 			# the access type or the locking rule.
@@ -607,11 +602,9 @@ a:visited {
 					<b>%2.2f%%</b> (%d out of %d mem accesses under locks)""" % (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'],
 					locksHeldKey, locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total'])
 			cexID = 1
-			if displayMode == GRAPH:
-				nodes = createInitNodesDict()
-				edges = dict()
-			elif displayMode == TREE:
-				tree = newTree(hypothesisID)
+			nodes = createInitNodesDict()
+			edges = dict()
+			tree = newTree(hypothesisID)
 		lastKey = key
 
 		i = 0
@@ -661,60 +654,56 @@ a:visited {
 		formattedStacktrace = ""
 		treeIter = tree
 		for i in range(0,traceElemsLen - 1):
-			if displayMode == GRAPH:
-				parentNode = emplaceGraphNode(nodes, traceElems[i])
-				childNode = emplaceGraphNode(nodes, traceElems[i + 1])
-				# Since there is more than one entry point to the kernel,
-				# we won't have a single root node for each cex tree.
-				# We fake *the* root node, which represents the userspace,
-				# and create edges from that node the frist entry of each stacktrace.
-				if i == 0:
-					userspaceNode = nodes[USERSPACE_ID]
-					edgeID = toEdgeID(userspaceNode, parentNode)
-					if edgeID not in edges:
-						edges[edgeID] = (userspaceNode, parentNode)
-				edgeID = toEdgeID(parentNode, childNode)
+			# Graph stuff
+			parentNode = emplaceGraphNode(nodes, traceElems[i])
+			childNode = emplaceGraphNode(nodes, traceElems[i + 1])
+			# Since there is more than one entry point to the kernel,
+			# we won't have a single root node for each cex tree.
+			# We fake *the* root node, which represents the userspace,
+			# and create edges from that node the frist entry of each stacktrace.
+			if i == 0:
+				userspaceNode = nodes[USERSPACE_ID]
+				edgeID = toEdgeID(userspaceNode, parentNode)
 				if edgeID not in edges:
-					edges[edgeID] = (parentNode, childNode)
-				# Reached the last edge of the stacktrace: parentIter -> childIter
-				# childIter is the stacktrace entry that corresponds to the actual memory access
-				if i == (traceElemsLen - 2):
-					childNode['lockCombTable'].append(lockCombTable)
-			elif displayMode == TREE:
-				elems = traceElems[i].split('@')
-				codePos = dict()
-				codePos['file'] = elems[2].split(':')[0]
-				codePos['line'] = elems[2].split(':')[1]
-				codePos['fn'] = elems[1]
-				parentID = toTreeNodeID(codePos)
-				parentIter = findTree(treeIter, parentID)
+					edges[edgeID] = (userspaceNode, parentNode)
+			edgeID = toEdgeID(parentNode, childNode)
+			if edgeID not in edges:
+				edges[edgeID] = (parentNode, childNode)
+			# Reached the last edge of the stacktrace: parentIter -> childIter
+			# childIter is the stacktrace entry that corresponds to the actual memory access
+			if i == (traceElemsLen - 2):
+				childNode['lockCombTable'].append(lockCombTable)
+			# Tree stuff
+			elems = traceElems[i].split('@')
+			codePos = dict()
+			codePos['file'] = elems[2].split(':')[0]
+			codePos['line'] = elems[2].split(':')[1]
+			codePos['fn'] = elems[1]
+			parentID = toTreeNodeID(codePos)
+			parentIter = findTree(treeIter, parentID)
 
-				# Found another root node
-				if parentIter is None:
-					parentIter = createInitTreeNode(parentID, codePos, tree['id'])
-					tree['children'][parentID] = parentIter
-				treeIter = parentIter
+			# Found another root node
+			if parentIter is None:
+				parentIter = createInitTreeNode(parentID, codePos, tree['id'])
+				tree['children'][parentID] = parentIter
+			treeIter = parentIter
 
-				elems = traceElems[i + 1].split('@')
-				codePos['file'] = elems[2].split(':')[0]
-				codePos['line'] = elems[2].split(':')[1]
-				codePos['fn'] = elems[1]
-				childID = toTreeNodeID(codePos)
-				if childID in parentIter['children']:
-					childIter = parentIter['children'][childID]
-				else:
-					childIter = createInitTreeNode(childID, codePos, tree['id'])
-					parentIter['children'][childID] = childIter
-				# Reached the last edge of the stacktrace: parentIter -> childIter
-				# childIter is the stacktrace entry that corresponds to the actual memory access
-				if i == (traceElemsLen - 2):
-					childIter['lockCombTable'].append(lockCombTable)
-	if displayMode == GRAPH:
-		temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'nodes': nodes, 'edges': edges}
-		hypothesesList.append(temp)
-	elif displayMode == TREE:
-		temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree}
-		hypothesesList.append(temp)
+			elems = traceElems[i + 1].split('@')
+			codePos['file'] = elems[2].split(':')[0]
+			codePos['line'] = elems[2].split(':')[1]
+			codePos['fn'] = elems[1]
+			childID = toTreeNodeID(codePos)
+			if childID in parentIter['children']:
+				childIter = parentIter['children'][childID]
+			else:
+				childIter = createInitTreeNode(childID, codePos, tree['id'])
+				parentIter['children'][childID] = childIter
+			# Reached the last edge of the stacktrace: parentIter -> childIter
+			# childIter is the stacktrace entry that corresponds to the actual memory access
+			if i == (traceElemsLen - 2):
+				childIter['lockCombTable'].append(lockCombTable)
+	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges}
+	hypothesesList.append(temp)
 
 	print("""	<div class="sidebar" id="sidenav">
 		<a href="javascript:void(0)" id="closebtn" onclick="closeBar('sidenav')">&times;</a>
