@@ -588,7 +588,7 @@ a:visited {
 		if lastKey != key:
 			# Save hypothesis info (id, text, description and {graph,tree}) before we process a new hypothesis
 			if edges is not None and nodes is not None and tree is not None:
-				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges}
+				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': displayMode}
 				hypothesesList.append(temp)
 			hypothesisID = hypothesisID + 1
 			# The header contains information about the accessed member like
@@ -702,16 +702,16 @@ a:visited {
 			# childIter is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
 				childIter['lockCombTable'].append(lockCombTable)
-	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges}
+	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': displayMode}
 	hypothesesList.append(temp)
 
 	print("""	<div class="sidebar" id="sidenav">
 		<a href="javascript:void(0)" id="closebtn" onclick="closeBar('sidenav')">&times;</a>
 		<h1>Members</h1>""")
 	for value in hypothesesList:
-		if displayMode == GRAPH:
+		if value['displaymode'] == GRAPH:
 			print('			<a href="#" onClick="toogleCexGraph({hypoID:d}, cexGraph_{hypoID:d});resizeCexList({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
-		elif displayMode == TREE:
+		elif value['displaymode'] == TREE:
 			print('			<a href="#" onClick="toogleCexTree({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
 	print("""	</div>
 	<div id="heading">
@@ -725,7 +725,7 @@ a:visited {
 	<div id="main">""")
 	for value in hypothesesList:
 		print('		<div class="cex" id="cex_%d">' % (value['id']))
-		if displayMode == GRAPH:
+		if value['displaymode'] == GRAPH:
 			# Count nodes that have counterexamples attached
 			lockCombsDistinct = 0
 			for nodeID, node in value['nodes'].iteritems():
@@ -763,7 +763,7 @@ a:visited {
 				i = i +1
 			print('			</div>')
 			print('			<div class="cexgraph" id="cexgraph_%d"></div>' % (value['id']))
-		elif displayMode == TREE:
+		elif value['displaymode'] == TREE:
 			print('			<div class="cextree" id="cextree_%d"></div>' % (value['id']))
 		print('		</div>')
 	print("""	</div>
