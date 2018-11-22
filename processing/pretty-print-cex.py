@@ -716,7 +716,11 @@ a:visited {
 	print("""	</div>
 	<div id="heading">
 		<h1>Counterexamples</h1>
-			<div style="text-align:center;"><button class="btn default" onclick="openBar('sidenav', '10%')">Show Member List</button>&nbsp;<button class="btn default" onclick="openBar('legend', '20%')">Show Legend</button></div>
+			<div style="text-align:center;">
+				<button class="btn default" onclick="openBar('sidenav', '10%')">Show Member List</button>&nbsp;
+				<button class="btn default" onclick="openBar('legend', '20%')">Show Legend</button>&nbsp;
+				<button class="btn default" id="zoombtn" onclick="toggleZoom();">Enable Zoom</button>
+			</div>
 			<div id="desc">To view counterexamples, please select one member from the member list.</div>""")
 	for value in hypothesesList:
 		print("""				<div class="hypothesis" id="hypothesis_%d">%s
@@ -791,6 +795,22 @@ a:visited {
 			window.visibleCexGraph.pan({ x: pos.x, y: 0});
 		}, 500);
 	};
+	function toggleZoom() {
+		if (window.visibleCexGraph == null) {
+			alert('No graph displayed!');
+			return;
+		}
+		var zoomBtn = document.getElementById('zoombtn');
+		if (window.visibleCexGraph.userZoomingEnabled()) {
+			window.visibleCexGraph.userZoomingEnabled(false);
+			window.visibleCexGraph.userPanningEnabled(false);
+			zoomBtn.innerText = 'Enable Zoom';
+		} else {
+			window.visibleCexGraph.userZoomingEnabled(true);
+			window.visibleCexGraph.userPanningEnabled(true);
+			zoomBtn.innerText = 'Disable Zoom';
+		}
+	};
 	/* Sidenav overlay - https://www.w3schools.com/howto/howto_js_sidenav.asp --- Begin */
 	function openBar(elemID, width) {
 		document.getElementById(elemID).style.width = width;
@@ -831,6 +851,12 @@ a:visited {
 		// Redraw the graph and fit it into the container
 		window.visibleCexGraph = cexGraph;
 		resizeGraph();
+		var zoomBtn = document.getElementById('zoombtn');
+		if (window.visibleCexGraph.userZoomingEnabled()) {
+			zoomBtn.innerText = 'Disable Zoom';
+		} else {
+			zoomBtn.innerText = 'Enable Zoom';
+		}
 	};
 	function resizeCexList(hypoID) {
 		var cexLists = document.getElementById('cexlists_' + hypoID);
@@ -1010,6 +1036,7 @@ a:visited {
 		userPanningEnabled: false,
 		zoomingEnabled: true,
 		userZoomingEnabled: false,
+		wheelSensitivity: 0.5,
 		elements: cexGraphConfig_{hypoID:d}
 	}});
 	cexGraph_{hypoID:d}.on('tap', function(e) {{
