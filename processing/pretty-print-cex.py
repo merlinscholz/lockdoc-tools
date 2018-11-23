@@ -854,20 +854,6 @@ a:visited {
 		}
 	}
 	/* graph-specific functions --- BEGIN */
-	function toogleCexTree(hypoNo) {
-		// Hide description box
-		document.getElementById('desc').style.display = 'none';
-		// Hide alle cex trees
-		hideCexs();
-		// Hide all hypotheses
-		var hypotheses = document.getElementsByClassName('hypothesis');
-		var i;
-		for (i = 0; i < hypotheses.length; i++) {
-			hypotheses[i].style.display = 'none';
-		}
-		// Display the hyothesis for the selected member
-		document.getElementById('hypothesis_' + hypoNo).style.display = 'block';
-	}
 	function toogleCex(hypoNo) {
 		// Hide description box
 		document.getElementById('desc').style.display = 'none';
