@@ -368,7 +368,7 @@ h1, h2 {
 	display: inline-block;
 	/*
 	 * If one ever changes one of these margins below, 
-	 * he or she has to adapt the factor in resizeCexList() as well.
+	 * he or she has to adapt the factor in resizeGraph() as well.
 	 * In line: sumWidth + cexListArr.length * 8 <-- this one.
 	 */
 	margin-left: 4px;
@@ -797,14 +797,27 @@ a:visited {
 	print("""</script>
 <script>
 	window.visibleCexGraph = null;
-	window.addEventListener("resize", resizeGraph);
-	var resizeTimer;
+	window.hypothesisID = null;
+	//window.addEventListener("resize", resizeGraph);
+	//var resizeTimer;
 	function resizeGraph() {
 		if (window.visibleCexGraph == null) {
 			return;
 		}
-		clearTimeout(resizeTimer);
-		resizeTimer = setTimeout(function() {
+		//clearTimeout(resizeTimer);
+		//resizeTimer = setTimeout(function() {
+			var cexLists = document.getElementById('cexlists_' + window.hypothesisID);
+			var cexListArr = document.getElementsByClassName('cexlist_' + window.hypothesisID);
+			var i, sumWidth = 0;
+			for (i = 0; i < cexListArr.length; i++) {
+				sumWidth += cexListArr[i].offsetWidth;
+			}
+			if (sumWidth > cexLists.clientWidth) {
+				var temp = sumWidth + cexListArr.length * 8;
+				cexLists.style.width = temp + 'px';
+				var cexGraphCont = document.getElementById('cexgraph_' + window.hypothesisID);
+				cexGraphCont.style.width = temp + 'px';
+			}
 			window.visibleCexGraph.resize();
 			/* A value of 1.2 has proven to be 'good'. */
 			window.visibleCexGraph.zoom(1.2);
@@ -814,7 +827,7 @@ a:visited {
 			/* Move the graph to the top of the viewport (y=0). */
 			var pos = window.visibleCexGraph.pan();
 			window.visibleCexGraph.pan({ x: pos.x, y: 0});
-		}, 500);
+		//}, 500);
 	};
 	function toggleZoom() {
 		if (window.visibleCexGraph == null) {
@@ -881,6 +894,7 @@ a:visited {
 			cexGraphCont.style.height = window.innerHeight * 2 + 'px';
 			// Redraw the graph and fit it into the container
 			window.visibleCexGraph = cexGraph;
+			window.hypothesisID = hypoNo;
 			resizeGraph();
 			var zoomBtn = document.getElementById('zoombtn');
 			if (window.visibleCexGraph.userZoomingEnabled()) {
@@ -888,19 +902,6 @@ a:visited {
 			} else {
 				zoomBtn.innerText = 'Enable Zoom';
 			}
-			resizeCexList(hypoNo);
-		}
-	};
-	function resizeCexList(hypoID) {
-		var cexLists = document.getElementById('cexlists_' + hypoID);
-		var cexListArr = document.getElementsByClassName('cexlist_' + hypoID);
-		var i, sumWidth = 0;
-		for (i = 0; i < cexListArr.length; i++) {
-			sumWidth += cexListArr[i].offsetWidth;
-		}
-		if (sumWidth > cexLists.clientWidth) {
-			var temp = sumWidth + cexListArr.length * 8;
-			cexLists.style.width = temp + 'px';
 		}
 	};
 	function makeTag(tag, attrs, children) {
