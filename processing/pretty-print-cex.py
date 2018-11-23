@@ -103,6 +103,10 @@ def toNodeID(codePos):
 
 def getDisplayMode(displayMode, hypo):
 	if displayMode == DYNAMIC:
+		numLeafs = treeCountLeafs(hypo['tree'])
+		if numLeafs > 7:
+			LOGGER.debug("%s: Using graph, leafs=%d\n" % (hypo['title'], numLeafs))
+			return GRAPH
 		return TREE
 	else:
 		return displayMode
@@ -132,6 +136,15 @@ def treeDepth(curTree):
 		if temp > maxChildDepth:
 			maxChildDepth = temp
 	return maxChildDepth + 1
+
+def treeCountLeafs(curTree):
+	if len(curTree['lockCombTable']) > 0 :
+		return 1
+	else:
+		sumLeafs = 0
+		for name, child in curTree['children'].iteritems():
+			sumLeafs = sumLeafs + treeCountLeafs(child)
+		return sumLeafs
 
 def addPseudoNodes(child, num, treeID):
 	if num == 0:
