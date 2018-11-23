@@ -22,84 +22,80 @@ USERSPACE_FN = 'userspace'
 GRAPH = 'graph'
 TREE = 'tree'
 
-extContent = {
-	'graph': [
-		{
-			'type': 'js',
-			'fname': 'cytoscape.min.js',
-			'rev': '2411ee5',
-			'url': 'https://raw.githubusercontent.com/cytoscape/cytoscape.js/{rev}/dist',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'dagre.min.js',
-			'rev': '4c7dc4c',
-			'url': 'https://raw.githubusercontent.com/dagrejs/dagre/{rev}/dist',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'cytoscape-dagre.js',
-			'rev': 'e1f3758',
-			'url': 'https://raw.githubusercontent.com/cytoscape/cytoscape.js-dagre/{rev}',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'popper.min.js',
-			'rev': '1.14.5',
-			'url': 'https://unpkg.com/popper.js@{rev}/dist/umd',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'cytoscape-popper.js',
-			'rev': '1.0.2',
-			'url': 'https://unpkg.com/cytoscape-popper@{rev}',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'tippy.all.js',
-			'rev': '2.6.0',
-			'url': 'https://unpkg.com/tippy.js@{rev}/dist',
-			'license': 'MIT',
-			'data': None
-		}
-	],
-	'tree': [
-		{
-			'type': 'css',
-			'fname': 'Treant.css',
-			'rev': 'a5f9562',
-			'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'vendor/raphael.js',
-			'rev': 'a5f9562',
-			'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
-			'license': 'MIT',
-			'data': None
-		},
-		{
-			'type': 'js',
-			'fname': 'Treant.js',
-			'rev': 'a5f9562',
-			'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
-			'license': 'MIT',
-			'data': None
-		}
-	]
-}
+extContent = [
+	{
+		'type': 'js',
+		'fname': 'cytoscape.min.js',
+		'rev': '2411ee5',
+		'url': 'https://raw.githubusercontent.com/cytoscape/cytoscape.js/{rev}/dist',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'dagre.min.js',
+		'rev': '4c7dc4c',
+		'url': 'https://raw.githubusercontent.com/dagrejs/dagre/{rev}/dist',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'cytoscape-dagre.js',
+		'rev': 'e1f3758',
+		'url': 'https://raw.githubusercontent.com/cytoscape/cytoscape.js-dagre/{rev}',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'popper.min.js',
+		'rev': '1.14.5',
+		'url': 'https://unpkg.com/popper.js@{rev}/dist/umd',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'cytoscape-popper.js',
+		'rev': '1.0.2',
+		'url': 'https://unpkg.com/cytoscape-popper@{rev}',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'tippy.all.js',
+		'rev': '2.6.0',
+		'url': 'https://unpkg.com/tippy.js@{rev}/dist',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'css',
+		'fname': 'Treant.css',
+		'rev': 'a5f9562',
+		'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'vendor/raphael.js',
+		'rev': 'a5f9562',
+		'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
+		'license': 'MIT',
+		'data': None
+	},
+	{
+		'type': 'js',
+		'fname': 'Treant.js',
+		'rev': 'a5f9562',
+		'url': 'https://raw.githubusercontent.com/fperucic/treant-js/{rev}',
+		'license': 'MIT',
+		'data': None
+	}
+]
 
 def toNodeID(codePos):
 	return codePos['fn'] + '_' + codePos['line']
@@ -186,17 +182,14 @@ def printTree(baseURL, tree, depth, indentLvl):
 	print('innerHTML: \'', end="")
 	if len(tree['lockCombTable']) > 0 :
 		print("\\")
-		printIndentation(indentLvl + 2)
 		print("""<div class="cexlist node-desc cexlist_{hypoID:d}">\\
-		<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{codeFile}#L{codeLine}" title="{codeFile}:{codeLine}">{codeFN}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>\\
+	<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{codeFile}#L{codeLine}" title="{codeFile}:{codeLine}">{codeFN}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>\\
 	<table>\\
 		<tr>\\
 			<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>\\
 		</tr>\\""".format(hypoID=tree['id'], crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
 		for table in tree['lockCombTable']:
-			printIndentation(indentLvl + 2)
-			print(table)
-		printIndentation(indentLvl + 2)
+			print(table, end="")
 		print("""	</table>\\
 </div>""", end="")
 	else:
@@ -295,11 +288,11 @@ if __name__ == '__main__':
 	else:
 		LOGGER.setLevel(logging.INFO)
 
-	util.downloadExtContent(extContent[displayMode], cacheDir=cacheDir)
+	util.downloadExtContent(extContent, cacheDir=cacheDir)
 
 	hypothesesDict = util.readHypothesesDict(hypothesesCSV)
 	print('<!DOCTYPE html>\n<!--')
-	util.printLicenseExtConent(extContent[displayMode])
+	util.printLicenseExtConent(extContent)
 	print('-->')
 	print("""<html>
 <head>
@@ -415,6 +408,11 @@ a:visited {
 
 .btn.default.default:hover {
 	background: #e7e7e7;
+}
+
+/* Hide zoom button by default */
+#zoombtn {
+	display: none;
 }
 
 /* The sidebar menu - Thx to https://www.w3schools.com/howto/howto_css_fixed_sidebar.asp */
@@ -543,7 +541,7 @@ a:visited {
 	margin: 4px;
 }
 /* Adapted tree layout based on collapsable.css --- END */""")
-	util.printExtContent(extContent[displayMode], 'css')
+	util.printExtContent(extContent, 'css')
 	print("""</style>
 </head>
 <body onLoad="hideCexs('tree');fixCexTreeSize();">
@@ -627,8 +625,10 @@ a:visited {
 			# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
 			locksHeld = lockComb.split('#')[0]
 			occurences = lockComb.split('#')[1]
-			lockCombTable = lockCombTable + ('' if hypothesisDisplayMode == TREE else util.genIndentation(5)) + '	<tr>'
-			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n' + ('' if displayMode == hypothesisDisplayMode else util.genIndentation(5)) +'		<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
+			lockCombTable = lockCombTable + (util.genIndentation(2) if hypothesisDisplayMode == TREE else util.genIndentation(8)) + '<tr>'
+			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
+			lockCombTable = lockCombTable + (util.genIndentation(3) if hypothesisDisplayMode == TREE else util.genIndentation(9))
+			lockCombTable = lockCombTable + '<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
 			# Split locks_held
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
 			if locksHeld != "nolocks":
@@ -649,7 +649,10 @@ a:visited {
 					k = k + 1
 			else:
 				lockCombTable = lockCombTable + 'No Locks'
-			lockCombTable = lockCombTable + '</td>' + ('\\' if hypothesisDisplayMode == TREE else '') + '\n' + ('' if hypothesisDisplayMode == TREE else util.genIndentation(5)) + '	</tr>' + ('\\' if hypothesisDisplayMode == TREE else '')
+			lockCombTable = lockCombTable + '</td>'
+			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
+			lockCombTable = lockCombTable + (util.genIndentation(2) if hypothesisDisplayMode == TREE else util.genIndentation(8))
+			lockCombTable = lockCombTable + '</tr>' + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
 			cexID = cexID + 1
 			i = i + 1
 
@@ -718,10 +721,7 @@ a:visited {
 		<a href="javascript:void(0)" id="closebtn" onclick="closeBar('sidenav')">&times;</a>
 		<h1>Members</h1>""")
 	for value in hypothesesList:
-		if value['displaymode'] == GRAPH:
-			print('			<a href="#" onClick="toogleCexGraph({hypoID:d}, cexGraph_{hypoID:d});resizeCexList({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
-		elif value['displaymode'] == TREE:
-			print('			<a href="#" onClick="toogleCexTree({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
+		print('			<a href="#" onClick="toogleCex({hypoID:d});closeBar(\'sidenav\');">{hypoTitle}</a>'.format(hypoID=value['id'], hypoTitle=value['title']))
 	print("""	</div>
 	<div id="heading">
 		<h1>Counterexamples</h1>
@@ -733,7 +733,7 @@ a:visited {
 			<div id="desc">To view counterexamples, please select one member from the member list.</div>""")
 	for value in hypothesesList:
 		print("""				<div class="hypothesis" id="hypothesis_%d">%s
-					</div>""" % (value['id'], value['desc']))
+				</div>""" % (value['id'], value['desc']))
 	print("""	</div>
 	<div id="main">""")
 	for value in hypothesesList:
@@ -747,7 +747,6 @@ a:visited {
 
 			print('			<div class="cexlists" id="cexlists_%d">' % (value['id']))
 			i = 0
-			nodesLen = len(value['nodes'])
 			for nodeID, node in value['nodes'].iteritems():
 				lenLockCombs = len(node['lockCombTable'])
 				if lenLockCombs == 0:
@@ -757,7 +756,8 @@ a:visited {
 					width = (100 / lockCombsDistinct) - 1
 				if i == 0:
 					print(util.genIndentation(3))
-				print("""<div class="cexlistcontainer">
+					i = 1
+				print("""					<div class="cexlistcontainer">
 						<div class="cexlist cexlist_{hypoID:d}">
 							<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{file}#L{line}" title="{file}:{line}">{fn}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>
 							<table>
@@ -767,21 +767,17 @@ a:visited {
 								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']),end="")
 				for lockComTable in node['lockCombTable']:
 					print(lockComTable, end="")
-				print("""
-							</table>
+				print("""							</table>
 						</div>
 					</div>""", end="")
-				if i == nodesLen - 1:
-					print('')
-				i = i +1
-			print('			</div>')
+			print('\n				</div>')
 			print('			<div class="cexgraph" id="cexgraph_%d"></div>' % (value['id']))
 		elif value['displaymode'] == TREE:
 			print('			<div class="cextree" id="cextree_%d"></div>' % (value['id']))
 		print('		</div>')
 	print("""	</div>
 <script>""")
-	util.printExtContent(extContent[displayMode], 'js')
+	util.printExtContent(extContent, 'js')
 	print("""</script>
 <script>
 	window.visibleCexGraph = null;
@@ -842,17 +838,11 @@ a:visited {
 		}
 	}
 	/* graph-specific functions --- BEGIN */
-	function toogleCexGraph(hypoNo, cexGraph) {
+	function toogleCexTree(hypoNo) {
 		// Hide description box
 		document.getElementById('desc').style.display = 'none';
-		// Hide alle cex graphs
+		// Hide alle cex trees
 		hideCexs();
-		// Display the complete counterexample including graph and tables
-		cexCont = document.getElementById('cex_' + hypoNo);
-		cexCont.style.display = 'block';
-		// Display the cex tree for the selected member
-		cexGraphCont = document.getElementById('cexgraph_' + hypoNo);
-		cexGraphCont.style.height = window.innerHeight * 2 + 'px';
 		// Hide all hypotheses
 		var hypotheses = document.getElementsByClassName('hypothesis');
 		var i;
@@ -861,14 +851,42 @@ a:visited {
 		}
 		// Display the hyothesis for the selected member
 		document.getElementById('hypothesis_' + hypoNo).style.display = 'block';
-		// Redraw the graph and fit it into the container
-		window.visibleCexGraph = cexGraph;
-		resizeGraph();
-		var zoomBtn = document.getElementById('zoombtn');
-		if (window.visibleCexGraph.userZoomingEnabled()) {
-			zoomBtn.innerText = 'Disable Zoom';
-		} else {
-			zoomBtn.innerText = 'Enable Zoom';
+	}
+	function toogleCex(hypoNo) {
+		// Hide description box
+		document.getElementById('desc').style.display = 'none';
+		// Hide all other cex
+		hideCexs();
+		// Display the cex for the selected member
+		document.getElementById('cex_' + hypoNo).style.display = 'block';
+		// Hide all hypotheses
+		var hypotheses = document.getElementsByClassName('hypothesis');
+		var i;
+		for (i = 0; i < hypotheses.length; i++) {
+			hypotheses[i].style.display = 'none';
+		}
+		// Display the hyothesis for the selected member
+		document.getElementById('hypothesis_' + hypoNo).style.display = 'block';
+		// Do the tree-specific or graph-specific stuff
+		var divCex = document.getElementById('cex_' + hypoNo);
+		if (divCex.className.includes('tree')) {
+			document.getElementById('zoombtn').style.display = 'none';
+		} else if (divCex.className.includes('graph')) {
+			document.getElementById('zoombtn').style.display = 'inline';
+			var cexGraph = eval('cexGraph_' + hypoNo);
+			// Display the cex tree for the selected member
+			var cexGraphCont = document.getElementById('cexgraph_' + hypoNo);
+			cexGraphCont.style.height = window.innerHeight * 2 + 'px';
+			// Redraw the graph and fit it into the container
+			window.visibleCexGraph = cexGraph;
+			resizeGraph();
+			var zoomBtn = document.getElementById('zoombtn');
+			if (window.visibleCexGraph.userZoomingEnabled()) {
+				zoomBtn.innerText = 'Disable Zoom';
+			} else {
+				zoomBtn.innerText = 'Enable Zoom';
+			}
+			resizeCexList(hypoNo);
 		}
 	};
 	function resizeCexList(hypoID) {
@@ -976,22 +994,6 @@ a:visited {
 	];
 	/* graph-specific function --- END */
 	/* tree-specific functions --- BEGIN */
-	function toogleCexTree(hypoNo) {
-		// Hide description box
-		document.getElementById('desc').style.display = 'none';
-		// Hide alle cex trees
-		hideCexs();
-		// Display the cex tree for the selected member
-		document.getElementById('cex_' + hypoNo).style.display = 'block';
-		// Hide all hypotheses
-		var hypotheses = document.getElementsByClassName('hypothesis');
-		var i;
-		for (i = 0; i < hypotheses.length; i++) {
-			hypotheses[i].style.display = 'none';
-		}
-		// Display the hyothesis for the selected member
-		document.getElementById('hypothesis_' + hypoNo).style.display = 'block';
-	}
 	/*
 	 * Resize the container div (class cextree) of each cex tree to the same size as the tree (aka the svg).
 	 * Since the #main div which contains all cex trees is as width as 
