@@ -546,7 +546,7 @@ a:visited {
 	util.printExtContent(extContent[displayMode], 'css')
 	print("""</style>
 </head>
-<body onLoad="{onloadCMD}">
+<body onLoad="hideCexs('tree');fixCexTreeSize();">
 	<div class="sidebar" id="legend">
 		<a href="javascript:void(0)" id="closebtn" onclick="closeBar('legend')">&times;</a>
 		<h1>Legend</h1>
@@ -570,7 +570,7 @@ a:visited {
 				<td colspan="2">The square brackets specify wether the read or the write side of a lock was held, e.g., [w]. This information is present even if the lock is a reader-only or writer-only lock.</td>
 			</tr>
 		</table>
-	</div>""".format(onloadCMD=('hideCexs();fixCexTreeSize();' if displayMode == TREE else '')))
+	</div>""")
 	lastKey = None
 	cexID = 1
 	hypothesisID = 0
@@ -829,9 +829,13 @@ a:visited {
 		document.getElementById(elemID).style.width = "0";
 	}
 	/* Sidenav overlay - https://www.w3schools.com/howto/howto_js_sidenav.asp --- End */
-	function hideCexs() {
+	function hideCexs(addClass = null) {
 		// Hide alle cex trees
-		var cexs = document.getElementsByClassName('cex');
+		var classes = 'cex';
+		if (addClass != null) {
+			classes = classes + ' ' + addClass
+		}
+		var cexs = document.getElementsByClassName(classes);
 		var i;
 		for (i = 0; i < cexs.length; i++) {
 			cexs[i].style.display = 'none';
