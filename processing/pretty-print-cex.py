@@ -316,15 +316,22 @@ h1, h2 {
 }
 
 .cex {
+}
+
+.tree {
 	/* 
 	 * If we use the Treant js library, the cex div *must* be shown.
 	 * Otherwise, the tree won't be drawn in a readable way.
 	 * It will be hidden after the body has been loaded by JavaScript.
 	 */
-	display: %s;
+	display: block;
 }
-""" % ('block' if displayMode == TREE else 'none'))
-	print(""".cexlist-title {
+
+.graph {
+	display: none;
+}
+
+.cexlist-title {
 	font-size: medium;
 	font-weight: bold;
 }
@@ -574,6 +581,7 @@ a:visited {
 	hypothesisTitle = None
 	hypothesisText = None
 	hypothesisDesc = None
+	hypothesisMode = None
 
 	tempFile = open(cexCSV,'rb')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
@@ -588,9 +596,10 @@ a:visited {
 		if lastKey != key:
 			# Save hypothesis info (id, text, description and {graph,tree}) before we process a new hypothesis
 			if edges is not None and nodes is not None and tree is not None:
-				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': displayMode}
+				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': hypothesisDisplayMode}
 				hypothesesList.append(temp)
 			hypothesisID = hypothesisID + 1
+			hypothesisDisplayMode = displayMode
 			# The header contains information about the accessed member like
 			# the access type or the locking rule.
 			# Moreover, it shows statistics about the locking rule, e.g., the fraction ('percentage') of all accesses ('total') that adhere to that rule.
@@ -618,8 +627,8 @@ a:visited {
 			# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
 			locksHeld = lockComb.split('#')[0]
 			occurences = lockComb.split('#')[1]
-			lockCombTable = lockCombTable + ('' if displayMode == TREE else util.genIndentation(5)) + '	<tr>'
-			lockCombTable = lockCombTable + ('\\' if displayMode == TREE else '') + '\n' + ('' if displayMode == TREE else util.genIndentation(5)) +'		<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
+			lockCombTable = lockCombTable + ('' if hypothesisDisplayMode == TREE else util.genIndentation(5)) + '	<tr>'
+			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n' + ('' if displayMode == hypothesisDisplayMode else util.genIndentation(5)) +'		<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
 			# Split locks_held
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
 			if locksHeld != "nolocks":
@@ -640,7 +649,7 @@ a:visited {
 					k = k + 1
 			else:
 				lockCombTable = lockCombTable + 'No Locks'
-			lockCombTable = lockCombTable + '</td>' + ('\\' if displayMode == TREE else '') + '\n' + ('' if displayMode == TREE else util.genIndentation(5)) + '	</tr>' + ('\\' if displayMode == TREE else '')
+			lockCombTable = lockCombTable + '</td>' + ('\\' if hypothesisDisplayMode == TREE else '') + '\n' + ('' if hypothesisDisplayMode == TREE else util.genIndentation(5)) + '	</tr>' + ('\\' if hypothesisDisplayMode == TREE else '')
 			cexID = cexID + 1
 			i = i + 1
 
@@ -702,7 +711,7 @@ a:visited {
 			# childIter is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
 				childIter['lockCombTable'].append(lockCombTable)
-	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': displayMode}
+	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': hypothesisDisplayMode}
 	hypothesesList.append(temp)
 
 	print("""	<div class="sidebar" id="sidenav">
@@ -728,7 +737,7 @@ a:visited {
 	print("""	</div>
 	<div id="main">""")
 	for value in hypothesesList:
-		print('		<div class="cex" id="cex_%d">' % (value['id']))
+		print('		<div class="cex %s" id="cex_%d">' % (value['displaymode'], value['id']))
 		if value['displaymode'] == GRAPH:
 			# Count nodes that have counterexamples attached
 			lockCombsDistinct = 0
@@ -999,7 +1008,7 @@ a:visited {
 	};
 	/* tree-specific functions --- END */""")
 	for hypo in hypothesesList:
-		if displayMode == GRAPH:
+		if hypo['displaymode'] == GRAPH:
 			print("""	var cexGraphConfig_%d = {
 			nodes: [""" % (hypo['id']))
 			nodesLen = len(hypo['nodes'])
@@ -1063,7 +1072,7 @@ a:visited {
 			cexGraph_{hypoID:d}.nodes().not(n).forEach(hideTippy);
 		}});
 	}});""".format(hypoID=hypo['id'], crossRefURL=crossRefURL))
-		elif displayMode == TREE:
+		elif hypo['displaymode'] == TREE:
 			adjustSubtreeDepth(hypo['tree'], treeDepth(hypo['tree']), 0)
 			print("""	var cextree_%d_config = {
 			chart : {
