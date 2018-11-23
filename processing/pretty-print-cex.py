@@ -21,6 +21,7 @@ USERSPACE_ID = 'userspace_root'
 USERSPACE_FN = 'userspace'
 GRAPH = 'graph'
 TREE = 'tree'
+DYNAMIC = 'dynamic'
 
 extContent = [
 	{
@@ -99,6 +100,12 @@ extContent = [
 
 def toNodeID(codePos):
 	return codePos['fn'] + '_' + codePos['line']
+
+def getDisplayMode(displayMode, hypo):
+	if displayMode == DYNAMIC:
+		return TREE
+	else:
+		return displayMode
 
 # tree-specific functions --- BEGIN
 def newTreeNode(treeID):
@@ -188,8 +195,10 @@ def printTree(baseURL, tree, depth, indentLvl):
 		<tr>\\
 			<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>\\
 		</tr>\\""".format(hypoID=tree['id'], crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
-		for table in tree['lockCombTable']:
-			print(table, end="")
+		for lockCombTable in tree['lockCombTable']:
+			print(lockCombTable.format(multiLine='\\',
+					indentA=util.genIndentation(2),
+					indentB=util.genIndentation(3)), end="")
 		print("""	</table>\\
 </div>""", end="")
 	else:
@@ -266,7 +275,7 @@ if __name__ == '__main__':
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
 	parser.add_argument('-u', '--crossrefurl', help='Base URL to the Linux cross reference site', default='https://elixir.bootlin.com/linux/v4.10')
 	parser.add_argument('-c', '--cachedir', help='Activate caching of JS and CSS files. Specifies the directory where the downloaded files are stored.', default=None)
-	parser.add_argument('-d', '--display-mode', choices=['graph','tree'], help='Display mode of the callgraph: graph vs. tree', default='tree')
+	parser.add_argument('-d', '--display-mode', choices=[GRAPH, TREE, DYNAMIC], help='Display mode of the callgraph: graph vs. tree', default=TREE)
 	parser.add_argument('cexcsv', help='Input file containing the ground truth')
 	parser.add_argument('vmlinux', help='VMLINUX')
 	parser.add_argument('hypothesescsv', help='Input file containing preditions made by the hypothesizer (winner hypotheses only)')
@@ -579,7 +588,6 @@ a:visited {
 	hypothesisTitle = None
 	hypothesisText = None
 	hypothesisDesc = None
-	hypothesisMode = None
 
 	tempFile = open(cexCSV,'rb')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
@@ -594,10 +602,15 @@ a:visited {
 		if lastKey != key:
 			# Save hypothesis info (id, text, description and {graph,tree}) before we process a new hypothesis
 			if edges is not None and nodes is not None and tree is not None:
-				temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': hypothesisDisplayMode}
+				temp = { 'title': hypothesisTitle, 
+						 'id': hypothesisID,
+						 'desc': hypothesisDesc,
+						 'tree': tree,
+						 'nodes': nodes,
+						 'edges': edges}
+				temp['displaymode'] = getDisplayMode(displayMode, temp)
 				hypothesesList.append(temp)
 			hypothesisID = hypothesisID + 1
-			hypothesisDisplayMode = displayMode
 			# The header contains information about the accessed member like
 			# the access type or the locking rule.
 			# Moreover, it shows statistics about the locking rule, e.g., the fraction ('percentage') of all accesses ('total') that adhere to that rule.
@@ -625,10 +638,7 @@ a:visited {
 			# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
 			locksHeld = lockComb.split('#')[0]
 			occurences = lockComb.split('#')[1]
-			lockCombTable = lockCombTable + (util.genIndentation(2) if hypothesisDisplayMode == TREE else util.genIndentation(8)) + '<tr>'
-			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
-			lockCombTable = lockCombTable + (util.genIndentation(3) if hypothesisDisplayMode == TREE else util.genIndentation(9))
-			lockCombTable = lockCombTable + '<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
+			lockCombTable = lockCombTable + '{{indentA}}<tr>{{multiLine}}\n{{indentB}}<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
 			# Split locks_held
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
 			if locksHeld != "nolocks":
@@ -643,16 +653,14 @@ a:visited {
 					elems = lockHeld.split('@')
 					lockFile = elems[2].split(':')[0]
 					lockLine = elems[2].split(':')[1]
-					lockCombTable = lockCombTable + '{:02d}: <a class="lock" target="_blank" href="{}/source/{}#L{}" title="{}@{}:{}">{}</a>'.format(k + 1, crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0])
+					lockCombTable = lockCombTable + '{:02d}: <a class="lock" target="_blank" href="{}/source/{}#L{}" title="{}@{}:{}">{}</a>'.format(k + 1,
+							crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0])
 					if k < (locksHeldLen - 1):
 						lockCombTable = lockCombTable + '<br/>'
 					k = k + 1
 			else:
 				lockCombTable = lockCombTable + 'No Locks'
-			lockCombTable = lockCombTable + '</td>'
-			lockCombTable = lockCombTable + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
-			lockCombTable = lockCombTable + (util.genIndentation(2) if hypothesisDisplayMode == TREE else util.genIndentation(8))
-			lockCombTable = lockCombTable + '</tr>' + ('\\' if hypothesisDisplayMode == TREE else '') + '\n'
+			lockCombTable = lockCombTable + '</td>{multiLine}\n{indentA}</tr>{multiLine}\n'
 			cexID = cexID + 1
 			i = i + 1
 
@@ -714,7 +722,13 @@ a:visited {
 			# childIter is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
 				childIter['lockCombTable'].append(lockCombTable)
-	temp = { 'title': hypothesisTitle, 'id': hypothesisID, 'desc': hypothesisDesc, 'tree': tree, 'nodes': nodes, 'edges': edges, 'displaymode': hypothesisDisplayMode}
+	temp = { 'title': hypothesisTitle,
+			 'id': hypothesisID,
+			 'desc': hypothesisDesc,
+			 'tree': tree,
+			 'nodes': nodes,
+			 'edges': edges}
+	temp['displaymode'] = getDisplayMode(displayMode, temp)
 	hypothesesList.append(temp)
 
 	print("""	<div class="sidebar" id="sidenav">
@@ -725,15 +739,15 @@ a:visited {
 	print("""	</div>
 	<div id="heading">
 		<h1>Counterexamples</h1>
-			<div style="text-align:center;">
-				<button class="btn default" onclick="openBar('sidenav', '10%')">Show Member List</button>&nbsp;
-				<button class="btn default" onclick="openBar('legend', '20%')">Show Legend</button>&nbsp;
-				<button class="btn default" id="zoombtn" onclick="toggleZoom();">Enable Zoom</button>
-			</div>
-			<div id="desc">To view counterexamples, please select one member from the member list.</div>""")
+		<div style="text-align:center;">
+			<button class="btn default" onclick="openBar('sidenav', '10%')">Show Member List</button>&nbsp;
+			<button class="btn default" onclick="openBar('legend', '20%')">Show Legend</button>&nbsp;
+			<button class="btn default" id="zoombtn" onclick="toggleZoom();">Enable Zoom</button>
+		</div>
+		<div id="desc">To view counterexamples, please select one member from the member list.</div>""")
 	for value in hypothesesList:
-		print("""				<div class="hypothesis" id="hypothesis_%d">%s
-				</div>""" % (value['id'], value['desc']))
+		print("""			<div class="hypothesis" id="hypothesis_%d">%s
+			</div>""" % (value['id'], value['desc']))
 	print("""	</div>
 	<div id="main">""")
 	for value in hypothesesList:
@@ -755,21 +769,23 @@ a:visited {
 				if lockCombsDistinct > 1:
 					width = (100 / lockCombsDistinct) - 1
 				if i == 0:
-					print(util.genIndentation(3))
+					print(util.genIndentation(4), end='')
 					i = 1
-				print("""					<div class="cexlistcontainer">
-						<div class="cexlist cexlist_{hypoID:d}">
-							<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{file}#L{line}" title="{file}:{line}">{fn}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>
-							<table>
-								<tr>
-									<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
-								</tr>""".format(hypoID=value['id'], width=width, lockCombs=lockCombsDistinct, crossRefURL=crossRefURL,
-								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']),end="")
+				print("""<div class="cexlistcontainer">
+					<div class="cexlist cexlist_{hypoID:d}">
+						<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{file}#L{line}" title="{file}:{line}">{fn}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>
+						<table>
+							<tr>
+								<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
+							</tr>""".format(hypoID=value['id'], width=width, lockCombs=lockCombsDistinct, crossRefURL=crossRefURL,
+								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']))
 				for lockComTable in node['lockCombTable']:
-					print(lockComTable, end="")
-				print("""							</table>
-						</div>
-					</div>""", end="")
+					print(lockComTable.format(multiLine='',
+						indentA=util.genIndentation(8),
+						indentB=util.genIndentation(9)), end="")
+				print("""						</table>
+					</div>
+				</div>""", end="")
 			print('\n				</div>')
 			print('			<div class="cexgraph" id="cexgraph_%d"></div>' % (value['id']))
 		elif value['displaymode'] == TREE:

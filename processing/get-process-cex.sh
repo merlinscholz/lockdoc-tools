@@ -11,7 +11,7 @@ function usage() {
 SKIP_QUERIES=${SKIP_QUERIES:-0}
 DISPLAY_VARIANT=${DISPLAY_VARIANT:-tree}
 
-if [ ${DISPLAY_VARIANT} != "tree" ] && [ ${DISPLAY_VARIANT} != "graph" ];
+if [ ${DISPLAY_VARIANT} != "tree" ] && [ ${DISPLAY_VARIANT} != "graph" ] && [ ${DISPLAY_VARIANT} != "dynamic" ];
 then
 	echo "Unknown display variant: ${DISPLAY_VARIANT}" >&2
 	exit 1
