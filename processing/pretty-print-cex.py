@@ -98,6 +98,8 @@ extContent = [
 	}
 ]
 
+cexID = 0
+
 def toNodeID(codePos):
 	return codePos['fn'] + '_' + codePos['line']
 
@@ -111,9 +113,48 @@ def getDisplayMode(displayMode, hypo):
 	else:
 		return displayMode
 
+def genLockCombTable(displayMode, lockCombinations):
+	global cexID
+	output = ''
+	for lockComb, occurrences in lockCombinations.iteritems():
+		if displayMode == TREE:
+			indentA = util.genIndentation(2)
+			indentB = util.genIndentation(3)
+			multiLine = '\\'
+		elif displayMode == GRAPH:
+			indentA = util.genIndentation(8)
+			indentB = util.genIndentation(9)
+			multiLine = ''
+		output = output + '{indentA}<tr>{multiLine}\n{indentB}<td>{:d}.{:d}</td><td>{:d}</td><td>'.format(hypothesisID, cexID, occurrences,
+			indentA=indentA, indentB=indentB, multiLine=multiLine)
+		# Split locks_held
+		# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
+		if lockComb != "nolocks":
+			locksHeld = lockComb.split(',')
+			locksHeldLen = len(locksHeld)
+			k = 0
+			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
+			for lockHeld in locksHeld:
+				# Index 0: the lock
+				# Index 1: the function where the lock was acquired
+				# Index 2: the file and line where the lock was acquired
+				elems = lockHeld.split('@')
+				lockFile = elems[2].split(':')[0]
+				lockLine = elems[2].split(':')[1]
+				output = output + '{:02d}: <a class="lock" target="_blank" href="{}/source/{}#L{}" title="{}@{}:{}">{}</a>'.format(k + 1,
+						crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0])
+				if k < (locksHeldLen - 1):
+					output = output + '<br/>'
+				k = k + 1
+		else:
+			output = output + 'No Locks'
+		output = output + '</td>{multiLine}\n{indentA}</tr>{multiLine}\n'.format(indentA=indentA, indentB=indentB, multiLine=multiLine)
+		cexID = cexID + 1
+	return output
+
 # tree-specific functions --- BEGIN
 def newTreeNode(treeID):
-	return { 'id': treeID, 'name': '', 'codePos': dict(), 'lockCombTable': [], 'children': dict(), 'pseudo': False}
+	return { 'id': treeID, 'name': '', 'codePos': dict(), 'locks': dict(), 'children': dict(), 'pseudo': False}
 
 def newTree(treeID):
 	temp = newTreeNode(treeID)
@@ -138,7 +179,7 @@ def treeDepth(curTree):
 	return maxChildDepth + 1
 
 def treeCountLeafs(curTree):
-	if len(curTree['lockCombTable']) > 0 :
+	if len(curTree['locks']) > 0 :
 		return 1
 	else:
 		sumLeafs = 0
@@ -195,12 +236,12 @@ def printTree(baseURL, tree, depth, indentLvl):
 	if tree['pseudo']:
 		printIndentation(indentLvl + 1)
 		print('pseudo: true,')
-	if len(tree['lockCombTable']) > 0 :
+	if len(tree['locks']) > 0 :
 		printIndentation(indentLvl + 1)
 		print('HTMLclass: \'cexnode\',')
 	printIndentation(indentLvl + 1)
 	print('innerHTML: \'', end="")
-	if len(tree['lockCombTable']) > 0 :
+	if len(tree['locks']) > 0 :
 		print("\\")
 		print("""<div class="cexlist node-desc cexlist_{hypoID:d}">\\
 	<p class="cexlist-title"><a target="_blank" href="{crossRefURL}/source/{codeFile}#L{codeLine}" title="{codeFile}:{codeLine}">{codeFN}</a></p><span class="cexlist-title">Found memory accesses violating the hypothesis:</span>\\
@@ -208,10 +249,7 @@ def printTree(baseURL, tree, depth, indentLvl):
 		<tr>\\
 			<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>\\
 		</tr>\\""".format(hypoID=tree['id'], crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
-		for lockCombTable in tree['lockCombTable']:
-			print(lockCombTable.format(multiLine='\\',
-					indentA=util.genIndentation(2),
-					indentB=util.genIndentation(3)), end="")
+		print(genLockCombTable(TREE, tree['locks']), end='')
 		print("""	</table>\\
 </div>""", end="")
 	else:
@@ -243,7 +281,7 @@ def printTree(baseURL, tree, depth, indentLvl):
 # tree-specific functions --- END
 # graph-specific functions --- BEGIN
 def newGraphNode():
-	return {'id': '', 'codePos': dict(), 'lockCombTable': []}
+	return {'id': '', 'codePos': dict(), 'locks': dict()}
 
 def createInitGraphNode(name, codePos):
 	temp = newGraphNode()
@@ -592,7 +630,6 @@ a:visited {
 		</table>
 	</div>""")
 	lastKey = None
-	cexID = 1
 	hypothesisID = 0
 	hypothesesList = []
 	tree = None
@@ -634,48 +671,24 @@ a:visited {
 			hypothesisDesc = """<b>Hypothesis %d</b>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>
 					<b>%2.2f%%</b> (%d out of %d mem accesses under locks)""" % (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'],
 					locksHeldKey, locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total'])
-			cexID = 1
 			nodes = createInitNodesDict()
 			edges = dict()
 			tree = newTree(hypothesisID)
 		lastKey = key
 
-		i = 0
-		lockCombTable = ""
+		locks = dict()
 		# Example:
 		# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1+EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
-		lockCombinations = line['locks_held'].split('+')
-		for lockComb in lockCombinations:
+		locksHeldList = line['locks_held'].split('+')
+		for entry in locksHeldList:
 			# $locks_held#occurrences
 			# Example:
 			# EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746#1
-			locksHeld = lockComb.split('#')[0]
-			occurences = lockComb.split('#')[1]
-			lockCombTable = lockCombTable + '{{indentA}}<tr>{{multiLine}}\n{{indentB}}<td>{:d}.{:d}</td><td>{:s}</td><td>'.format(hypothesisID, cexID, occurences)
-			# Split locks_held
-			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746, EMBSAME(j_state_lo0ck)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:42
-			if locksHeld != "nolocks":
-				locksHeld = locksHeld.split(',')
-				locksHeldLen = len(locksHeld)
-				k = 0
-				# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
-				for lockHeld in locksHeld:
-					# Index 0: the lock
-					# Index 1: the function where the lock was acquired
-					# Index 2: the file and line where the lock was acquired
-					elems = lockHeld.split('@')
-					lockFile = elems[2].split(':')[0]
-					lockLine = elems[2].split(':')[1]
-					lockCombTable = lockCombTable + '{:02d}: <a class="lock" target="_blank" href="{}/source/{}#L{}" title="{}@{}:{}">{}</a>'.format(k + 1,
-							crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0])
-					if k < (locksHeldLen - 1):
-						lockCombTable = lockCombTable + '<br/>'
-					k = k + 1
-			else:
-				lockCombTable = lockCombTable + 'No Locks'
-			lockCombTable = lockCombTable + '</td>{multiLine}\n{indentA}</tr>{multiLine}\n'
-			cexID = cexID + 1
-			i = i + 1
+			locksHeld = entry.split('#')[0]
+			occurrences = int(entry.split('#')[1])
+			if locksHeld in locks:
+				sys.stderr.write("ERROR: %s\n" % locksHeld)
+			locks[locksHeld] = occurrences
 
 		# Extract stacktrace
 		traceElems = line['stacktrace'].split(',')
@@ -703,9 +716,13 @@ a:visited {
 			if edgeID not in edges:
 				edges[edgeID] = (parentNode, childNode)
 			# Reached the last edge of the stacktrace: parentIter -> childIter
-			# childIter is the stacktrace entry that corresponds to the actual memory access
+			# childNode is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
-				childNode['lockCombTable'].append(lockCombTable)
+				for locksHeld, occurrences in locks.iteritems():
+					if locksHeld in childNode['locks']:
+						childNode['locks'][locksHeld] = childNode['locks'][locksHeld] + occurrences
+					else:
+						childNode['locks'][locksHeld] = occurrences
 			# Tree stuff
 			elems = traceElems[i].split('@')
 			codePos = dict()
@@ -734,7 +751,11 @@ a:visited {
 			# Reached the last edge of the stacktrace: parentIter -> childIter
 			# childIter is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
-				childIter['lockCombTable'].append(lockCombTable)
+				for locksHeld, occurrences in locks.iteritems():
+					if locksHeld in childIter['locks']:
+						childIter['locks'][locksHeld] = childIter['locks'][locksHeld] + occurrences
+					else:
+						childIter['locks'][locksHeld] = occurrences
 	temp = { 'title': hypothesisTitle,
 			 'id': hypothesisID,
 			 'desc': hypothesisDesc,
@@ -764,18 +785,19 @@ a:visited {
 	print("""	</div>
 	<div id="main">""")
 	for value in hypothesesList:
+		cexID = 1
 		print('		<div class="cex %s" id="cex_%d">' % (value['displaymode'], value['id']))
 		if value['displaymode'] == GRAPH:
 			# Count nodes that have counterexamples attached
 			lockCombsDistinct = 0
 			for nodeID, node in value['nodes'].iteritems():
-				if len(node['lockCombTable']) > 0:
+				if len(node['locks']) > 0:
 					lockCombsDistinct = lockCombsDistinct + 1
 
 			print('			<div class="cexlists" id="cexlists_%d">' % (value['id']))
 			i = 0
 			for nodeID, node in value['nodes'].iteritems():
-				lenLockCombs = len(node['lockCombTable'])
+				lenLockCombs = len(node['locks'])
 				if lenLockCombs == 0:
 					continue
 				width = 100
@@ -792,10 +814,7 @@ a:visited {
 								<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
 							</tr>""".format(hypoID=value['id'], width=width, lockCombs=lockCombsDistinct, crossRefURL=crossRefURL,
 								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']))
-				for lockComTable in node['lockCombTable']:
-					print(lockComTable.format(multiLine='',
-						indentA=util.genIndentation(8),
-						indentB=util.genIndentation(9)), end="")
+				print(genLockCombTable(value['displaymode'], node['locks']), end="")
 				print("""						</table>
 					</div>
 				</div>""", end="")
@@ -1030,6 +1049,7 @@ a:visited {
 	};
 	/* tree-specific functions --- END */""")
 	for hypo in hypothesesList:
+		cexID = 1
 		if hypo['displaymode'] == GRAPH:
 			print("""	var cexGraphConfig_%d = {
 			nodes: [""" % (hypo['id']))
@@ -1038,7 +1058,7 @@ a:visited {
 			for nodeID, node in hypo['nodes'].iteritems():
 				print("			{ data : { id: '%s', name: '%s', 'fn': '%s', 'file': '%s', 'line': '%s', lockComb: '"
 					% (node['id'], node['codePos']['fn'], node['codePos']['fn'], node['codePos']['file'], node['codePos']['line']), end="")
-				#for lockComb in node['lockCombTable']:
+				#for lockComb in node['locks']:
 				#	print('%s ' %(lockComb), end="")
 				print("'}, selected: false, selectable: true, locked: false, grabbable: false}", end="")
 				if i < nodesLen - 1:
