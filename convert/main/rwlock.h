@@ -10,7 +10,7 @@
 #include <stack>
 #include <typeinfo>
 #include <cxxabi.h>
-#include "log_event.h"
+#include "lockdoc_event.h"
 
 using namespace std;
 

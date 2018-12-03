@@ -16,7 +16,7 @@
 #include <sys/types.h>
 
 #include "config.h"
-#include "log_event.h"
+#include "lockdoc_event.h"
 #include "git_version.h"
 #include "rwlock.h"
 #include "rlock.h"

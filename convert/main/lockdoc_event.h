@@ -16,6 +16,9 @@
 #define PSEUDOLOCK_VAR_SOFTIRQ	PSEUDOLOCK_VAR
 #define PSEUDOLOCK_VAR_PREEMPT	PSEUDOLOCK_VAR
 
+// Lock flags
+#define LOCK_FLAGS_RECURSIVE	0x1
+
 /*
  * When altered, this file
  * has to be copied to the according fail experiment
@@ -48,6 +51,7 @@ struct log_action {
 	char function[LOG_CHAR_BUFFER_LEN]; 
 	int32_t preempt_count;
 	int32_t irq_sync;
+	int32_t flags;
 }__attribute__((packed));
 
 #endif /* __LOG_EVENT_H__ */
