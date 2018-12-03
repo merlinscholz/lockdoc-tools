@@ -40,18 +40,23 @@ void RWLock::writeTransition(
 					} else {
 						PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "Cannot flush all reader." );
 					}
-				} else if (this->writer_count == 1 && this->reader_count == 0) {
-					PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "Lock is already beeing held.");
-					// finish TXN for this lock, we may have missed
-					// the corresponding V()
-					// For more information about using the return value of finishTXN(), and why it is important,
-					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (finishTXN(ts, this->lockAddress, WRITER_LOCK, false, txnsOFile, locksHeldOFile)) {
-						// forget locking position because this kind of
-						// lock can officially only be held once
-						this->lastNPos.pop();
+				} else if (this->writer_count > 0 && this->reader_count == 0) {
+					if (this->flags & LOCK_FLAGS_RECURSIVE) {
+						// Nothing to do since acquiring the writer lock multiple times is allowed.
+						// We do *not* perform any owner tracking.
+					} else {
+						PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "Lock is already beeing held.");
+						// finish TXN for this lock, we may have missed
+						// the corresponding V()
+						// For more information about using the return value of finishTXN(), and why it is important,
+						// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
+						if (finishTXN(ts, this->lockAddress, WRITER_LOCK, false, txnsOFile, locksHeldOFile)) {
+							// forget locking position because this kind of
+							// lock can officially only be held once
+							this->lastNPos.pop();
+						}
 					}
-				} else if (this->writer_count == 1 && this->reader_count > 0) {
+				} else if (this->writer_count > 0 && this->reader_count > 0) {
 					stringstream ss;
 					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", lockMember=" << lockMember << ", ts=" << ts << "): ";
 					ss << "this->writer_count == 0 && this->reader_count > 0";
@@ -59,7 +64,7 @@ void RWLock::writeTransition(
 				} else if (this->writer_count == 0 && this->reader_count == 0) {
 					// Nothing to do
 				}
-				this->writer_count = 1;
+				this->writer_count++;
 				this->lastNPos.push(LockPos());
 				LockPos& tempLockPos = this->lastNPos.top();
 				tempLockPos.subLock = WRITER_LOCK;
@@ -103,7 +108,7 @@ void RWLock::writeTransition(
 				if (this->writer_count == 0) {
 					PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "Lock has already been released.");
 				} else {
-					this->writer_count = 0;
+					this->writer_count--;
 				}
 				break;
 			}
@@ -150,18 +155,25 @@ void RWLock::readTransition(
 			{
 				if (this->writer_count == 0 && this->reader_count > 0) {
 					// Nothing to do
-				} else if (this->writer_count == 1 && this->reader_count == 0) {
-					PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "Lock is already beeing held.");
-					// finish TXN for this lock, we may have missed
-					// the corresponding V()
+				} else if (this->writer_count > 0 && this->reader_count == 0) {
+					PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "Write-side is already beeing held.");
+					// Flush all writer
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (finishTXN(ts, this->lockAddress, WRITER_LOCK, false, txnsOFile, locksHeldOFile)) {
-						// forget locking position because this kind of
-						// lock can officially only be held once
-						this->lastNPos.pop();
+					if (finishTXN(ts, this->lockAddress, WRITER_LOCK, true, txnsOFile, locksHeldOFile)) {
+						// finishTXN has cleaned up all all TXNs. We must now deconstruct der last pos stack.
+						while (!lastNPos.empty()) {
+							this->writer_count--;
+							this->lastNPos.pop();
+						}
+						if (this->writer_count != 0) {
+							PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "Inconsistent writer_count, still above zero (" << this->writer_count << ")." );
+							this->writer_count = 0;
+						}
+					} else {
+						PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "Cannot flush all reader." );
 					}
-				} else if (this->writer_count == 1 && this->reader_count > 0) {
+				} else if (this->writer_count > 0 && this->reader_count > 0) {
 					stringstream ss;
 					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", lockMember=" << lockMember << ", ts=" << ts << "): ";
 					ss << "this->writer_count == 0 && this->reader_count > 0";
