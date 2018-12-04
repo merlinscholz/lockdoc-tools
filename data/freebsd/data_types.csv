@@ -1,2 +1,12 @@
 name
 lockdoc_ring_buffer
+vnode
+vnode_aux
+mount
+bufobj
+bufv
+cdev
+cdev_priv
+pipepair
+pipe
+fifoinfo
