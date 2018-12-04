@@ -1,1 +1,8 @@
 datatype;datatype_member
+vnode;v_lock
+vnode;v_interlock
+vnode;v_vnlock
+vnode;v_bufobj.bo_lock
+mount;mnt_mtx
+mount;mnt_explock
+pipepair;pp_mtx
