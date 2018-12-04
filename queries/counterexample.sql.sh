@@ -282,6 +282,8 @@ cat <<EOT
 					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					   OR
 					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+					   AND
+					   (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence)
 					 )
 					WHERE
 						fn_bl.fn IS NOT NULL

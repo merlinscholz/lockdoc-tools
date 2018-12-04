@@ -60,6 +60,8 @@ LEFT JOIN function_blacklist fn_bl
    (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
    OR
    (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+   AND
+   (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence)
  )
 WHERE 1
 -- Name the data type of interest here

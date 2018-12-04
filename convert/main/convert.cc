@@ -1187,8 +1187,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		// Sanity check
-		if (lineElems.size() != 3) {
-			cerr << "Ignoring invalid blacklist (function) entry in line " << (lineCounter + 1)
+		if (lineElems.size() != 4) {
+			cerr << "Ignoring invalid function blacklist entry, line " << (lineCounter + 1)
 				<< ": " << inputLine << endl;
 			continue;
 		}
@@ -1243,7 +1243,8 @@ int main(int argc, char *argv[]) {
 			// Write a MySQL NULL for the id which forces MySQL to allocate a new unique id for this entry
 			fnblacklistOFile << "\\N" << delimiter << id << delimiter
 				<< memberID << delimiter
-				<< lineElems.at(2) << endl;
+				<< lineElems.at(2) << delimiter
+				<< lineElems.at(3) << endl;
 		}
 	}
 

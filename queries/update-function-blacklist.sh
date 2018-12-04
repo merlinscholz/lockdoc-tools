@@ -26,7 +26,7 @@ EOT
 	else
 		${MYSQL} <<EOT
 select id into @dtid from data_types where name = '${DATA_TYPE}';
-insert into function_blacklist (data_type_id,member_name_id,fn) values (@dtid,NULL,'${FUNCTION}');
+insert into function_blacklist (data_type_id,member_name_id,fn,sequence) values (@dtid,NULL,'${FUNCTION}',NULL);
 EOT
 	fi
 	FUNCTION=${1}; shift
