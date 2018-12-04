@@ -335,6 +335,8 @@ if __name__ == '__main__':
 	cexCSV = args.cexcsv
 	vmlinux = args.vmlinux
 	crossRefURL = args.crossrefurl
+	if crossRefURL.endswith('/'):
+		crossRefURL = crossRefURL[0:len(crossRefURL) - 1]
 	hypothesesCSV = args.hypothesescsv
 	cacheDir = args.cachedir
 	displayMode = args.display_mode
