@@ -9,7 +9,7 @@ function usage() {
 }
 
 SKIP_QUERIES=${SKIP_QUERIES:-0}
-DISPLAY_VARIANT=${DISPLAY_VARIANT:-tree}
+DISPLAY_VARIANT=${DISPLAY_VARIANT:-dynamic}
 
 if [ ${DISPLAY_VARIANT} != "tree" ] && [ ${DISPLAY_VARIANT} != "graph" ] && [ ${DISPLAY_VARIANT} != "dynamic" ];
 then
