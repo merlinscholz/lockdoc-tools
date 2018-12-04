@@ -585,14 +585,13 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 	if (itSubStacktrace == subStacktraces.cend()) {
 		int sequence = 0;
 		stringstream ss;
-		ss << hex << showbase << instrPtr;
-		std::string token = ss.str();
-		ss.clear(); ss.str("");
+		ss << hex << showbase << instrPtr << "," << stacktrace;
+		std::string token;
 
 		ret = curStacktraceID++;
 		subStacktraces.emplace(stacktrace,ret);
-		ss << stacktrace;
-		do {
+
+		while (getline(ss,token,',')) {
 			auto instrPtrPrev = instrPtr = std::stoull(token,NULL,16);
 			if (sequence > 0) {
 				instrPtrPrev--;
@@ -608,7 +607,7 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 					sequence++;
 				}
 			}
-		} while (getline(ss,token,','));
+		}
 	} else {
 		ret = itSubStacktrace->second;
 	}
