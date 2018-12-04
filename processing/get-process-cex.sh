@@ -1,13 +1,13 @@
 #!/bin/bash
 CONFIGFILE="convert.conf"
 TOOLS_PATH=`dirname ${0}`
-BASE_URL="https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdebug-v4.10-0.12"
 
 function usage() {
 	echo "usage: $0 <database> <data_type> <input bugs> <input winner> <output suffix>" >&2
 	exit 1
 }
 
+BASE_URL=${BASE_URL:-"https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdebug-v4.10-0.12"}
 SKIP_QUERIES=${SKIP_QUERIES:-0}
 DISPLAY_VARIANT=${DISPLAY_VARIANT:-dynamic}
 
