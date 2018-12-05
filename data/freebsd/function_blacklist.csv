@@ -1,3 +1,5 @@
 datatype;datatype_member;fn;sequence
 vnode;\N;_vdrop;\N
 fifoinfo;\N;fifo_cleanup;\N
+mount;\N;vfs_mount_alloc;\N
+pipepair;\N;pipe_paircreate;\N
