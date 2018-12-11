@@ -38,7 +38,8 @@ fi
 export USE_EMBOTHER=${USE_EMBOTHER_PARAM} 
 
 COUNT=0
-grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
+# grep " ${GREP_REGEX} " <-- Trailing and leading whitespaces are needed. Otherwise 'grep "cdev"' matches 'cdev_priv' as well.
+grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep " ${GREP_REGEX} " | while read cmd;
 do
 	echo "Running: ${cmd}:" >&2
 	eval ${DIR}/../queries/$cmd > ${QUERY_FILE}
