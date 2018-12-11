@@ -1099,7 +1099,7 @@ int main(int argc, char *argv[]) {
 				// sanity check
 				if (address < baseAddress || address > (baseAddress + itAlloc->second.size)
 					|| (address + size) < baseAddress || (address + size) > (baseAddress + itAlloc->second.size)) {
-					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation");
+					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Memory-access address " << showbase << hex << address << " does not belong to indicated allocation, size=" << itAlloc->second.size << ",asize=" << size);
 					return EXIT_FAILURE;
 				}
 
