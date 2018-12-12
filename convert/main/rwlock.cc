@@ -274,7 +274,7 @@ RWLock* RWLock::allocLock(unsigned long long lockAddress, unsigned allocID, stri
 			exit(1);
 		}
 	} else {
-		PRINT_ERROR("","Unknown lock type: " << lockType);
+		PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase,"Unknown lock type: " << lockType);
 		// This is a severe error. Abort immediately!
 		exit(1);
 	}
