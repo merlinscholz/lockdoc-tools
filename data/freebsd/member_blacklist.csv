@@ -6,3 +6,4 @@ vnode;v_bufobj.bo_lock
 mount;mnt_mtx
 mount;mnt_explock
 pipepair;pp_mtx
+nc_vnodelocks;vnode_lock

@@ -10,3 +10,7 @@ cdev_priv
 pipepair
 pipe
 fifoinfo
+namecache
+namecache_ts
+namecache_aux
+nc_vnodelocks
