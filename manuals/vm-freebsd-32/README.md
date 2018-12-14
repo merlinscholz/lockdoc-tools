@@ -288,7 +288,7 @@ Zusätzlich muss das Verzeichnis `/lockdoc/bench-out` angelegt werden und aus `m
 Sowohl in der Linux- als auch in der FreeBSD-VM verwenden wir ein Subset des Linux-Test-Project (LTP) für unsere Benchmarksuite.
 Der Quellcode findet sich unter `https://github.com/linux-test-project/ltp.git`. Aktuell setzen wir Revision `5f8ca6cf` ein.
 Mit Hilfe des Linux-Kompatibilitätslayers laufen die Programme aus dem LTP problemlos unter FreeBSD.
-Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/opt/kernel/ltp-bin` installiert werden. Vor dem Übersetzen ist noch der Patch `ltp-lockdebug.patch` aus `manuals/vm-linux-32/` anzuwenden.
+Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/opt/kernel/ltp/bin` installiert werden. Vor dem Übersetzen ist noch der Patch `ltp-lockdebug.patch` aus `manuals/vm-linux-32/` anzuwenden.
 Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM kopieren.
 
 <a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a>
