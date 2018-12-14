@@ -113,7 +113,7 @@ def getDisplayMode(displayMode, hypo):
 	else:
 		return displayMode
 
-def genLockCombTable(displayMode, lockCombinations):
+def genLockCombTable(displayMode, lockCombinations, hypothesisID):
 	global cexID
 	output = ''
 	for lockComb, occurrences in lockCombinations.iteritems():
@@ -249,7 +249,7 @@ def printTree(baseURL, tree, depth, indentLvl):
 		<tr>\\
 			<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>\\
 		</tr>\\""".format(hypoID=tree['id'], crossRefURL=crossRefURL, codeFile=tree['codePos']['file'], codeLine=tree['codePos']['line'], codeFN=tree['codePos']['fn']))
-		print(genLockCombTable(TREE, tree['locks']), end='')
+		print(genLockCombTable(TREE, tree['locks'], tree['id']), end='')
 		print("""	</table>\\
 </div>""", end="")
 	else:
@@ -816,7 +816,7 @@ a:visited {
 								<th>ID</th><th>Occurrences</th><th><span style="color:red">Locks actually held<br/>(in order locks were taken)</span></th>
 							</tr>""".format(hypoID=value['id'], width=width, lockCombs=lockCombsDistinct, crossRefURL=crossRefURL,
 								 file=node['codePos']['file'], line=node['codePos']['line'], fn=node['codePos']['fn']))
-				print(genLockCombTable(value['displaymode'], node['locks']), end="")
+				print(genLockCombTable(value['displaymode'], node['locks'], value['id']), end="")
 				print("""						</table>
 					</div>
 				</div>""", end="")
