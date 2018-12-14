@@ -25,7 +25,7 @@ PRIMARY KEY (offset)
 DELETE FROM looong_sequence;
 EOT
 
-for i in $(seq 0 4096)
+for i in $(seq 0 1048576)
 do
 	echo "INSERT INTO looong_sequence VALUES ($i);"
 done | $MYSQL
@@ -38,8 +38,8 @@ data_type_id int unsigned NOT NULL,
 data_type_name varchar(255) NOT NULL,
 member_name_id int NOT NULL,
 offset smallint unsigned NOT NULL,
-size smallint unsigned NOT NULL,
-helper_offset smallint unsigned NOT NULL,
+size int unsigned NOT NULL,
+helper_offset int unsigned NOT NULL,
 KEY (data_type_id,helper_offset)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 

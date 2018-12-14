@@ -521,7 +521,7 @@ out_error:
 }
 
 static void struct_member__fprintf(struct class_member *member,
-	struct tag *type, const struct cu *cu, FILE *fp,
+	struct tag *type, const struct cu *cu, FILE *fp, int is_last,
 	struct dwarves_convert_ext *ext)
 {
 	struct class_member *pos;
@@ -601,10 +601,32 @@ static void struct_member__fprintf(struct class_member *member,
 			member_name_id = ext->add_member_name(full_cm_name);
 			free(full_cm_name);
 		}
-		
+
 		fprintf(fp,
-			"%llu%c%d%c%d",
-			member_name_id, delimiter,  offset + ext->offset, delimiter, size);
+			"%llu%c%d%c",
+			member_name_id, delimiter,  offset + ext->offset, delimiter);
+		struct array_type *at = tag__array_type(type);
+		// convert: Fake array size for zero-sized arrays, e.g. char name[0].
+		/*
+		 * Developers often want to have structs with
+		 * elements whose size is determined at allocation time.
+		 * They therefore use patterns like this:
+		 * struct foo {
+		 *	...
+		 *	char bar[0]
+		 * };
+		 * Since a ptr of struct foo usually points to the beginning
+		 * of the memory area, the remaining memory can be accessed via bar.
+		 * This patterns makes it impossible to map memory accesses to that area
+		 * to an element of struct foo.
+		 * We therefore fake the size of array bar. For us, it will be 1MiByte.
+		 * 1MiByte should be enough for everyone. :)
+		 */
+		if (type->tag == DW_TAG_array_type && at->nr_entries[0] == 0 && is_last) {
+			fprintf(fp, "%d", 1024*1024);
+		} else {
+			fprintf(fp, "%d", size);
+		}
 		fprintf(fp, "\n");
 	}
 	if (cm_name_temp != NULL) {
@@ -717,7 +739,7 @@ int class__fprintf(void *class_, const struct cu *cu,FILE *out,
 	int ret = 0;
 
 	type__for_each_tag(type, tag_pos) {
-		struct tag *type;
+		struct tag *tag_type;
 	
 		if (tag_pos->tag != DW_TAG_member &&
 		    tag_pos->tag != DW_TAG_inheritance) {
@@ -727,13 +749,13 @@ int class__fprintf(void *class_, const struct cu *cu,FILE *out,
 		ret = 1;
 		pos = tag__class_member(tag_pos);
 
-		type = cu__type(cu, pos->tag.type);
-		if (type == NULL) {
+		tag_type = cu__type(cu, pos->tag.type);
+		if (tag_type == NULL) {
 			tag__id_not_found_fprintf(stderr, pos->tag.type);
 			continue;
 		}
 
-		struct_member__fprintf(pos, type, cu, out, ext);
+		struct_member__fprintf(pos, tag_type, cu, out, tag_pos->node.next == &type->namespace.tags, ext);
 	}
 	return ret;
 }
