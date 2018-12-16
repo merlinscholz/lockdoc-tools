@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 echo "PRE-INIT SCRIPT"
 IDENT=`uname -i`
 if [ ${IDENT} == "LOCKDOC" ];
@@ -8,7 +8,7 @@ then
 	read -d "\n" -n 1 -t 5 answer
 	if [ "$answer" == "" ]; then
 		echo "Starting Bench"
-		bash /lockdoc/run-bench.sh
+		/usr/local/bin/bash /lockdoc/run-bench.sh
 	else
 		echo ""
 		echo "Starting normal!"
