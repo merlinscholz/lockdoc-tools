@@ -29,7 +29,6 @@
 		- [Konfiguration](#konfiguration-1)
 		- [Übersetzen außerhalb des Source-Trees](#%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees)
 		- [Übersetzen im Source-Tree](#%C3%9Cbersetzen-im-source-tree)
-	- [FreeBSD-Plattenabbild unter Linux einhägen](#fbsd-plattenabbild-linux)
 	- [Links](#links-1)
 
 <!-- /MarkdownTOC -->
@@ -41,15 +40,15 @@
 ## Vorbereitung
 
 Zunächst laden wir ein Installer-Image von [freebsd.org/where.html](https://www.freebsd.org/where.html)
-herunter. Wir verwenden das DVD-Image für [FreeBSD 11.2](https://download.freebsd.org/ftp/releases/i386/i386/ISO-IMAGES/11.2/FreeBSD-11.2-RELEASE-i386-dvd1.iso) für i386.
+herunter. Wir verwenden das DVD-Image für [FreeBSD 11.2](https://download.freebsd.org/ftp/releases/i386/i386/ISO-IMAGES/12.0/FreeBSD-12.0-RELEASE-i386-dvd1.iso) für i386.
 
 Danach erstellen wir entsprechend der geladenen Version ein VM-Image:
 
-```qemu-img create -f raw freebsd.img 20G```
+```qemu-img create -f raw freebsd.img 25G```
 
 QEMU kann manuel gestartet werden:
 
-```qemu-system-x86_64 -smp 1 -boot c -cdrom /path/to/FreeBSD-11.2-RELEASE-i386-dvd1.iso -m 512 -hda /path/to/freebsd.img```
+```qemu-system-x86_64 -smp 1 -boot c -cdrom /path/to/FreeBSD-12.0-RELEASE-i386-dvd1.iso -m 512 -hda /path/to/freebsd.img```
 
 Alternativ kann man die virtuelle Maschine via Virt-Manager erstellen.
 
@@ -102,10 +101,7 @@ Die Komponenten lassen sich auch alle nachträglich installieren.
 <a id="partitionierung"></a>
 ### Partitionierung
 
-Anschließend partitionieren wir unser VM-Image. Auch wenn `UFS` eher für 
-eine VM zu empfehlen ist, da `ZFS` wesentlich mehr RAM und Rechenleistung benötigt, ist hier `ZFS` zu wählen!
-Wird `ZFS` eingesetzt, kann man das Image im Zweifel einfach unter Linux einhängen und bearbeiten. Mit `UFS` geht das nicht ohne Weiteres.
-Wenn geht es auch nur lesend. Die Unterstützung für schreibenden Zugriff ist noch sehr experimentell.
+Anschließend partitionieren wir unser VM-Image. Hier wird `UFS`  als Dateisystem gewählt.
 
 ![alt text](./img/install-07.png)
 ![alt text](./img/install-08.png)
@@ -165,7 +161,7 @@ Falls notwendig setzen des korrekten Datums und Uhrzeit.
 ### Services
 
 Hier kann der Default auch belassen werden.
-```local_unbound``` ist [a secure, lightweight and high performance validating, recursive, and caching DNS resolver. It performs DNSSEC validation and it is also really easy to configure](http://hauweele.net/~gawen/blog/?tag=local_unbound)
+```sshd``` ist natürlich empfehlenswert.
 
 ![alt text](./img/install-28.png)
 
@@ -189,7 +185,13 @@ Im Anschluss haben wir noch einmal die Möglichkeit diverse Einstellungen zu än
 ![alt text](./img/install-31.png)
 
 Außerdem erhalten wir noch die Option vor dem Neustart mit einer Shell im neuen System eigene Änderungen vorzunehmen.
-
+Hier empfhielt es sich, für die erstellten Partitionen bzw. Slices Labels zu vergeben. So kann man in QEMU z.B. den VirtIO-Treiber für die Festplattenemulation nutzen und gleichzeitig in BOCHS eine IDE-Platte emulieren.
+Wichtig ist, dass in diesem Schritt **nur** die Labels vergeben werden. Die Änderungen an der ```/etc/fstab``` sollten später **nach** einem Neutstart erfolgen.
+```
+glabel label swap /dev/XXX
+tunefs -L roots /dev/XXX
+```
+**Achtung:** Das Tool `glabel`  darf **nur** für Partitionen, die kein Dateisystem beinhalten, wie z.B. die swap-Partition, genutzt werden. Für Dateisysteme, wie z.B. UFS, ist `tunefs`  zu nehmen.
 ![alt text](./img/install-32.png)
 ![alt text](./img/install-33.png)
 ![alt text](./img/install-34.png)
@@ -244,6 +246,11 @@ pw groupmod -m al -n wheel
 ```
 In `/usr/local/etc/sudoers` muss nun die Zeile `%wheel ALL=(ALL) ALL` auskommentiert werden.
 
+Möchte man die Bash als Standardshell setzen, geht dies mit folgendem Befehl:
+```
+chsh -s /usr/local/bin/bash
+```
+
 Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.
 
 ```
@@ -259,6 +266,30 @@ tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
 ```
 
 Die dafür nötigen Kernel-Module sollten automatisch geladen werden.
+Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in ```/boot/loader.conf``` ein:
+```
+kernel="lockdoc"                        # Set FreeBSD's kernel as default
+kernels_autodetect="YES"                # Detect all installed kernels automatically
+#console="vidconsole,comconsole"        # Use video or video+com as console
+console="vidconsole"
+vm.kmem_size="512M"
+vm.kmem_size_max="512M"
+```
+
+Möchte man Labels statt absolute Pfade für die Dateisystem und das root-Device nutzen, muss folgende Zeile in ```/boot/loader.conf```  eingetragen werden:
+```
+vfs.root.mountfrom="ufs:ufs/rootfs"     # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+```
+Außerdem muss die `/etc/fstab` noch angepasst werden. Dies kann z.B. so aussehen:
+```
+# Device        Mountpoint      FStype  Options Dump    Pass#
+/dev/ufs/rootfs /               ufs     rw      1       1
+/dev/label/swap none            swap    sw      0       0
+linproc /compat/linux/proc linprocfs rw,late 0 0
+linsysfs /compat/linux/sys linsysfs rw 0 0
+tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0
+```
+Alle mit `glabel` erstellten Label landen unter `/dev/label`. Die mit `tunefs` erstellten Label liegen unter `/dev/ufs/`.
 
 <a id="installation-des-init-skripts"></a>
 ## Installation des Init-Skripts
@@ -268,7 +299,7 @@ Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu mu
 Da das ZFS-Dateisystem für `/home` einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.
 
 ```
-init_script="/lockdoc/boot.init.sh"
+init_script="/lockdoc/boot.init.sh"     # Hook in our own init script to automatically start the benchmark
 ```
 
 Ggf. sind die Zeilen, die ebensfalls `init_script` setzen, auszukommentieren.
@@ -296,14 +327,13 @@ Das Verzeichnis kann man anschließend an dieselbe Position in die FreeBSD-VM ko
 Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.
 
 ```
-git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/11.2-lockdoc /opt/kernel/freebsd/src
+git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/12.0-lockdoc /opt/kernel/freebsd/src
 ```
 ** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:
 ```
-sudo cp -r /boot/kernel /boot/kernel.bak
+sudo cp -r /boot/kernel /boot/kernel.ori
 ```
 Bei einem `make install` wird der aktuelle Kernel nach `/boot/kernel.old` kopiert und der neue Kernel in `/boot/kernel` installiert.
-Zusätzlich kann man in `/boot/loader.conf` in der Zeile `kernels="kernel kernel.old` noch `kernel.bak` hinzufügen, damit der Standard-Kernel direkt über den Bootloader erreichbar ist.
 <a id="konfiguration-1"></a>
 ### Konfiguration
 
@@ -326,11 +356,13 @@ einen spezialisierten Source-Tree erzeugen und diesen anschließend übersetzen:
 # cd /opt/kernel/freebsd/src/conf
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
-# MODULES_OVERRIDE="" make [-j X]
-# sudo -E MODULES_OVERRIDE="" make install
+# MODULES_OVERRIDE="" KODIR=/boot/lockdoc make [-j X]
+# sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc LD=ld.lld make install
 ```
 Es ist wichtig, die Variable `MODULES_OVERRIDE=""` zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist.
 Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt.
+Durch die Variable ```KODIR``` teilt man dem Makefile mit, dass der Kernel in ```/boot/lockdoc``` installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe ```kernel="..."``` in ```/boot/loader.conf```).
+Sollte beim Übersetzen eine Fehlermeldung (```line 127: amd64/arm64/i386 kernel requires linker ifunc support```) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable ```LD=""```: ```MODULES_OVERRIDE="" KODIR=/boot/lockdoc LD=ld.lld make [-j X]```.
 
 <a id="%C3%9Cbersetzen-im-source-tree"></a>
 ### Übersetzen im Source-Tree
@@ -351,19 +383,6 @@ geändert hat.
 # cd /usr/src
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
 # make installkernel KERNCONF=LOCKDOC
-```
-
-<a id="fbsd-plattenabbild-linux"></a>
-### FreeBSD-Plattenabbild unter Linux einhägen
-```
-# kpartx -a /path/to/image.img
-# zpool import -d /dev/mapper			# nach ZFS-Pools scannen
-# zpool import -R /mnt -N <name>		# entsprechenden ZFS-Pool einbinden
-# zfs mount <name>/ROOT/default			# rootfs unter /mnt/ eingehängen
-# zfs mount -a							# alle weiteren Datasets einhängen
-# zfs umount -a							# alles aushängen
-# zpool export <name>					# ZFS-Pool entfernen
-# kpartx -d /path/to/image.img
 ```
 
 <a id="links-1"></a>
