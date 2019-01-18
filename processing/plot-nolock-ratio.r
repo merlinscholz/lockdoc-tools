@@ -4,9 +4,7 @@ library("getopt")
 library("plyr")
 
 # Author: Alexander Lochmann, 2017
-# This script creates two types of plots:
-# First, it plots the distribution of percentages for the winner hypothesis for each member.
-# Second, it plots the development of accepted hypotheses (percentaged) by cut-off threshold. This plot my contain every data type found in the input data.
+# This scripts plots the amount of "nolock" hypotheses per data type depending on the acceptance threshold
 # The optional argument -t my restrict the data to a certain data type.
 
 mySavePlot <- function(plot, name, directory=NULL) {
@@ -99,7 +97,6 @@ if (is.null(typeFilter)) {
 cat(sprintf("Start threshold: %d, Step size: %d, Num steps: %d\n",startThreshold, stepSize, numSteps))
 numTypes = length(dataTypes)
 numAccessTypes = length(accessTypes)
-extractMemberName <- function(x) sub("[^_]*:","",x )  
 
 # Create an empty data frame for the percentage values. Since we want numSteps for each data type, it must contain numSteps * numTypes * numAccessTypes rows.
 data <- data.frame(datatype=character(numSteps * numTypes * numAccessTypes),accesstype=character(numSteps * numTypes * numAccessTypes),threshold=integer(numSteps * numTypes * numAccessTypes),percentage=integer(numSteps * numTypes))
@@ -147,7 +144,6 @@ plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)
         geom_line() +
         geom_point() +
         scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=breaks) +
-        geom_hline(yintercept=acceptanceThreshold, colour="red") +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
 mySavePlot(plot,nameThresholds)
