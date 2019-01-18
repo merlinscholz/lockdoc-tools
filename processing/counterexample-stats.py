@@ -66,7 +66,8 @@ if __name__ == '__main__':
 	LOGGER.debug('Read %03d locking rules in total', totalCount)
 
 	print('data_type,cex,members,locations')
-	for key, cexEntry in cexDict.iteritems():
+	for key in sorted(cexDict.iterkeys()):
+		cexEntry = cexDict[key]
 		print('%s,%d,%d,%d' %
 			(key, cexEntry['count'], len(cexEntry['members']), len(cexEntry['locations'])))
 
