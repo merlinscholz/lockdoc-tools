@@ -10,17 +10,17 @@ library("plyr")
 mySavePlot <- function(plot, name, directory=NULL) {
   
   if (is.null(directory)) {
-    fname = sprintf("%s.pdf",name)
+    fname = sprintf("%s",name)
   } else {
     if (!file.exists(directory)) {
       cat(sprintf("Creating directory %s ...\n",directory))
       dir.create(directory, recursive = T)
     }
-    fname = sprintf("%s/%s.pdf",directory,name)
+    fname = sprintf("%s/%s",directory,name)
   }
   
   cat(sprintf("Creating: %s\n",fname))
-  ggsave(file=fname,plot,units="cm", width=13, height=10)
+  ggsave(file=fname,plot,device="pdf",units="cm", width=13, height=10)
 }
 
 # Parameters for the development of accepted hypotheses plot
@@ -31,18 +31,18 @@ noLockString='(no locks held)'
 args <- commandArgs(trailingOnly=T)
 
 spec = matrix(c(
-  'inputfile', 'i', 1, 'character',
+  'inputFile', 'i', 1, 'character',
   'type'   , 't', 1, 'character',
   'startThreshold'   , 's', 1, 'integer',
-  'acceptanceThreshold'   , 'a', 1, 'integer',
+  'outputFile'   , 'o', 1, 'character',
   'stepSize'   , 'z', 1, 'integer'
 ), byrow=TRUE, ncol=4);
 opt = getopt(spec);
 
-if (is.null(opt$inputfile)) {
+if (is.null(opt$inputFile)) {
   inputfname = "all-txns-members-locks-hypo-nostack-subclasses.csv"
 } else {
-  inputfname = opt$inputfile
+  inputfname = opt$inputFile
 }
 
 if (is.null(opt$type)) {
@@ -85,14 +85,19 @@ if (is.null(typeFilter)) {
   dataTypes <- raw[grep('.*:.*', raw$type, invert=TRUE),]$type
   dataTypes <- unlist(dataTypes)
   dataTypes <- dataTypes[!duplicated(dataTypes)]
-  nameThresholds = sprintf("nolock-ratio")
+  nameThresholds = sprintf("nolock-ratio.pdf")
 } else {
   dataTypes <- c(typeFilter)
   if (length(raw[raw$type==typeFilter,]) == 0) {
     cat(sprintf("No data found for type %s\n",typeFilter))
     quit(status=1)
   }
-  nameThresholds = sprintf("nolock-ratio-%s",typeFilter)
+  nameThresholds = sprintf("nolock-ratio-%s.pdf",typeFilter)
+}
+if (is.null(opt$outputFile)) {
+  outputFile = nameThresholds
+} else {
+  outputFile = opt$outputFile
 }
 cat(sprintf("Start threshold: %d, Step size: %d, Num steps: %d\n",startThreshold, stepSize, numSteps))
 numTypes = length(dataTypes)
@@ -146,5 +151,5 @@ plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)
         scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=breaks) +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
-mySavePlot(plot,nameThresholds)
+mySavePlot(plot,outputFile)
 
