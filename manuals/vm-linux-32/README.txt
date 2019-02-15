@@ -1,4 +1,5 @@
 1. Eine Debian X VM für i386 aufsetzen
+	+ Folgende Pakete installieren (unvollständig): lcov libncurses5-dev git-core build-essential bison flex
 2. Kernel-Repo nach /opt/kernel/ auschecken
 	git clone ssh://ios.cs.tu-dortmund.de/fs/staff/al/repos/lockdebugging/linux ssh://ios.cs.tu-dortmund.de/fs/staff/al/repos/lockdebugging/linux
 	git checkout -b lockdebugging-4-10
