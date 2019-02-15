@@ -28,14 +28,14 @@ def main():
     filter_doubling = not parse_out.not_filter_doubling
     is_per_dir = parse_out.per_directory
 
-    trace_dict = parse_trace_into_dict(filename, kernel_directory, filter_pattern, filter_doubling)
+    trace_dict = parse_trace_into_dict(filename, kernel_directory, filter_doubling)
     first_column = "filename"
     if is_per_dir:
         trace_dict = convert_dict_to_dirname_dict(trace_dict)
         first_column = "directory"
-    write_dict_into_csv(trace_dict, first_column)
+    write_dict_into_csv(trace_dict, first_column, filter_pattern)
 
-def parse_trace_into_dict(filename, kernel_directory, filter_pattern, filter_doubling):
+def parse_trace_into_dict(filename, kernel_directory, filter_doubling):
     with open(filename) as f:
         lines = f.readlines()
     f.close()
@@ -51,9 +51,7 @@ def parse_trace_into_dict(filename, kernel_directory, filter_pattern, filter_dou
                 print("param --kernel_directory does not match")
                 sys.exit(1)
 
-            if filter_pattern is not None  and not re.search(filter_pattern, parsed_filename):
-                parsed_filename = None
-            elif parsed_filename not in result_dict.keys():
+            if parsed_filename not in result_dict.keys():
                 if filter_doubling:
                     result_dict[parsed_filename] = {"found_lines_list": [], "covered_lines_list": [], "lines_covered": 0, "lines": 0, "functions": {}}
                 else:
@@ -92,12 +90,14 @@ def parse_trace_into_dict(filename, kernel_directory, filter_pattern, filter_dou
     return result_dict
 
 
-def write_dict_into_csv(trace_dict, first_column):
     print(first_column + ",lines,lines_covered,functions,functions_covered")
+def write_dict_into_csv(trace_dict, first_column, filter_pattern):
     trace_dict_keys = list(trace_dict.keys())
     trace_dict_keys = sorted(trace_dict_keys)
     for file_name in trace_dict_keys:
         functions_hit = 0
+        if filter_pattern is not None and not re.search(filter_pattern, file_name):
+            continue
         for func in trace_dict[file_name]["functions"].keys():
             if trace_dict[file_name]["functions"][func]["execution_count"] > 0:
                 functions_hit += 1
