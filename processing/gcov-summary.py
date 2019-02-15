@@ -90,8 +90,8 @@ def parse_trace_into_dict(filename, kernel_directory, filter_doubling):
     return result_dict
 
 
-    print(first_column + ",lines,lines_covered,functions,functions_covered")
 def write_dict_into_csv(trace_dict, first_column, filter_pattern):
+    print(first_column + ",lines,lines_covered,fraction_lines,functions,functions_covered,fraction_fn")
     trace_dict_keys = list(trace_dict.keys())
     trace_dict_keys = sorted(trace_dict_keys)
     for file_name in trace_dict_keys:
@@ -101,7 +101,11 @@ def write_dict_into_csv(trace_dict, first_column, filter_pattern):
         for func in trace_dict[file_name]["functions"].keys():
             if trace_dict[file_name]["functions"][func]["execution_count"] > 0:
                 functions_hit += 1
-        print("%s,%s,%s,%s,%s" % (file_name, trace_dict[file_name]["lines"], trace_dict[file_name]["lines_covered"], len(trace_dict[file_name]["functions"].keys()), functions_hit))
+        fraction_lines = 100 * trace_dict[file_name]["lines_covered"] /trace_dict[file_name]["lines"]
+        num_fns = len(trace_dict[file_name]["functions"].keys())
+        fraction_fns = 100 * functions_hit / num_fns
+        print("%s,%s,%s,%.2f,%s,%s,%.2f" %
+            (file_name, trace_dict[file_name]["lines"], trace_dict[file_name]["lines_covered"], fraction_lines, num_fns, functions_hit, fraction_fns))
 
 
 def convert_dict_to_dirname_dict(trace_dict):
