@@ -25,7 +25,8 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-	parser.add_argument('cexcsv', nargs='*', help='Input file containing the ground truth')
+	parser.add_argument('hypocsv', help='Input file containing all winning hypotheses')
+	parser.add_argument('cexcsv', nargs=argparse.REMAINDER, help='Input file containing the ground truth')
 	args = parser.parse_args()
 
 	separator = ';'
@@ -36,6 +37,19 @@ if __name__ == '__main__':
 	else:
 		LOGGER.setLevel(logging.INFO)
 
+
+	tempFile = open(args.hypocsv,'rb')
+	tempReader = csv.DictReader(tempFile, delimiter=';')
+	count = 0
+
+	for line in tempReader:
+		count += 1
+		if line['type'] in cexDict:
+			cexEntry = cexDict[line['type']]
+		else:
+			cexEntry = {'members': dict(), 'count': 0, 'locations': dict()}
+			cexDict[line['type']] = cexEntry
+
 	for cexFile in args.cexcsv:
 		tempFile = open(cexFile,'rb')
 		tempReader = csv.DictReader(tempFile, delimiter=';')
@@ -43,12 +57,8 @@ if __name__ == '__main__':
 
 		for line in tempReader:
 			count += 1
-			if line['data_type'] in cexDict:
-				cexEntry = cexDict[line['data_type']]
-			else:
-				cexEntry = {'members': dict(), 'count': 0, 'locations': dict()}
-				cexDict[line['data_type']] = cexEntry
-			
+			cexEntry = cexDict[line['data_type']]
+
 			lockCombinations = line['locks_held'].split('+')
 			for lockComb in lockCombinations:
 				locksHeld = lockComb.split('#')[0]
