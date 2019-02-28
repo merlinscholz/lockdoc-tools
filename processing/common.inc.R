@@ -1,10 +1,10 @@
 library("ggplot2")
 library("reshape2")
 
-global_plot_width = 4.5
-global_plot_height = 3
+globalPlotWidth = 4.5
+globalPlotHeight = 3
 
-lockDocSavePlot <- function(plot, name, directory=NULL, width=global_plot_width, height=global_plot_height) {
+lockDocSavePlot <- function(plot, name, directory=NULL, width=globalPlotWidth, height=globalPlotHeight) {
   
   if (is.null(directory)) {
     fname = sprintf("%s",name)
