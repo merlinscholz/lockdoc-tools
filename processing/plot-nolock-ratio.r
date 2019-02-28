@@ -9,7 +9,6 @@ source('./common.inc.R')
 # Parameters for the development of accepted hypotheses plot
 startThreshold=70
 endThreshold=100
-noLockString='(no locks held)'
 
 args <- commandArgs(trailingOnly=T)
 

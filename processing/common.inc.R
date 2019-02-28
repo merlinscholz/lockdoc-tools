@@ -3,6 +3,7 @@ library("reshape2")
 
 globalPlotWidth = 4.5
 globalPlotHeight = 3
+noLockString='(no locks held)'
 
 lockDocSavePlot <- function(plot, name, directory=NULL, width=globalPlotWidth, height=globalPlotHeight) {
   
