@@ -20,7 +20,7 @@ mySavePlot <- function(plot, name, directory=NULL) {
   }
   
   cat(sprintf("Creating: %s\n",fname))
-  ggsave(file=fname,plot,device="pdf",units="cm", width=13, height=10)
+  ggsave(file=fname,plot,device="pdf",units="cm", width=13, height=10, useDingbats=FALSE)
 }
 
 # Parameters for the development of accepted hypotheses plot
@@ -152,4 +152,5 @@ plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
 mySavePlot(plot,outputFile)
+embedFonts(outputFile, "pdfwrite")
 
