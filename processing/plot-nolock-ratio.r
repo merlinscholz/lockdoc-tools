@@ -1,27 +1,10 @@
-library("ggplot2")
-library("reshape2")
 library("getopt")
 library("plyr")
+source('./common.inc.R')
 
 # Author: Alexander Lochmann, 2017
 # This scripts plots the amount of "nolock" hypotheses per data type depending on the acceptance threshold
 # The optional argument -t my restrict the data to a certain data type.
-
-mySavePlot <- function(plot, name, directory=NULL) {
-  
-  if (is.null(directory)) {
-    fname = sprintf("%s",name)
-  } else {
-    if (!file.exists(directory)) {
-      cat(sprintf("Creating directory %s ...\n",directory))
-      dir.create(directory, recursive = T)
-    }
-    fname = sprintf("%s/%s",directory,name)
-  }
-  
-  cat(sprintf("Creating: %s\n",fname))
-  ggsave(file=fname,plot,device="pdf",units="cm", width=13, height=10, useDingbats=FALSE)
-}
 
 # Parameters for the development of accepted hypotheses plot
 startThreshold=70
@@ -151,6 +134,5 @@ plot <- ggplot(data,aes(x=threshold,y=percentage,group=datatype,colour=datatype)
         scale_x_discrete(name="Acceptance Threshold", limits=steps, breaks=breaks) +
 #        ggtitle(nameThresholds) + 
         facet_grid(accesstype ~ .)
-mySavePlot(plot,outputFile)
-embedFonts(outputFile, "pdfwrite")
+lockDocSavePlot(plot,outputFile, width=13, height=10)
 
