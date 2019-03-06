@@ -167,6 +167,12 @@ for LOCK in "$@"; do
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
 		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
 		SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
+		if [ ${SUBLOCK} == "r" ];
+		then
+			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
+		else
+			SUBLOCK_COND="l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'"
+		fi
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBSAME locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -178,7 +184,7 @@ cat <<EOT
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.embedded_in = a.id
-					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
+					 AND ${SUBLOCK_COND}
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 					JOIN subclasses l_sbh_sc${LOCKNR}
@@ -194,6 +200,12 @@ EOT
 	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
 		 LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
 		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
+		if [ ${SUBLOCK} == "r" ];
+		then
+			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
+		else
+			SUBLOCK_COND="l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'"
+		fi
 		cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR}
@@ -201,12 +213,18 @@ EOT
 					 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
+					 AND ${SUBLOCK_COND}
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
 #		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
 		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
 		 SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
+		if [ ${SUBLOCK} == "r" ];
+		then
+			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
+		else
+			SUBLOCK_COND="l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'"
+		fi
 		if echo $LOCKNAME | fgrep '?'; then	 # e.g., i_data?
 			echo "error: cannot (yet) deal with EMBOTHER locks that are not exactly locatable within the containing data structure ('?' in lock name $LOCKNAME)" >&2
 			exit 1
@@ -218,7 +236,7 @@ cat <<EOT
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.embedded_in != a.id
-					 AND l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'
+					 AND ${SUBLOCK_COND}
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
 					JOIN subclasses l_sbh_sc${LOCKNR}
