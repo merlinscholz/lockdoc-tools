@@ -266,9 +266,28 @@ bool finishTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK 
 					locksHeldOFile << tempLockPos.start << delimiter;
 					locksHeldOFile << tempLockPos.lastFile << delimiter;
 					locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
-					locksHeldOFile << tempLockPos.lastPreemptCount << delimiter << (tempLockPos.lastIRQSync + 1) << "\n";
-					// Add one to tempLockPos.lastIRQSync, because MySQL enums start at 1. Zero has a special meaning.
-					// https://dev.mysql.com/doc/refman/5.7/en/enum.html#enum-indexes
+					locksHeldOFile << tempLockPos.lastPreemptCount << delimiter;
+					switch (tempLockPos.lastIRQSync) {
+						case LOCK_NONE:
+							locksHeldOFile << "LOCK_NONE";
+							break;
+
+						case LOCK_IRQ:
+							locksHeldOFile << "LOCK_IRQ";
+							break;
+
+						case LOCK_IRQ_NESTED:
+							locksHeldOFile << "LOCK_IRQ_NESTED";
+							break;
+
+						case LOCK_BH:
+							locksHeldOFile << "LOCK_BH";
+							break;
+
+						default:
+							return EXIT_FAILURE;
+					}
+					locksHeldOFile << "\n";
 				} else {
 					PRINT_ERROR(tempLock->toString(thisTXN.subLock) << ",ts=" << dec << ts, "TXN: Internal error, lock is part of the TXN hierarchy but not held?");
 				}
@@ -1169,6 +1188,7 @@ int main(int argc, char *argv[]) {
 		subclass2id[subclass.name] = subclass.id;
 	}
 
+	int fnBlID = 1;
 	vector<std::string> blacklistIDs;
 	// Process function blacklist
 	for (lineCounter = 0;
@@ -1240,11 +1260,12 @@ int main(int argc, char *argv[]) {
 		}
 
 		for (auto id : blacklistIDs) {
-			// Write a MySQL NULL for the id which forces MySQL to allocate a new unique id for this entry
-			fnblacklistOFile << "\\N" << delimiter << id << delimiter
+			fnblacklistOFile << fnBlID << delimiter
+				<< id << delimiter
 				<< memberID << delimiter
 				<< lineElems.at(2) << delimiter
 				<< lineElems.at(3) << endl;
+			fnBlID++;
 		}
 	}
 
