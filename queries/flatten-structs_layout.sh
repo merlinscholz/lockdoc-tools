@@ -9,18 +9,20 @@ set -e
 
 if [ ${#} -lt 1 ];
 then
-	echo "usage: $0 database" >&2
+	echo "usage: $0 database host user" >&2
 	exit 1
 fi
-DB=${1}
+DB=${1};shift
+HOST=${1};shift
+USER=${1};shift
 
-MYSQL="mysql $DB"
+PSQL="psql --echo-errors -h $HOST -U $USER $DB"
 
-$MYSQL <<EOT
+$PSQL <<EOT
 CREATE TABLE IF NOT EXISTS looong_sequence (
-offset INT UNSIGNED NOT NULL,
-PRIMARY KEY (offset)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+byte_offset INT CHECK (byte_offset >= 0) NOT NULL,
+PRIMARY KEY (byte_offset)
+) ;
 
 DELETE FROM looong_sequence;
 EOT
@@ -28,27 +30,28 @@ EOT
 for i in $(seq 0 1048576)
 do
 	echo "INSERT INTO looong_sequence VALUES ($i);"
-done | $MYSQL
+done | $PSQL
 
-$MYSQL <<EOT
+$PSQL <<EOT
 DROP TABLE IF EXISTS structs_layout_flat;
 
 CREATE TABLE IF NOT EXISTS structs_layout_flat (
-data_type_id int unsigned NOT NULL,
+data_type_id int check (data_type_id > 0) NOT NULL,
 data_type_name varchar(255) NOT NULL,
 member_name_id int NOT NULL,
-offset smallint unsigned NOT NULL,
-size int unsigned NOT NULL,
-helper_offset int unsigned NOT NULL,
-KEY (data_type_id,helper_offset)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+byte_offset smallint check (byte_offset >= 0) NOT NULL,
+size int check (size > 0) NOT NULL,
+helper_offset smallint check (helper_offset >= 0) NOT NULL
+) ;
+
+CREATE INDEX fast_access_idx ON structs_layout_flat(data_type_id,helper_offset);
 
 DELETE FROM structs_layout_flat;
 
 INSERT INTO structs_layout_flat
-SELECT sl.data_type_id, sl.data_type_name, sl.member_name_id, sl.offset, sl.size, seq.offset
+SELECT sl.data_type_id, sl.data_type_name, sl.member_name_id, sl.byte_offset, sl.size, seq.byte_offset
 FROM looong_sequence seq
 JOIN structs_layout sl
-  ON seq.offset BETWEEN sl.offset AND sl.offset + sl.size - 1
+  ON seq.byte_offset BETWEEN sl.byte_offset AND sl.byte_offset + sl.size - 1
 ;
 EOT
