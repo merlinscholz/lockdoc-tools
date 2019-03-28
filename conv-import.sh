@@ -48,6 +48,12 @@ then
 	MEMBER_BLACK_LIST=${TOOLS_PATH}/data/${GUEST_OS}/member_blacklist.csv
 fi
 
+if [ -z ${PSQL_USER} ] || [ -z ${PSQL_HOST} ];
+then
+	echo "Vars PSQL_USER or PSQL_HOST are not set!" >&2
+	exit 1
+fi
+
 if [ ! -f ${DATA_TYPES} ] || [ ! -f ${FN_BLACK_LIST} ] || [ ! -f ${MEMBER_BLACK_LIST} ];
 then
 	echo "${DATA_TYPES}, or ${FN_BLACK_LIST}, or ${MEMBER_BLACK_LIST} does not exist!" >&2
@@ -62,28 +68,6 @@ then
 	echo "${CONVERT_BINARY} does not exist!" >&2
 	exit 1
 fi
-
-
-TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns" "function_blacklist" "member_names" "member_blacklist" "stacktraces" "subclasses")
-
-function mysqlimport_warnings() {
-	mysql -vvv --show-warnings --execute="LOAD DATA LOCAL INFILE '$2' INTO TABLE ${2%%.csv.pv} FIELDS TERMINATED BY '$DELIMITER' IGNORE 1 LINES" $1
-}
-function import_table() {
-	if [ ! -e ${1}.csv ];
-	then
-		echo "${1}.csv does not exist." >&2
-	else
-		echo "DELETE FROM ${1}" | ${MYSQL}
-		${MYSQLIMPORT} ${1}.csv.pv
-	fi
-}
-function usage() {
-	echo "usage: $0 <database> [ input-linecount ]" >&2
-	echo "   or: $0 --nodb     [ input-linecount ]" >&2
-	exit 1
-}
-
 
 if [ -z "$1" ];
 then
@@ -108,25 +92,49 @@ else
 	shift
 fi
 
-MYSQL="mysql -vvv ${DB}"
-#MYSQLIMPORT="mysqlimport --local --fields-terminated-by=${DELIMITER} --ignore-lines=1 -v ${DB}"
-MYSQLIMPORT="mysqlimport_warnings ${DB}"
+TABLES=("data_types" "allocations" "accesses" "locks" "locks_held" "structs_layout" "txns" "function_blacklist" "member_names" "member_blacklist" "stacktraces" "subclasses")
+PSQL="psql --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}"
+PSQLIMPORT="psqlimport_warnings"
+
+function psqlimport_warnings() {
+	TABLE=${1%%.csv.pv}
+	${PSQL} -c "\COPY ${TABLE} FROM '$1' WITH (FORMAT csv, header true, delimiter '$DELIMITER', NULL '\N');"
+}
+
+function import_table() {
+	if [ ! -e ${1}.csv ];
+	then
+		echo "${1}.csv does not exist." >&2
+	else
+		echo "DELETE FROM ${1}" | ${PSQL}
+		${PSQLIMPORT} ${1}.csv.pv
+	fi
+}
+
+function usage() {
+	echo "usage: $0 <database> [ input-linecount ]" >&2
+	echo "   or: $0 --nodb     [ input-linecount ]" >&2
+	exit 1
+}
 
 if [ $USE_DB = true ]; then
 	# initialize DB
-	mysql $DB < ${TOOLS_PATH}/queries/drop-tables.sql
+	echo "Dropping tables..."
+	${PSQL} < ${TOOLS_PATH}/queries/drop-tables.sql
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot drop tables!" >&2
 		exit 1
 	fi
-	mysql $DB < ${DB_SCHEME}
+	echo "Initializing database..."
+	${PSQL} < ${DB_SCHEME}
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot apply db scheme!">&2
 		exit 1
 	fi
 
+	echo "Setting up fifos..."
 	# setup named pipes and start importing in the background
 	for table in "${TABLES[@]}"
 	do
@@ -155,7 +163,6 @@ fi
 
 if [ $USE_DB = true ]; then
 	wait
-	mysqloptimize $DB
 	#reset
 
 	for table in "${TABLES[@]}"
