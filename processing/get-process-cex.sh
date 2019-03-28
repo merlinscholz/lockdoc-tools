@@ -27,6 +27,8 @@ DATA_TYPE=${1};shift
 INPUT_BUGS=${1};shift
 INPUT_WINNER=${1};shift
 OUTPUT_SUFFIX=${1};shift
+HOST=${1}; shift
+USER=${1}; shift
 
 if [ ! -f ${CONFIGFILE} ];
 then
@@ -52,7 +54,7 @@ fi
 
 if [ ${SKIP_QUERIES} -eq 0 ];
 then
-	${TOOLS_PATH}/get-counterexamples.sh ${INPUT_BUGS} ${DATA_TYPE} ${DB} 1 > ${CEX_CSV}
+	${TOOLS_PATH}/get-counterexamples.sh ${INPUT_BUGS} ${DATA_TYPE} ${DB} ${HOST} ${USER} 1 > ${CEX_CSV}
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot run get-counterexamples.sh!">&2
