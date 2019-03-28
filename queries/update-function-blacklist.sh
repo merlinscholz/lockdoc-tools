@@ -6,27 +6,40 @@
 
 if [ ${#} -lt 3 ];
 then
-	echo "usage: ${0} <database> <data type> <function1> [<function2> ...]" >&2
+	echo "usage: ${0} <database> <host> <user> <data type> <subclass> <function1> [<function2> ...]" >&2
 	exit 1
 fi
 
 DB=${1}; shift
+HOST=${1}; shift
+USER=${1}; shift
 DATA_TYPE=${1}; shift
+SUBCLASS=${1}; shift
 FUNCTION=${1}; shift
-MYSQL="mysql ${DB}"
 
 while [ ! -z ${FUNCTION} ];
 do
 	echo "Blacklisting ${FUNCTION} for ${DATA_TYPE}..."
 	if [ ${DATA_TYPE} == "any" ];
 	then
-		${MYSQL} <<EOT
-insert into function_blacklist (data_type_id,member_name_id,fn) values (NULL,NULL,'${FUNCTION}');
+		psql -A --field-separator='	' --pset footer --echo-errors -h ${HOST} -U ${USER} ${DB} <<EOT
+			insert into function_blacklist (id,member_name_id,fn) values (NULL,NULL,'${FUNCTION}');
 EOT
 	else
-		${MYSQL} <<EOT
-select id into @dtid from data_types where name = '${DATA_TYPE}';
-insert into function_blacklist (data_type_id,member_name_id,fn,sequence) values (@dtid,NULL,'${FUNCTION}',NULL);
+		psql -A --field-separator='	' --pset footer --echo-errors -h ${HOST} -U ${USER} ${DB} <<EOT
+		DO \$\$
+		DECLARE
+			scid bigint;
+		BEGIN
+			SELECT sc.id INTO scid 
+			FROM data_types AS dt
+			JOIN subclasses AS sc
+			ON dt.id = sc.data_type_id
+			WHERE dt.name = '${DATA_TYPE}'
+			AND sc.name = '${SUBCLASS}';
+			insert into function_blacklist (subclass_id,member_name_id,fn) values (scid,NULL,'${FUNCTION}');
+		END
+		\$\$;
 EOT
 	fi
 	FUNCTION=${1}; shift
