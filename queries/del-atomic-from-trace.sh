@@ -7,24 +7,29 @@ set -e
 
 if [ ${#} -lt 1 ];
 then
-	echo "usage: $0 database" >&2
+	echo "usage: $0 database host user" >&2
 	exit 1
 fi
-DB=${1}
+DB=${1};shift
+HOST=${1};shift
+USER=${1};shift
 
-MYSQL="mysql $DB"
+PSQL="psql --echo-errors -h $HOST -U $USER $DB"
 
-$MYSQL <<EOT
-DELETE ac
+$PSQL <<EOT
+--ALTER TABLE accesses DISABLE TRIGGER ALL;
+DELETE
 FROM accesses AS ac
-INNER JOIN allocations AS a ON a.id=ac.alloc_id
-INNER JOIN subclasses AS sc ON sc.id=a.subclass_id
-INNER JOIN data_types AS dt ON dt.id=sc.data_type_id
-LEFT JOIN structs_layout_flat sl
-  ON sc.data_type_id = sl.data_type_id
- AND ac.address - a.base_address = sl.helper_offset
+USING allocations AS a, data_types AS dt, structs_layout_flat AS sl, subclasses AS sc
 WHERE
-	sl.data_type_name like "%atomic\_t%" or sl.data_type_name like "%atomic64\_t*" or sl.data_type_name like "%atomic\_long\_t%"
+	a.id = ac.alloc_id
+	AND sc.id = a.subclass_id
+	AND dt.id = sc.data_type_id
+	AND sc.data_type_id = sl.data_type_id
+	AND ac.address - a.base_address = sl.helper_offset
+	AND (sl.data_type_name LIKE '%atomic\_t%' OR sl.data_type_name LIKE '%atomic64\_t*' OR sl.data_type_name LIKE '%atomic\_long\_t%')
+--ALTER TABLE accesses ENABLE TRIGGER ALL;
 EOT
+
 
 
