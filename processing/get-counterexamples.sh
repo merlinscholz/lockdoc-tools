@@ -21,6 +21,8 @@ DIR=`dirname ${0}`
 INPUTFILE=${1}; shift
 DATATYPE=${1}; shift
 DATABASE=${1}; shift
+HOST=${1}; shift
+USER=${1}; shift
 USE_EMBOTHER_PARAM=${1}; shift
 COUNTEREXAMPLE_SH="counterexample.sql.sh"
 QUERY_FILE=$(mktemp /tmp/counter-examples-sql.XXXXXX)
@@ -38,31 +40,32 @@ fi
 
 export USE_EMBOTHER=${USE_EMBOTHER_PARAM} 
 
-COUNT=0
+HEADER_PRINTED=0
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
 do
 	echo "Running: ${cmd}:" >&2
-	eval ${DIR}/../queries/$cmd > ${QUERY_FILE}
-	if [ ${?} -ne 0 ];
-	then
-		echo "Cannot generate query" >&2
-		continue
-	fi
 	if [ ! -z ${DATABASE} ];
 	then
-		echo "Running query..." >&2
-		if [ ${COUNT} -gt 0 ];
-		then 
-			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}" | sed '/data_type;member;accesstype;stacktrace;locks_held/d'
-		else
-			mysql ${DATABASE} < ${QUERY_FILE} | tr '\t' "${DELIMITER}"
+		eval ${DIR}/../queries/$cmd > ${QUERY_FILE}
+		if [ ${?} -ne 0 ];
+		then
+			echo "Cannot generate query" >&2
+			continue
 		fi
+		RESULTS=$(psql -A -F ';' --pset footer --echo-errors -h ${HOST} -U ${USER} ${DATABASE} < ${QUERY_FILE})
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running query from ${QUERY_FILE}" >&2
 			exit 1
 		fi
+		if [ -n "${RESULTS}" ] && [ ${HEADER_PRINTED} -eq 0 ];
+		then
+			echo "${RESULTS}"
+			HEADER_PRINTED=1
+		elif [ -n "${RESULTS}" ] && [ ${HEADER_PRINTED} -eq 1 ];
+		then
+			echo "${RESULTS}" | tail -n +2
+		fi
 	fi
-	let COUNT=COUNT+1
 done;
 rm "${QUERY_FILE}"
