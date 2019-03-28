@@ -10,7 +10,7 @@
 # - Allow printing of subtrees
 
 import sys
-import MySQLdb
+import psycopg2
 import logging
 import argparse 
 import subprocess
@@ -66,11 +66,9 @@ def main():
 	# Fetach *all* stacktraces, and count them.
 	# For now, we also include stacktrace which might be ignored due to 
 	# blacklists.
-	query = 'SELECT GROUP_CONCAT( \
-					CONCAT("0x", HEX(st.instruction_ptr), "@", st.function, "@", st.file, ":", st.line) \
-					ORDER BY st.sequence \
-					SEPARATOR "," \
-				) AS stacktrace, COUNT(*) \
+	query = "SELECT string_agg( \
+					CONCAT('0x', upper(to_hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line) \
+                    , ',' ORDER BY st.sequence) AS stacktrace, COUNT(*) \
 			 FROM accesses AS ac \
 			 INNER JOIN stacktraces AS st \
 			  ON ac.stacktrace_id = st.id\
@@ -83,13 +81,13 @@ def main():
 			  AND ac.address - a.base_address = sl.helper_offset\
 			 LEFT JOIN member_names mn\
 			  ON mn.id = sl.member_name_id\
-			 WHERE 1\
+			 WHERE True\
 			  {member}\
 			  {datatype}\
 			  {accesstype}\
-			 GROUP BY ac.stacktrace_id;'.format(member=memberfilter,datatype=datatypefilter,accesstype=accesstypefilter)
+			 GROUP BY ac.stacktrace_id;".format(member=memberfilter,datatype=datatypefilter,accesstype=accesstypefilter)
 
-	db = MySQLdb.connect(host,user,password,database)
+	db = psycopg2.connect("dbname='" + database + "' user='" + user + "' host='" + host + "' password='" + password + "'")
 	cursor = db.cursor()
 
 	try:

@@ -8,7 +8,7 @@
 
 import csv
 import sys
-import MySQLdb
+import psycopg2
 import logging
 import argparse 
 import subprocess
@@ -18,6 +18,8 @@ noLockString = '(no locks held)'
 
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)  
+
+#all-txns-members-locks-hypo-winner-nostack-nosubclasses.csv
 
 def main():
 	parser = argparse.ArgumentParser()
@@ -52,7 +54,7 @@ def main():
 	else:
 		datatypefilter=""
 	if args.subclass:
-		type_name_column='IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ":", sc.name))'
+		type_name_column='(CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, \':\', sc.name) END)'
 		group_by_column='sc.id,'
 	else:
 		type_name_column='dt.name'
@@ -66,11 +68,11 @@ def main():
 		   ON dt.id = sl.data_type_id \
 		 JOIN member_names AS mn \
 		   ON sl.member_name_id = mn.id \
-		 WHERE sl.data_type_name like "%atomic\_t%" or sl.data_type_name like "%atomic64\_t*" or sl.data_type_name like "%atomic\_long\_t%" \
+		 WHERE sl.data_type_name like \'%atomic\_t%\' or sl.data_type_name like \'%atomic64\_t*\' or sl.data_type_name like \'%atomic\_long\_t%\' \
 		      {datatype} \
-		GROUP BY dt.id,{group_by}sl.offset;'.format(datatype=datatypefilter,type_name=type_name_column,group_by=group_by_column)
+		GROUP BY dt.id,{group_by}sl.byte_offset, mn.name, sl.data_type_name;'.format(datatype=datatypefilter,type_name=type_name_column,group_by=group_by_column)
 
-	db = MySQLdb.connect(host,user,password,database)
+	db = psycopg2.connect("dbname='" + database + "' user='" + user + "' host='" + host + "' password='" + password + "'")
 	cursor = db.cursor()
 
 	atomicMembers = dict()

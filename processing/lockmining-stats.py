@@ -5,7 +5,7 @@
 from __future__ import print_function
 import csv
 import sys
-import MySQLdb
+import psycopg2
 import logging
 import argparse 
 import subprocess
@@ -38,12 +38,12 @@ def main():
 	password = args.password
 	hypothesisCSV = args.hypothesisCSV
 
-	db = MySQLdb.connect(host,user,password,database)
+	db = psycopg2.connect("dbname='" + database + "' user='" + user + "' host='" + host + "' password='" + password + "'")
 	cursor = db.cursor()
 
 	dataTypes = dict()
 
-	query = 'SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ":", sc.name)), COUNT(*) AS num \
+	query = 'SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, \':\', sc.name) END) AS case, COUNT(*) AS num \
 		 FROM subclasses AS sc \
 		 INNER JOIN data_types AS dt \
 		    ON sc.data_type_id = dt.id \
@@ -52,7 +52,7 @@ def main():
 		 INNER JOIN member_names AS mn \
 		    ON sl.member_name_id = mn.id \
 		 WHERE dt.name != \'task_struct\' \
-		 GROUP BY sc.id;'
+		 GROUP BY sc.id, sc.name, dt.name;' #,case
 	try:
 		cursor.execute(query)
 		results = cursor.fetchall()
@@ -67,7 +67,7 @@ def main():
 		print('Error: ' + str(e))
 		sys.exit(1)
 
-	query = 'SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ":", sc.name)), COUNT(*) AS num \
+	query = 'SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, \':\', sc.name) END) AS case, COUNT(*) AS num \
 		 FROM member_blacklist AS mbl \
 		 INNER JOIN subclasses AS sc \
 		    ON sc.id = mbl.subclass_id \
@@ -76,7 +76,7 @@ def main():
 		 INNER JOIN member_names AS mn \
 		    ON mn.id = mbl.member_name_id \
 		 WHERE dt.name != \'task_struct\' \
-		 GROUP BY mbl.subclass_id;'
+		 GROUP BY mbl.subclass_id, sc.name, dt.name;' #,case
 	try:
 		cursor.execute(query)
 		results = cursor.fetchall()
