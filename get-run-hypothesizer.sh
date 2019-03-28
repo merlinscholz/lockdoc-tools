@@ -7,7 +7,7 @@
 TOOLS_PATH=`dirname ${0}`
 
 function usage() {
-        echo "usage: $0 <database> <use stack> <use subclasses> <prefix for the output fname>" >&2
+        echo "usage: $0 <database> <use stack> <use subclasses> <prefix for the output fname> <host> <user>" >&2
         exit 1
 }
 
@@ -43,12 +43,14 @@ else
 fi
 
 PREFIX=${1};shift
+HOST=${1};shift
+USER=${1};shift
 
 HYPO_INPUT=${PREFIX}-db-${VARIANT}.csv
 DURATION_FILE=`mktemp /tmp/output.XXXXX`
 
 echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
-/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | mysql ${DB} > ${HYPO_INPUT}"
+/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_INPUT}"
 EXEC_TIME=`cat ${DURATION_FILE}`
 echo "Generating hypothesizer input took ${EXEC_TIME} secs."
 
