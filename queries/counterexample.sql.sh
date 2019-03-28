@@ -58,51 +58,44 @@ if [ "$SANITYCHECK" != : ]; then
 	exit 1
 fi
 
-EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  IF(l.address - lock_a.base_address = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
+EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(',  (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
 if [ -n "${USE_EMBOTHER}" ];
 then
 	if [ ${USE_EMBOTHER} -gt 0 ];
 	then
-		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(',  IF(l.address - lock_a.base_address = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
+		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(',  (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
 	fi
 fi
 
 cat <<EOT
-SET SESSION group_concat_max_len = 100000;
 SELECT data_type, member, accesstype, stacktrace, 
-	GROUP_CONCAT(
+	string_agg(
 		CONCAT(locks_held, '#', occurrences)
-		ORDER BY occurrences DESC, locks_held
-		SEPARATOR '+'
-	) AS locks_held
+	, '+' ORDER BY occurrences DESC, locks_held DESC) AS locks_held
 FROM
 (
 	SELECT '${COMBINED_DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, 
-			stacktrace_id, stacktrace, IF(locks_held IS NULL, 'nolocks', locks_held) AS locks_held
+			stacktrace_id, stacktrace, (CASE WHEN (locks_held IS NULL OR locks_held = '([])@@:') THEN 'nolocks' ELSE locks_held END) AS locks_held
 	FROM
 	(
 		SELECT stacktrace_id, stacktrace,
-		GROUP_CONCAT(
+		string_agg(
 			CASE
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
 				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', IF(l.address - lock_a.base_address = lock_member.offset, lock_member_name.name, CONCAT(lock_member_name.name, '?')), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+				THEN CONCAT('EMBSAME(', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
 				${EMBOTHER_SQL}
-			END
-			ORDER BY lh.start
-			SEPARATOR ','
-		) AS locks_held
+			END,
+		',' ORDER BY lh.start) AS locks_held
 		FROM
 		(
 			SELECT ac.id AS ac_id, ac.alloc_id AS alloc_id, ac.txn_id AS txn_id, stacktrace_id,
-				GROUP_CONCAT(
-					CONCAT('0x', HEX(st.instruction_ptr), '@', st.function, '@', st.file, ':', st.line)
-					ORDER BY st.sequence
-					SEPARATOR ','
-				) AS stacktrace
+				string_agg(
+					CONCAT('0x', upper(to_hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line)
+				,',' ORDER BY st.sequence) AS stacktrace
 			FROM
 			(
 				SELECT ac.id, ac.txn_id, ac.alloc_id, st.function, ac.stacktrace_id
@@ -269,43 +262,44 @@ EOT
 done
 cat <<EOT
 				)
-				AND ac.id NOT IN
+				AND NOT EXISTS
 				(
-				-- Get all accesses that happened on an init path
-					SELECT ac.id
-					FROM accesses ac
-					JOIN allocations a
-					  ON ac.alloc_id = a.id
-					 AND ac.type = '$ACCESSTYPE'
-					JOIN subclasses sc
-					  ON a.subclass_id = sc.id
-					${SUBCLASS_FILTER}
-					JOIN data_types dt
-					  ON sc.data_type_id = dt.id
-					 AND dt.name = '$DATATYPE'
-					JOIN stacktraces AS st
-					  ON ac.stacktrace_id = st.id
-					JOIN structs_layout_flat sl
-					  ON sl.data_type_id = sc.data_type_id
-					 AND sl.helper_offset = ac.address - a.base_address
-					JOIN member_names mn
-					  ON mn.id = sl.member_name_id
-					 AND mn.name = '$MEMBER'
-					LEFT JOIN function_blacklist fn_bl
-					  ON fn_bl.fn = st.function
+					-- Get all accesses that happened on an init path
+					SELECT 1
+					FROM accesses s_ac
+					JOIN allocations s_a
+					  ON s_ac.alloc_id = s_a.id
+					  AND s_ac.type = '$ACCESSTYPE'
+					JOIN subclasses s_sc
+					  ON s_a.subclass_id = s_sc.id
+					  ${SUBCLASS_FILTER}
+					JOIN data_types s_dt
+					  ON s_sc.data_type_id = s_dt.id
+					  AND s_dt.name = '$DATATYPE'
+					JOIN stacktraces AS s_st
+					  ON s_ac.stacktrace_id = s_st.id
+					LEFT JOIN structs_layout_flat s_sl
+					  ON s_sc.data_type_id = s_sl.data_type_id
+					 AND s_ac.address - s_a.base_address = s_sl.helper_offset
+					LEFT JOIN member_names s_mn
+					  ON s_mn.id = s_sl.member_name_id
+					  AND s_mn.name = '$MEMBER'
+					LEFT JOIN function_blacklist s_fn_bl
+					  ON s_fn_bl.fn = s_st.function
 					 AND
 					 (
-					   (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					   (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
 					   OR
-					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					   (s_fn_bl.subclass_id = s_a.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					   OR
-					   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+					   (s_fn_bl.subclass_id = s_a.subclass_id AND s_fn_bl.member_name_id = s_sl.member_name_id) -- for this member blacklisted
 					   AND
-					   (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence)
+					   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence)
 					 )
-					WHERE
-						fn_bl.fn IS NOT NULL
-					GROUP BY ac.id
+					WHERE ac.id = s_ac.id
+					-- ====================================
+					AND s_fn_bl.fn IS NOT NULL
+					LIMIT 1
 				)
 			) ac
 
@@ -313,7 +307,7 @@ cat <<EOT
 			  ON ac.stacktrace_id = st.id
 			-- Joining the stacktraces table multiplies each row by the number of stackframes an access has.
 			-- First, (group) concat all stackframes to a stacktrace.
-			GROUP BY ac.id
+			GROUP BY ac.id, ac.alloc_id, ac.txn_id, stacktrace_id
 		) folded_stacks
 
 		LEFT JOIN locks_held lh
@@ -336,11 +330,11 @@ cat <<EOT
 		-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
 		-- else                                      => the lock is contained in this member, exact name unknown
 		-- Now collapse the stacktrace to one row (aka GROUP_CONCAT)
-		GROUP BY ac_id
+		GROUP BY ac_id, stacktrace_id, stacktrace
 	) all_counterexamples
-	GROUP BY data_type, member, accesstype, stacktrace_id, locks_held
+	GROUP BY data_type, member, accesstype, stacktrace_id, locks_held, stacktrace
 ) all_counterexamples_by_stack
-GROUP BY data_type, member, accesstype, stacktrace_id
+GROUP BY data_type, member, accesstype, stacktrace_id, stacktrace
 ORDER BY data_type, member, accesstype, stacktrace_id
 ;
 EOT
