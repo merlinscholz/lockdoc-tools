@@ -32,6 +32,12 @@ set -a
 . ${CONFIGFILE}
 set +a
 
+if [ -z ${PSQL_USER} ] || [ -z ${PSQL_HOST} ];
+then
+	echo "Vars PSQL_USER or PSQL_HOST are not set!" >&2
+	exit 1
+fi
+
 if [ ! -z ${1} ];
 then
 	echo "Waiting for fail-client (pid ${1}) to terminate..."
@@ -48,7 +54,7 @@ if [ ${SKIP_IMPORT} -eq 0 ];
 then
 	IMPORT_EXEC_TIME=0
 
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/conv-import.sh ${DB} -1
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/conv-import.sh ${DB} -1 #2000000
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot convert and import trace!">&2
@@ -59,7 +65,7 @@ then
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
 	echo "Flatten structs layout..."
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/flatten-structs_layout.sh ${DB} ${PSQL_HOST} ${PSQL_USER}
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot flatten structs layout!">&2
@@ -70,7 +76,7 @@ then
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
 	echo "Deleting accesses to atomic members..."
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/queries/del-atomic-from-trace.sh ${DB} ${PSQL_HOST} ${PSQL_USER}
 	if [ ${?} -ne 0 ];
 	then
 		echo "Cannot delete atomic members!">&2
@@ -107,7 +113,7 @@ do
 		echo "Start processing '${VARIANT}'"
 		if [ ${SKIP_HYPO} -eq 0 ];
 		then
-			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX}
+			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX} ${PSQL_HOST} ${PSQL_USER}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run hypothesizer for ${VARIANT}!">&2
@@ -117,18 +123,17 @@ do
 			echo "Running hypothesizer and generating the input took ${HYPO_EXEC_TIME} secs."
 		fi
 
-
 		if [ ${USE_SUBCLASSES} -eq 0 ];
 		then
-			DATA_TYPES=`echo "SELECT dt.name FROM data_types AS dt;" | mysql -N ${DB}`
+			DATA_TYPES=`echo "SELECT dt.name FROM data_types AS dt;" | psql --tuples-only --no-align --field-separator='       ' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
 		else
-			DATA_TYPES=`echo "SELECT IF(sc.name IS NULL, dt.name, CONCAT(dt.name, ':', sc.name)) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | mysql -N ${DB}`
+			DATA_TYPES=`echo "SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | psql --tuples-only --no-align --field-separator='       ' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
 		fi
 		CEX_EXEC_TIME=0.0
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
-			SKIP_QUERIES=${SKIP_CEX_QUERIES} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT}
+			SKIP_QUERIES=${SKIP_CEX_QUERIES} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT} ${PSQL_HOST} ${PSQL_USER}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
