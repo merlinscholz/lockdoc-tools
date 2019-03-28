@@ -6,14 +6,12 @@
 --	mn.name AS sl_member,
 --	sl.member_id AS sl_member_id,
 --	COUNT(*) AS count
-DELETE ac
+DELETE
 FROM accesses AS ac
-INNER JOIN allocations AS a ON a.id=ac.alloc_id
-INNER JOIN data_types AS dt ON dt.id=a.data_type_id
-LEFT JOIN structs_layout_flat sl
-  ON a.data_type_id = sl.type_id
- AND ac.address - a.base_address = sl.helper_offset
-LEFT JOIN member_names AS mn
-  ON mn.id = sl.member_name_id
+USING allocations AS a, data_types AS dt, structs_layout_flat AS sl
 WHERE
-	sl.data_type_name like "%atomic\_t%" or sl.data_type_name like "%atomic64\_t*" or sl.data_type_name like "%atomic\_long\_t%"
+	a.id = ac.alloc_id
+	AND dt.id = a.data_type_id
+	AND a.data_type_id = sl.data_type_id
+	AND ac.address - a.base_address = sl.helper_offset
+	AND (sl.data_type_name LIKE '%atomic\_t%' OR sl.data_type_name LIKE '%atomic64\_t*' OR sl.data_type_name LIKE '%atomic\_long\_t%')
