@@ -33,8 +33,8 @@ then
 fi
 
 cat <<EOT
-SELECT ac.id, ac.type AS type, sc.data_type_id AS data_type_id, mn.name AS member, sl.offset,
-	sl.size, st.sequence, st.function, m_bl.member_name_id IS NOT NULL AS member_bl, fn_bl.fn IS NOT NULL AS fn_bl
+SELECT ac.id, ac.type AS type, sc.data_type_id AS data_type_id, mn.name AS member, sl.byte_offset,
+	sl.size, st.sequence, st.function, (CASE WHEN m_bl.member_name_id IS NOT NULL THEN 1 ELSE 0 END)  AS member_bl, (CASE WHEN fn_bl.fn IS NOT NULL THEN 1 ELSE 0 END) AS fn_bl
 FROM accesses ac
 JOIN allocations a
   ON ac.alloc_id = a.id
@@ -63,7 +63,7 @@ LEFT JOIN function_blacklist fn_bl
    AND
    (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence)
  )
-WHERE 1
+WHERE True
 -- Name the data type of interest here
 ${DATATYPE_FILTER}
 ${MEMBER_FILTER}
@@ -73,5 +73,7 @@ AND
 (
 	fn_bl.fn IS NOT NULL OR m_bl.member_name_id IS NOT NULL
 )
+--ZUM VERGLEICHEN HINZUGEFUEGT
+ORDER BY ac.id, ac.type, sc.data_type_id, mn.name, sl.byte_offset, sl.size, st.sequence, st.function, member_bl, fn_bl
 EOT
 
