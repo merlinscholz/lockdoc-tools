@@ -35,13 +35,16 @@ then
 	OUTDEV=/dev/ttyu0
 	KERNEL_VERSION=`cat /dev/lockdoc/version`
 	echo "kernelversion=${KERNEL_VERSION}" | tee ${OUTDEV}
-	POOL=`zpool list -o name -H`
+	#POOL=`zpool list -o name -H`
 	echo "Remount RW" | tee ${OUTDEV}
-	zfs set readonly=off ${POOL}/ROOT/default
+	mount -u -o rw /
+	#zfs set readonly=off ${POOL}/ROOT/default
 
 	LOCKDOC_TEST_CTL="/dev/lockdoc/control"
 	LOCKDOC_TEST_ITER="/dev/lockdoc/iterations"
 	DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
+	DEFAULT_USER=1001
+	DEFAULT_GROUP=20
 fi
 
 if [ ! -d ${DIR} ];
@@ -162,7 +165,7 @@ then
 		then
 			echo "Error chmod 0777" | tee ${OUTDEV}
 		fi
-		chown -R 0:0 .	
+		chown -R 0:0 .
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error chown 0:0" | tee ${OUTDEV}
@@ -235,8 +238,9 @@ then
 	/bin/mount -o remount,ro /
 elif [ ${OS} == "FreeBSD" ];
 then
-	POOL=`zpool list -o name -H`
-	zfs set readonly=on ${POOL}/ROOT/default
+	#POOL=`zpool list -o name -H`
+	#zfs set readonly=on ${POOL}/ROOT/default
+	mount -u -o ro /
 fi
 
 echo "Syncing" | tee ${OUTDEV}
