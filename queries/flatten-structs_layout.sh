@@ -27,10 +27,7 @@ PRIMARY KEY (byte_offset)
 DELETE FROM looong_sequence;
 EOT
 
-for i in $(seq 0 1048576)
-do
-	echo "INSERT INTO looong_sequence VALUES ($i);"
-done | $PSQL
+echo "INSERT INTO looong_sequence VALUES (generate_series(0,1048576));" | $PSQL
 
 $PSQL <<EOT
 DROP TABLE IF EXISTS structs_layout_flat;
