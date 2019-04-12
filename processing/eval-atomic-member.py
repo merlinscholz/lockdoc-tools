@@ -51,6 +51,7 @@ def main():
 			datatypefilter="AND sc.data_type_id = (SELECT id FROM data_types WHERE name = '" + types[0] + "')"
 		else:
 			datatypefilter="AND sc.id = (SELECT id FROM subclasses WHERE name = '" + types[1] + "') AND sc.data_type_id = (SELECT id FROM data_types WHERE name = '" + types[0] + "')"
+			args.subclass = True
 	else:
 		datatypefilter=""
 	if args.subclass:
