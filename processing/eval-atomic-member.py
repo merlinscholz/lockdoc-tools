@@ -69,7 +69,7 @@ def main():
 		   ON dt.id = sl.data_type_id \
 		 JOIN member_names AS mn \
 		   ON sl.member_name_id = mn.id \
-		 WHERE sl.data_type_name like \'%atomic\_t%\' or sl.data_type_name like \'%atomic64\_t*\' or sl.data_type_name like \'%atomic\_long\_t%\' \
+		 WHERE (sl.data_type_name like \'%atomic\_t%\' or sl.data_type_name like \'%atomic64\_t*\' or sl.data_type_name like \'%atomic\_long\_t%\') \
 		      {datatype} \
 		GROUP BY dt.id,{group_by}sl.byte_offset, mn.name, sl.data_type_name;'.format(datatype=datatypefilter,type_name=type_name_column,group_by=group_by_column)
 
