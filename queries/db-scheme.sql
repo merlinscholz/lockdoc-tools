@@ -92,7 +92,7 @@ CREATE TABLE structs_layout (
   data_type_name varchar(255) NOT NULL,			-- Describes the type of a member
   member_name_id int CHECK (member_name_id > 0) NOT NULL,		-- The id of the member
   byte_offset smallint CHECK (byte_offset >= 0) NOT NULL,	-- The offset in bytes from the beginning of a struct
-  size smallint CHECK (size > 0) NOT NULL,	-- The size in bytes of a member
+  size int CHECK (size > 0) NOT NULL,	-- The size in bytes of a member
   PRIMARY KEY (data_type_id, byte_offset)
 ) 
 ;
