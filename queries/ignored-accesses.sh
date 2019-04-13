@@ -1,7 +1,7 @@
 #!/bin/bash
-if [ ${#} -lt 1 ];
+if [ ${#} -lt 0 ];
 then
-	echo "${0} <data type> [<member> [<access type (or any)>]]" >&2
+	echo "${0} [<data type> [<member> [<access type (or any)>]]]" >&2
 	exit 1
 fi
 
