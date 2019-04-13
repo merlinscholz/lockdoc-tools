@@ -69,7 +69,7 @@ else
 				      (s_fn_bl.subclass_id = s_a.subclass_id AND s_fn_bl.member_name_id = s_sl.member_name_id) -- for this member blacklisted
 				   )
 				   AND
-				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace				 )
+				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 				 )
 				LEFT JOIN member_blacklist s_m_bl
 				  ON s_m_bl.subclass_id = s_a.subclass_id
