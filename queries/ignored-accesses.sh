@@ -34,7 +34,9 @@ fi
 
 cat <<EOT
 SELECT ac.id, ac.type AS type, sc.data_type_id AS data_type_id, mn.name AS member, sl.byte_offset,
-	sl.size, st.sequence, st.function, (CASE WHEN m_bl.member_name_id IS NOT NULL THEN 1 ELSE 0 END)  AS member_bl, (CASE WHEN fn_bl.fn IS NOT NULL THEN 1 ELSE 0 END) AS fn_bl
+	sl.size, st.sequence, st.function,
+	(CASE WHEN m_bl.member_name_id IS NOT NULL THEN 1 ELSE 0 END)  AS member_bl,
+	(CASE WHEN fn_bl.fn IS NOT NULL THEN 1 ELSE 0 END) AS fn_bl
 FROM accesses ac
 JOIN allocations a
   ON ac.alloc_id = a.id
@@ -55,11 +57,13 @@ LEFT JOIN function_blacklist fn_bl
   ON fn_bl.fn = st.function
  AND 
  (
-   (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
-   OR
-   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-   OR
-   (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+   (
+      (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+      OR
+      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+      OR
+      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+   )
    AND
    (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence)
  )
