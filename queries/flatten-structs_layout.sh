@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS structs_layout_flat (
 data_type_id int check (data_type_id > 0) NOT NULL,
 data_type_name varchar(255) NOT NULL,
 member_name_id int NOT NULL,
-byte_offset smallint check (byte_offset >= 0) NOT NULL,
+byte_offset int check (byte_offset >= 0) NOT NULL,
 size int check (size > 0) NOT NULL,
-helper_offset smallint check (helper_offset >= 0) NOT NULL
+helper_offset int check (helper_offset >= 0) NOT NULL
 ) ;
 
 CREATE INDEX fast_access_idx ON structs_layout_flat(data_type_id,helper_offset);
