@@ -7,3 +7,6 @@ mount;mnt_mtx
 mount;mnt_explock
 pipepair;pp_mtx
 nc_vnodelocks;vnode_lock
+vpollinfo;vpi_lock
+devfs_mount;dm_lock
+neglist;nl_lock
