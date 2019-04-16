@@ -41,11 +41,12 @@ struct WLock : public RWLock {
 	string const& lockMember,
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
+	unsigned flags,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir) {
-		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 	}
 };
 

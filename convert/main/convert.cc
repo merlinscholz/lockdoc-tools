@@ -432,7 +432,7 @@ static void handlePV(
 		// Write the lock to disk (aka locks.csv)
 		tempLock->writeLock(locksOFile, delimiter);
 	}
-	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelBaseDir);
+	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelBaseDir);
 }
 
 /* taken from Linux 4.10 include/linux/preempt.h */

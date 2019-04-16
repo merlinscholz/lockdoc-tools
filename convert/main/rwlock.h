@@ -191,6 +191,11 @@ struct RWLock {
 	}
 
 	/**
+	 * Update flags. The recursable flag might have changed, for example.
+	 */
+	void updateFlags(unsigned value) { this->flags = value; }
+
+	/**
 	 * Assign each sub lock a new, and unique {@param id}.
 	 */
 	virtual void initIDs(unsigned long long &id) {
@@ -242,14 +247,15 @@ struct RWLock {
 	string const& lockMember,
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
+	unsigned flags,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir) {
 		if (lockOP == P_WRITE || lockOP == V_WRITE) {
-			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 		} else if (lockOP == P_READ || lockOP == V_READ) {
-			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
 		} else {
 			stringstream ss;
 			ss << "Invalid op(" << lockOP << "," << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << ts << endl;
@@ -278,6 +284,7 @@ struct RWLock {
 	string const& lockMember,
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
+	unsigned flags,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
@@ -297,6 +304,7 @@ struct RWLock {
 	string const& lockMember,
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
+	unsigned flags,
 	std::deque<TXN> activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
