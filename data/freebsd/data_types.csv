@@ -1,7 +1,6 @@
 name
 lockdoc_ring_buffer
 vnode
-vnode_aux
 mount
 bufobj
 bufv
@@ -14,3 +13,7 @@ namecache
 namecache_ts
 namecache_aux
 nc_vnodelocks
+vpollinfo
+neglist
+devfs_mount
+devfs_dirent
