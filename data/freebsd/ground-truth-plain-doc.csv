@@ -1,12 +1,12 @@
 datatype;member;accesstype;rule;comment;origin
-vnode;v_tag;r;nolock;;sys/sys/vnode.h:98
-vnode;v_tag;w;nolock;;sys/sys/vnode.h:98
-vnode;v_op;r;nolock;;sys/sys/vnode.h:98
-vnode;v_op;w;nolock;;sys/sys/vnode.h:98
-vnode;v_data;r;nolock;;sys/sys/vnode.h:98
-vnode;v_data;w;nolock;;sys/sys/vnode.h:98
-vnode;v_mount;r;nolock;;sys/sys/vnode.h:98
-vnode;v_mount;w;nolock;;sys/sys/vnode.h:98
+vnode;v_tag;r;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_tag;w;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_op;r;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_op;w;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_data;r;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_data;w;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_mount;r;\(no locks held\);;sys/sys/vnode.h:98
+vnode;v_mount;w;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_nmntvnodes;r;EMBOTHER\(mount.mnt_mtx\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_nmntvnodes;w;EMBOTHER\(mount.mnt_mtx\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_mountedhere;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
@@ -31,89 +31,89 @@ vnode;v_actfreelist.tqe_prev;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_fre
 vnode;v_actfreelist.tqe_prev;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_ops;r;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_ops;w;\(no locks held\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_object;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_object;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_synclist.le_prev;r;(sync_mtx:)[0-9]*\(sleep mutex\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_synclist.le_prev;w;(sync_mtx:)[0-9]*\(sleep mutex\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_synclist.le_next;r;(sync_mtx:)[0-9]*\(sleep mutex\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_synclist.le_next;w;(sync_mtx:)[0-9]*\(sleep mutex\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_hd;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_hd;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_root;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_root;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_cnt;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_clean.bv_cnt;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_hd;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_hd;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_root;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_root;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_cnt;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_dirty.bv_cnt;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_numoutput;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_numoutput;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_flag;r;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_flag;w;EMBSAME\(vnode.v_bufobj.bo_lock\[rw\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_object;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_object;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_synclist.le_prev;r;(sync_mtx:)[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_synclist.le_prev;w;(sync_mtx:)[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_synclist.le_next;r;(sync_mtx:)[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_synclist.le_next;w;(sync_mtx:)[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_hd;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_hd;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_root;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_root;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_cnt;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_clean.bv_cnt;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_hd;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_hd;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_root;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_root;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_cnt;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_dirty.bv_cnt;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_numoutput;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_numoutput;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_flag;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_bufobj.bo_flag;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_domain;r;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_domain;w;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_bsize;r;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_bsize;w;\(no locks held\);;sys/sys/vnode.h:98
-vnode;v_pollinfo;r;EMBSAME\(vnode.v_interlock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_pollinfo;w;EMBSAME\(vnode.v_interlock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_cstart;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_cstart;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_lasta;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_lasta;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_lastw;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_lastw;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_clen;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_clen;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_iflag;r;EMBSAME\(vnode.v_interlock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_iflag;w;EMBSAME\(vnode.v_interlock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_vflag;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_vlfag;w;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
+vnode;v_pollinfo;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_pollinfo;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_cstart;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_cstart;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_lasta;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_lasta;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_lastw;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_lastw;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_clen;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_clen;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_iflag;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_iflag;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_vflag;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_vlfag;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_mflag;r;EMBOTHER\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_mlfag;w;EMBOTHER\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_writecount;r;EMBSAME\(vnode.v_lock\[rw\]\);;sys/sys/vnode.h:98
-vnode;v_writecount;w;EMBSAME\(vnode.v_lock\[rw\\);;sys/sys/vnode.h:98
-vpollinfo;vpi_selinfo;r;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
+vnode;v_writecount;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_writecount;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vpollinfo;vpi_selinfo;r;EMBSAME\(vpollinfo.vpi_lock\[[rw]\]\);;sys/sys/vnode.h:68
 vpollinfo;vpi_selinfo;w;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
-vpollinfo;vpi_events;r;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
-vpollinfo;vpi_events;w;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
-vpollinfo;vpi_revents;r;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
-vpollinfo;vpi_revents;w;EMBSAME\(vpollinfo.vpi_lock\[rw\]\);;sys/sys/vnode.h:68
-mount;mnt_list.tqe_prev;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_list.tqe_prev;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_list.tqe_next;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_list.tqe_next;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_ref;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_ref;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_vnodelist;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_vnodelist;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_vnodelistsize;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_vnodelistsize;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_writeopcount;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_writeopcount;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_kern_flag;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_kern_flag;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_flag;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_flag;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_lockref;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_lockref;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_secondary_writes;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_secondary_writes;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_secondary_accwrites;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_secondary_accwrites;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_susp_owner;r;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_susp_owner;w;EMBSAME\(mount.mnt_mtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_activevnodelist;r;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_activevnodelist;w;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_activevnodelistsize;r;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_activevnodelistsize;w;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_tmpfreevnodelist;r;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_tmpfreevnodelist;w;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_tmpfreevnodelistsize;r;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_tmpfreevnodelistsize;w;EMBSAME\(mount.mnt_listmtx\[rw\]\);;sys/sys/mount.h:189
-mount;mnt_upper_link.tqe_prev;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_upper_link.tqe_prev;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_upper_link.tqe_next;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
-mount;mnt_upper_link.tqe_next;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\);;sys/sys/mount.h:189
+vpollinfo;vpi_events;r;EMBSAME\(vpollinfo.vpi_lock\[[rw]\]\);;sys/sys/vnode.h:68
+vpollinfo;vpi_events;w;EMBSAME\(vpollinfo.vpi_lock\[[rw]\]\);;sys/sys/vnode.h:68
+vpollinfo;vpi_revents;r;EMBSAME\(vpollinfo.vpi_lock\[[rw]\]\);;sys/sys/vnode.h:68
+vpollinfo;vpi_revents;w;EMBSAME\(vpollinfo.vpi_lock\[[rw]\]\);;sys/sys/vnode.h:68
+mount;mnt_list.tqe_prev;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_list.tqe_prev;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_list.tqe_next;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_list.tqe_next;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_ref;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_ref;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_vnodelist;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_vnodelist;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_vnodelistsize;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_vnodelistsize;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_writeopcount;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_writeopcount;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_kern_flag;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_kern_flag;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_flag;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_flag;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_lockref;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_lockref;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_secondary_writes;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_secondary_writes;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_secondary_accwrites;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_secondary_accwrites;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_susp_owner;r;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_susp_owner;w;EMBSAME\(mount.mnt_mtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_activevnodelist;r;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_activevnodelist;w;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_activevnodelistsize;r;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_activevnodelistsize;w;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_tmpfreevnodelist;r;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_tmpfreevnodelist;w;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_tmpfreevnodelistsize;r;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_tmpfreevnodelistsize;w;EMBSAME\(mount.mnt_listmtx\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_upper_link.tqe_prev;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_upper_link.tqe_prev;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_upper_link.tqe_next;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
+mount;mnt_upper_link.tqe_next;w;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
