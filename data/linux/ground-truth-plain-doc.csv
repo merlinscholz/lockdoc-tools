@@ -61,8 +61,8 @@ transaction_t;t_shadow_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include
 transaction_t;t_shadow_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_inode_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_inode_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_chp_stats;r;EMBOTHER\(journal_t.j_checkpoint_sem\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_chp_stats;w;EMBOTHER\(journal_t.j_checkpoint_sem\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_chp_stats;r;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_chp_stats;w;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_updates;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_updates;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_outstanding_credits;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
