@@ -122,11 +122,11 @@ FROM
 EOT
 if [ $MODE = CEX ]; then
 	cat <<EOT
-				ac.id NOT IN	-- counterexample
+				NOT EXISTS	-- counterexample
 EOT
 elif [ $MODE = EX ]; then
 	cat <<EOT
-				ac.id IN		-- example
+				EXISTS		-- example
 EOT
 else
 	echo "error: unknown MODE $MODE" >&2
@@ -134,11 +134,12 @@ else
 fi
 cat <<EOT
 				(
-					SELECT ac.id
-					FROM accesses ac
+					SELECT 1
+					FROM accesses s_ac
 					JOIN allocations a
-					  ON ac.alloc_id = a.id
-					 AND ac.type = '$ACCESSTYPE'
+					  ON s_ac.alloc_id = a.id
+					 AND s_ac.type = '$ACCESSTYPE'
+					 AND s_ac.id = ac.id
 					JOIN subclasses sc
 					  ON a.subclass_id = sc.id
 					${SUBCLASS_FILTER}
