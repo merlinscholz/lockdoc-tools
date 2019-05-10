@@ -17,3 +17,4 @@ vpollinfo
 neglist
 devfs_mount
 devfs_dirent
+bucket_locks

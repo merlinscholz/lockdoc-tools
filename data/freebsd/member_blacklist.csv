@@ -10,3 +10,4 @@ nc_vnodelocks;vnode_lock
 vpollinfo;vpi_lock
 devfs_mount;dm_lock
 neglist;nl_lock
+bucket_locks;bucket_lock
