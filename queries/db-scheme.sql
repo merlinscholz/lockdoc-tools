@@ -19,11 +19,11 @@ CREATE TABLE subclasses (
 
 CREATE TABLE allocations (
   id int CHECK (id > 0) NOT NULL,		-- identifies a certain allocation
-  subclass_id int CHECK (subclass_id > 0) NOT NULL,		-- describes the data type of an allocation. References table datatypes
-  base_address bigint CHECK (base_address > 0) NOT NULL,		-- the start address of an allocation
-  size int CHECK (size > 0) NOT NULL,		-- size of the memory area
-  start_ts bigint CHECK (start_ts > 0) DEFAULT NULL,	-- Start of lifetime
-  end_ts bigint CHECK (end_ts > 0) DEFAULT NULL,	-- End of life
+  subclass_id int NOT NULL,		-- describes the data type of an allocation. References table datatypes
+  base_address bigint NOT NULL,		-- the start address of an allocation
+  size int NOT NULL,		-- size of the memory area
+  start_ts bigint DEFAULT NULL,	-- Start of lifetime
+  end_ts bigint DEFAULT NULL,	-- End of life
   PRIMARY KEY (id)
 ) 
 ;
