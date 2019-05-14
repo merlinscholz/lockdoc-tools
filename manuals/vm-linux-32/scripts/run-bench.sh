@@ -220,7 +220,7 @@ then
 	fi
 elif [ "${BENCH}" == "ltp-fs" ];
 then
-	runltp -f fs
+	${LTPROOT}/runltp -f fs
 elif [ "${BENCH}" == "ltp-syscall-custom" ];
 then
 	# Content from <ltp>/runtest/syscalls
