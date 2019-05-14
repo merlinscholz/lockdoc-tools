@@ -139,6 +139,85 @@ then
 		echo "Sysbench Cleanup" | tee ${OUTDEV}
 		run_cmd /usr/bin/sysbench --test=fileio --file-total-size=2G --file-num=20 --file-test-mode=rndrw cleanup
 	fi
+elif [ "${BENCH}" == "mixed-fs" ];
+then
+	run_cmd fs-bench-test2.sh
+	run_cmd fsstress -d bar -l 1 -n 20 -p 10 -s 4711 -v
+	if [ ! -d foo ];
+	then
+		mkdir foo
+	fi
+	run_cmd fs_inod foo 10 10 1
+	echo "chmod/chown stress test" | tee  ${OUTDEV}
+	counter=1
+	max=2
+	while [ ${counter} -le ${max} ];
+	do
+		chmod -R 0777 .
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error chmod 0777" | tee ${OUTDEV}
+		fi
+		chown -R 0:0 .
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error chown 0:0" | tee ${OUTDEV}
+		fi
+		chmod -R 0755 .
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error chmod 0755" | tee ${OUTDEV}
+		fi
+		chown -R ${DEFAULT_USER}:${DEFAULT_GROUP} .
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error chown ${DEFAULT_USER}:${DEFAULT_GROUP}" | tee ${OUTDEV}
+		fi
+		let counter=counter+1
+	done;
+	chmod -R 0755 .
+	chown -R ${DEFAULT_USER}:${DEFAULT_GROUP} .
+
+	echo "pipe stress test" | tee  ${OUTDEV}
+	counter=1
+	max=2
+	while [ ${counter} -le ${max} ];
+	do
+		cat fork.c | grep task | grep free > /dev/null		
+		if [ ${?} -ne 0 ];
+		then
+			echo "Error pipe stress test" | tee ${OUTDEV}
+		fi
+		let counter=counter+1
+	done;
+
+	echo "link stress test" | tee  ${OUTDEV}
+	counter=1
+	max=2
+	target=foo.txt
+	echo "Hello World!" > ${target}
+	link=bar.txt
+	while [ ${counter} -le ${max} ];
+	do
+		ln ${target} ${link}
+		sleep 1
+		rm ${link}
+		let counter=counter+1
+	done;
+	rm ${target}
+
+	if [ -d bar ];
+	then
+		rm -r bar
+	fi
+	if [ -d foo ];
+	then
+		rm -r foo
+	fi
+	if [ -d 00 ];
+	then
+		rm -r 00
+	fi
 elif [ "${BENCH}" == "ltp-fs" ];
 then
 	runltp -f fs
