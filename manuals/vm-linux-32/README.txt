@@ -43,7 +43,5 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
 	- Außerdem das Verzeichnis /lockdoc/bench-out anlegen und dort die Datei fork.c aus manuals/vm-linux-32/scripts/ kopieren. Diese ist für den Pipe-Test nötig.
 7. Benchmark-Suite vorbereiten
 	- git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
-	- git checkout -b lockdoc-ltp 5f8ca6cf
-	- Den Patch aus dem tools-Repo aus manuals/vm-linux-32/ anwenden
-		patch -p1 < ltp-lockdebug.patch
+	- git checkout -b lockdoc-ltp 20190115
 	- ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
