@@ -1,7 +1,7 @@
 1. Eine Debian X VM für i386 aufsetzen
 	+ Folgende Pakete installieren (unvollständig): lcov libncurses5-dev git-core build-essential bison flex
 2. Kernel-Repo nach /opt/kernel/ auschecken
-	git clone ssh://ios.cs.tu-dortmund.de/fs/staff/al/repos/lockdebugging/linux ssh://ios.cs.tu-dortmund.de/fs/staff/al/repos/lockdebugging/linux
+	git clone https://gitos.cs.tu-dortmund.de/lockdoc/linux.git 
 	git checkout -b lockdebugging-4-10
 3. Kernel bauen und installieren(v4.10)
 	cp config-lockdebugging .config
@@ -10,7 +10,7 @@
 	make install
 4. Kernel sichern (v4.10)
 	Das *optionale* Suffix kann genutzt werden, um eine spezielle Variante zu identifiezieren.
-	Das Kernelimage liegt anschließend in /fs/scratch/al/coccinelle/experiment/ und heißt: vmlinux-4-10-nococci-$DATE-$GIT-HASH$SUFFIX
+	Das Kernelimage liegt anschließend in /fs/scratch/al/lockdoc/experiment/ und heißt: vmlinux-4-10-nococci-$DATE-$GIT-HASH$SUFFIX
 	./copy-to-ios.sh <suffix>
 5. Grub für den Autostart des Benchmarks vorbereiten
 	- In /etc/default/grub die Variable GRUB_DEFAULT auf saved setzen.
