@@ -44,9 +44,11 @@ then
 	DATATYPE=`echo ${COMBINED_DATATYPE} | cut -d ":" -f1`
 	SUBCLASS=`echo ${COMBINED_DATATYPE} | cut -d ":" -f2`
 	SUBCLASS_FILTER=" AND sc.name = '${SUBCLASS}'"
+	SUBCLASS_FILTER_SUB=" AND s_sc.name = '${SUBCLASS}'"
 else
 	DATATYPE=${COMBINED_DATATYPE}
 	SUBCLASS_FILTER=""
+	SUBCLASS_FILTER_SUB=""
 fi
 
 ACCESSTYPE=${COMBINED_MEMBER:0:1}
@@ -136,22 +138,22 @@ cat <<EOT
 				(
 					SELECT 1
 					FROM accesses s_ac
-					JOIN allocations a
-					  ON s_ac.alloc_id = a.id
+					JOIN allocations s_a
+					  ON s_ac.alloc_id = s_a.id
 					 AND s_ac.type = '$ACCESSTYPE'
 					 AND s_ac.id = ac.id
-					JOIN subclasses sc
-					  ON a.subclass_id = sc.id
-					${SUBCLASS_FILTER}
-					JOIN data_types dt
-					  ON sc.data_type_id = dt.id
-					 AND dt.name = '$DATATYPE'
-					JOIN structs_layout_flat sl
-					  ON sl.data_type_id = sc.data_type_id
-					 AND sl.helper_offset = ac.address - a.base_address
-					JOIN member_names mn
-					  ON mn.id = sl.member_name_id
-					 AND mn.name = '$MEMBER'
+					JOIN subclasses s_sc
+					  ON s_a.subclass_id = s_sc.id
+					${SUBCLASS_FILTER_SUB}
+					JOIN data_types s_dt
+					  ON s_sc.data_type_id = s_dt.id
+					 AND s_dt.name = '$DATATYPE'
+					JOIN structs_layout_flat s_sl
+					  ON s_sl.data_type_id = s_sc.data_type_id
+					 AND s_sl.helper_offset = s_ac.address - s_a.base_address
+					JOIN member_names s_mn
+					  ON s_mn.id = s_sl.member_name_id
+					 AND s_mn.name = '$MEMBER'
 EOT
 
 LOCKNR=1
@@ -174,10 +176,10 @@ for LOCK in "$@"; do
 cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
-					  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
+					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND l_sbh${LOCKNR}.embedded_in = a.id
+					 AND l_sbh${LOCKNR}.embedded_in = s_a.id
 					 AND ${SUBLOCK_COND}
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
@@ -203,7 +205,7 @@ EOT
 		cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR}
-					  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
+					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
 					 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
@@ -226,10 +228,10 @@ EOT
 cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
-					  ON lh_sbh${LOCKNR}.txn_id = ac.txn_id
+					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND l_sbh${LOCKNR}.embedded_in != a.id
+					 AND l_sbh${LOCKNR}.embedded_in != s_a.id
 					 AND ${SUBLOCK_COND}
 					JOIN allocations l_sbh_a${LOCKNR}
 					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
@@ -273,7 +275,7 @@ cat <<EOT
 					  AND s_ac.type = '$ACCESSTYPE'
 					JOIN subclasses s_sc
 					  ON s_a.subclass_id = s_sc.id
-					  ${SUBCLASS_FILTER}
+					  ${SUBCLASS_FILTER_SUB}
 					JOIN data_types s_dt
 					  ON s_sc.data_type_id = s_dt.id
 					  AND s_dt.name = '$DATATYPE'
