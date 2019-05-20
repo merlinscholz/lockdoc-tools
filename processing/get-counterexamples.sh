@@ -41,6 +41,7 @@ fi
 export USE_EMBOTHER=${USE_EMBOTHER_PARAM} 
 
 HEADER_PRINTED=0
+PSQL_OPTIONS="-A -F ; --pset footer --echo-errors -h ${HOST} -U ${USER} ${DATABASE}"
 grep "^\![[:space:]]*${COUNTEREXAMPLE_SH}" ${INPUTFILE} | sed -e "s/^\![ \t]*//" | grep "${GREP_REGEX}" | while read cmd;
 do
 	echo "Running: ${cmd}:" >&2
@@ -52,19 +53,16 @@ do
 			echo "Cannot generate query" >&2
 			continue
 		fi
-		RESULTS=$(psql -A -F ';' --pset footer --echo-errors -h ${HOST} -U ${USER} ${DATABASE} < ${QUERY_FILE})
+		psql ${PSQL_OPTIONS} < ${QUERY_FILE}
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running query from ${QUERY_FILE}" >&2
 			exit 1
 		fi
-		if [ -n "${RESULTS}" ] && [ ${HEADER_PRINTED} -eq 0 ];
+		if [ ${HEADER_PRINTED} -eq 0 ];
 		then
-			echo "${RESULTS}"
 			HEADER_PRINTED=1
-		elif [ -n "${RESULTS}" ] && [ ${HEADER_PRINTED} -eq 1 ];
-		then
-			echo "${RESULTS}" | tail -n +2
+			PSQL_OPTIONS="-t ${PSQL_OPTIONS}"
 		fi
 	fi
 done;
