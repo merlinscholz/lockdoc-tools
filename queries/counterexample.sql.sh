@@ -94,41 +94,36 @@ FROM
 		',' ORDER BY lh.start) AS locks_held
 		FROM
 		(
-			SELECT ac.id AS ac_id, ac.alloc_id AS alloc_id, ac.txn_id AS txn_id, stacktrace_id,
+			SELECT ac.ac_id, ac.alloc_id AS alloc_id, ac.txn_id AS txn_id, stacktrace_id,
 				string_agg(
 					CONCAT('0x', upper(to_hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line)
 				,',' ORDER BY st.sequence) AS stacktrace
 			FROM
 			(
-				SELECT ac.id, ac.txn_id, ac.alloc_id, st.function, ac.stacktrace_id
-				FROM accesses ac
-				JOIN allocations a
-				  ON ac.alloc_id = a.id
-				 AND ac.type = '$ACCESSTYPE'
+				SELECT ac.ac_id, ac.txn_id, ac.alloc_id, st.function, ac.stacktrace_id
+				FROM accesses_flat ac
 				JOIN subclasses sc
-				  ON a.subclass_id = sc.id
+				  ON sc.id = ac.subclass_id
 				${SUBCLASS_FILTER}
 				JOIN data_types dt
-				  ON sc.data_type_id = dt.id
+				  ON ac.data_type_id = dt.id
 				 AND dt.name = '$DATATYPE'
 				JOIN stacktraces AS st
 				  ON ac.stacktrace_id = st.id
 				 AND st.sequence = 0
-				JOIN structs_layout_flat sl
-				  ON sl.data_type_id = sc.data_type_id
-				 AND sl.helper_offset = ac.address - a.base_address
 				JOIN member_names mn
-				  ON mn.id = sl.member_name_id
+				  ON mn.id = ac.member_name_id
 				 AND mn.name = '$MEMBER'
 				WHERE
+				ac.ac_type = '$ACCESSTYPE' AND
 EOT
 if [ $MODE = CEX ]; then
 	cat <<EOT
-				NOT EXISTS	-- counterexample
+				ac.ac_id NOT IN	-- counterexample
 EOT
 elif [ $MODE = EX ]; then
 	cat <<EOT
-				EXISTS		-- example
+				ac.ac_id IN		-- example
 EOT
 else
 	echo "error: unknown MODE $MODE" >&2
@@ -136,23 +131,16 @@ else
 fi
 cat <<EOT
 				(
-					SELECT 1
-					FROM accesses s_ac
-					JOIN allocations s_a
-					  ON s_ac.alloc_id = s_a.id
-					 AND s_ac.type = '$ACCESSTYPE'
-					 AND s_ac.id = ac.id
+					SELECT s_ac.ac_id
+					FROM accesses_flat s_ac
 					JOIN subclasses s_sc
-					  ON s_a.subclass_id = s_sc.id
+					  ON s_sc.id = s_ac.subclass_id
 					${SUBCLASS_FILTER_SUB}
 					JOIN data_types s_dt
-					  ON s_sc.data_type_id = s_dt.id
+					  ON s_ac.data_type_id = s_dt.id
 					 AND s_dt.name = '$DATATYPE'
-					JOIN structs_layout_flat s_sl
-					  ON s_sl.data_type_id = s_sc.data_type_id
-					 AND s_sl.helper_offset = s_ac.address - s_a.base_address
 					JOIN member_names s_mn
-					  ON s_mn.id = s_sl.member_name_id
+					  ON s_mn.id = s_ac.member_name_id
 					 AND s_mn.name = '$MEMBER'
 EOT
 
@@ -264,29 +252,26 @@ EOT
 	LOCKNR=$((LOCKNR + 1))
 done
 cat <<EOT
+					WHERE
+					s_ac.ac_id = ac.ac_id AND
+					s_ac.ac_type = '$ACCESSTYPE'
 				)
 				AND NOT EXISTS
 				(
 					-- Get all accesses that happened on an init path
 					SELECT 1
-					FROM accesses s_ac
-					JOIN allocations s_a
-					  ON s_ac.alloc_id = s_a.id
-					  AND s_ac.type = '$ACCESSTYPE'
+					FROM accesses_flat s_ac
 					JOIN subclasses s_sc
-					  ON s_a.subclass_id = s_sc.id
-					  ${SUBCLASS_FILTER_SUB}
+					  ON s_sc.id = s_ac.subclass_id
+					${SUBCLASS_FILTER_SUB}
 					JOIN data_types s_dt
-					  ON s_sc.data_type_id = s_dt.id
+					  ON s_ac.data_type_id = s_dt.id
 					  AND s_dt.name = '$DATATYPE'
 					JOIN stacktraces AS s_st
 					  ON s_ac.stacktrace_id = s_st.id
-					LEFT JOIN structs_layout_flat s_sl
-					  ON s_sc.data_type_id = s_sl.data_type_id
-					 AND s_ac.address - s_a.base_address = s_sl.helper_offset
 					LEFT JOIN member_names s_mn
-					  ON s_mn.id = s_sl.member_name_id
-					  AND s_mn.name = '$MEMBER'
+					  ON s_mn.id = s_ac.member_name_id
+					 AND s_mn.name = '$MEMBER'
 					LEFT JOIN function_blacklist s_fn_bl
 					  ON s_fn_bl.fn = s_st.function
 					 AND
@@ -294,14 +279,16 @@ cat <<EOT
 					   (
 					      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
 					      OR
-					      (s_fn_bl.subclass_id = s_a.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
 					      OR
-					      (s_fn_bl.subclass_id = s_a.subclass_id AND s_fn_bl.member_name_id = s_sl.member_name_id) -- for this member blacklisted
+					      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
 					   )
 					   AND
 					   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 					 )
-					WHERE ac.id = s_ac.id
+					WHERE
+					s_ac.ac_id = ac.ac_id AND
+					s_ac.ac_type = '$ACCESSTYPE'
 					-- ====================================
 					AND s_fn_bl.fn IS NOT NULL
 					LIMIT 1
@@ -312,7 +299,7 @@ cat <<EOT
 			  ON ac.stacktrace_id = st.id
 			-- Joining the stacktraces table multiplies each row by the number of stackframes an access has.
 			-- First, (group) concat all stackframes to a stacktrace.
-			GROUP BY ac.id, ac.alloc_id, ac.txn_id, stacktrace_id
+			GROUP BY ac.ac_id, ac.alloc_id, ac.txn_id, stacktrace_id
 		) folded_stacks
 
 		LEFT JOIN locks_held lh

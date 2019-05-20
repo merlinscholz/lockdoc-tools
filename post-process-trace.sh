@@ -49,6 +49,7 @@ fi
 
 OVERALL_EXEC_TIME=0.0
 DURATION_FILE=`mktemp /tmp/output.XXXXX`
+PSQL="psql --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}"
 
 if [ ${SKIP_IMPORT} -eq 0 ];
 then
@@ -83,6 +84,18 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
+
+	echo -n "Creating table accesses_flat..."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${PSQL} < ${TOOLS_PATH}/queries/accesses_flat_table.sql
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot create table accesses_flat!" >&2
+		exit 1
+	fi
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo " took ${EXEC_TIME} sec."
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
