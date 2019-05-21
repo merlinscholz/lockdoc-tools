@@ -99,6 +99,18 @@ then
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
+	echo -n "Creating table locks_flat..."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${PSQL} < ${TOOLS_PATH}/queries/locks_flat_table.sql
+	if [ ${?} -ne 0 ];
+	then
+		echo "Cannot create table locks_flat!" >&2
+		exit 1
+	fi
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo " took ${EXEC_TIME} sec."
+	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
+	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
+
 	echo "Import and atomic handling took ${IMPORT_EXEC_TIME} secs."
 fi
 

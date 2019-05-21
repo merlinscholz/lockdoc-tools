@@ -165,19 +165,12 @@ cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
 					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
-					JOIN locks l_sbh${LOCKNR}
-					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND l_sbh${LOCKNR}.embedded_in = s_a.id
+					JOIN locks_flat l_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
+					 AND l_sbh${LOCKNR}.alloc_id = s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
-					JOIN allocations l_sbh_a${LOCKNR}
-					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
-					JOIN subclasses l_sbh_sc${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.subclass_id = l_sbh_sc${LOCKNR}.id
-					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_sc${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
-					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
-					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
+					  ON lock_member_name_sbh${LOCKNR}.id = l_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 
@@ -217,19 +210,12 @@ cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
 					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
-					JOIN locks l_sbh${LOCKNR}
-					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND l_sbh${LOCKNR}.embedded_in != s_a.id
+					JOIN locks_flat l_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
+					 AND l_sbh${LOCKNR}.alloc_id != s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
-					JOIN allocations l_sbh_a${LOCKNR}
-					  ON l_sbh${LOCKNR}.embedded_in = l_sbh_a${LOCKNR}.id
-					JOIN subclasses l_sbh_sc${LOCKNR}
-					  ON l_sbh_a${LOCKNR}.subclass_id = l_sbh_sc${LOCKNR}.id
-					JOIN structs_layout_flat lock_member_sbh${LOCKNR}
-					  ON l_sbh_sc${LOCKNR}.data_type_id = lock_member_sbh${LOCKNR}.data_type_id
-					 AND l_sbh${LOCKNR}.address - l_sbh_a${LOCKNR}.base_address = lock_member_sbh${LOCKNR}.helper_offset
 					JOIN member_names lock_member_name_sbh${LOCKNR}
-					  ON lock_member_name_sbh${LOCKNR}.id = lock_member_sbh${LOCKNR}.member_name_id
+					  ON lock_member_name_sbh${LOCKNR}.id = l_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
 		if [ $LAST_EMBOTHER -gt 0 ]; then
