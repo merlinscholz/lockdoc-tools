@@ -37,10 +37,12 @@ then
 	TYPE_NAME_COLUMN="(CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END)"
 	TYPE_ID_ALIAS="subclass_id_group"
 	TYPE_ID_COLUMN="sc.id"
+	LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_a_dt.name ELSE CONCAT(lock_a_dt.name, ':', lock_sc.name) END)"
 else
 	TYPE_NAME_COLUMN="dt.name"
 	TYPE_ID_ALIAS="data_type_id_group"
 	TYPE_ID_COLUMN="sc.data_type_id"
+	LOCKNAME_FORMAT="lock_a_dt.name"
 fi
 
 if [ ${USE_STACK} -eq 0 ];
@@ -74,14 +76,14 @@ FROM
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.',
+				THEN CONCAT('EMBSAME(', CONCAT(${LOCKNAME_FORMAT}, '.',
 					CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 						mn_lock_member.name
 					ELSE 
 						CONCAT(mn_lock_member.name, '?')
 					END
 					), '[', l.sub_lock, '])') -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', 
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(${LOCKNAME_FORMAT}, '.',
 				CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 					mn_lock_member.name
 				ELSE 
@@ -295,14 +297,14 @@ FROM
 				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 					THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
 				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = fac.alloc_id
-					THEN CONCAT('EMBSAME(', CONCAT(lock_a_dt.name, '.',
+					THEN CONCAT('EMBSAME(', CONCAT(${LOCKNAME_FORMAT}, '.',
 						CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 							mn_lock_member.name
 						ELSE 
 							CONCAT(mn_lock_member.name, '?')
 						END
 						), '[', l.sub_lock, '])') -- embedded in same
-				ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_a_dt.name, '.', 
+				ELSE CONCAT('EMBOTHER', '(',  CONCAT(${LOCKNAME_FORMAT}, '.',
 					CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 						mn_lock_member.name
 					ELSE 
