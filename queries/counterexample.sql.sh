@@ -165,7 +165,7 @@ cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
 					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
-					JOIN locks_flat l_sbh${LOCKNR}
+					JOIN locks_embedded_flat l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.alloc_id = s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
@@ -210,7 +210,7 @@ cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR} -- sbh = ShouldBeHeld
 					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
-					JOIN locks_flat l_sbh${LOCKNR}
+					JOIN locks_embedded_flat l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.alloc_id != s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
