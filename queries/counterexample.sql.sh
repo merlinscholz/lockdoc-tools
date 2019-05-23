@@ -150,9 +150,19 @@ LOCKNR=1
 LAST_EMBOTHER=0
 for LOCK in "$@"; do
 	if echo $LOCK | grep -q '^EMBSAME'; then # e.g., EMBSAME(i_mutex)
-#		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
-		SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
+		LOCKCOMBINEDDT=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\1/')
+		      LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\2/')
+		       SUBLOCK=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\3/')
+		RET=`echo ${LOCKCOMBINEDDT} | grep -q ":"`
+		if [ ${?} -eq 0 ];
+		then
+			LOCKDATATYPE=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f1`
+			LOCKSUBCLASS=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f2`
+			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${SUBCLASS}'"
+		else
+			LOCKDATATYPE=${LOCKCOMBINEDDT}
+			LOCKSUBCLASS_FILTER=""
+		fi
 		if [ ${SUBLOCK} == "r" ];
 		then
 			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
@@ -171,6 +181,12 @@ cat <<EOT
 					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.alloc_id = s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
+					JOIN data_types l_dt_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.data_type_id = l_dt_sbh${LOCKNR}.id
+					 AND l_dt_sbh${LOCKNR}.name = '$LOCKDATATYPE'
+					JOIN subclasses l_sc_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.subclass_id = l_sc_sbh${LOCKNR}.id
+					  ${LOCKSUBCLASS_FILTER}
 					JOIN member_names lock_member_name_sbh${LOCKNR}
 					  ON lock_member_name_sbh${LOCKNR}.id = l_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
@@ -195,9 +211,19 @@ EOT
 					 AND ${SUBLOCK_COND}
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
-#		LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\(.*\))$/\1/')
-		LOCKNAME=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\1/')
-		 SUBLOCK=$(echo $LOCK | sed -e 's/^.*([a-zA-Z0-9_]\+\.\(.*\)\[\([rw]\)\])$/\2/')
+		LOCKCOMBINEDDT=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\1/')
+		      LOCKNAME=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\2/')
+		       SUBLOCK=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\3/')
+		RET=`echo ${LOCKCOMBINEDDT} | grep -q ":"`
+		if [ ${?} -eq 0 ];
+		then
+			LOCKDATATYPE=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f1`
+			LOCKSUBCLASS=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f2`
+			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${SUBCLASS}'"
+		else
+			LOCKDATATYPE=${LOCKCOMBINEDDT}
+			LOCKSUBCLASS_FILTER=""
+		fi
 		if [ ${SUBLOCK} == "r" ];
 		then
 			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
@@ -216,6 +242,12 @@ cat <<EOT
 					  ON l_sbh${LOCKNR}.lock_id = lh_sbh${LOCKNR}.lock_id
 					 AND l_sbh${LOCKNR}.alloc_id != s_ac.alloc_id
 					 AND ${SUBLOCK_COND}
+					JOIN data_types l_dt_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.data_type_id = l_dt_sbh${LOCKNR}.id
+					 AND l_dt_sbh${LOCKNR}.name = '$LOCKDATATYPE'
+					JOIN subclasses l_sc_sbh${LOCKNR}
+					  ON l_sbh${LOCKNR}.subclass_id = l_sc_sbh${LOCKNR}.id
+					  ${LOCKSUBCLASS_FILTER}
 					JOIN member_names lock_member_name_sbh${LOCKNR}
 					  ON lock_member_name_sbh${LOCKNR}.id = l_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
