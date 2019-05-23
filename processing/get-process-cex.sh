@@ -68,8 +68,8 @@ then
 	exit 0
 fi
 
-SIZE=`stat --printf="%s" ${CEX_CSV}`
-if [ ${SIZE} -eq 0 ];
+LINES=`wc -l ${CEX_CSV} | cut -d ' ' -f1`
+if [ ${LINES} -le 1 ];
 then
 	echo "${CEX_CSV} is empty. Stop processing '${INPUT_BUGS}' for '${DATA_TYPE}'"
 	rm ${CEX_CSV}
