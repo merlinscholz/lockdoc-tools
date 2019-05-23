@@ -69,6 +69,8 @@ then
 fi
 
 LINES=`wc -l ${CEX_CSV} | cut -d ' ' -f1`
+# Since we use psql, queries/get-counterexamples.sh will print at least the header.
+# Therefore, LINES will be 1 at least.
 if [ ${LINES} -le 1 ];
 then
 	echo "${CEX_CSV} is empty. Stop processing '${INPUT_BUGS}' for '${DATA_TYPE}'"
