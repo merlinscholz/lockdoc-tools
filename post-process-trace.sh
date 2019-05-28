@@ -157,9 +157,9 @@ do
 
 		if [ ${USE_SUBCLASSES} -eq 0 ];
 		then
-			DATA_TYPES=`echo "SELECT dt.name FROM data_types AS dt;" | psql --tuples-only --no-align --field-separator='       ' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
+			DATA_TYPES=`echo "SELECT dt.name FROM data_types AS dt;" | psql --tuples-only --no-align -F $'\t' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
 		else
-			DATA_TYPES=`echo "SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | psql --tuples-only --no-align --field-separator='       ' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
+			DATA_TYPES=`echo "SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END) FROM data_types AS dt INNER JOIN subclasses AS sc ON dt.id = sc.data_type_id;" | psql --tuples-only --no-align -F $'\t' --pset footer --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}`
 		fi
 		CEX_EXEC_TIME=0.0
 		for data_type in ${DATA_TYPES}
