@@ -671,7 +671,7 @@ a:visited {
 			locksHeldEntry = hypothesesEntry['locks'][locksHeldKey]
 			hypothesisTitle = line['accesstype'] + ':' + line['member']
 			hypothesisDesc = """<b>Hypothesis %d</b>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>
-					<b>%2.2f%%</b> (%d out of %d mem accesses under locks)""" % (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'],
+					<b>%2.2f%%</b> (%d out of %d aggregated mem accesses under locks)""" % (hypothesisID, 'reading' if line['accesstype'] == 'r' else 'writing', line['data_type'], line['member'],
 					locksHeldKey, locksHeldEntry['percentage'], locksHeldEntry['occurrences'], locksHeldEntry['total'])
 			nodes = createInitNodesDict()
 			edges = dict()
