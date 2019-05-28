@@ -13,7 +13,8 @@ function usage() {
 }
 
 SKIP_IMPORT=${SKIP_IMPORT:-0}
-SKIP_HYPO=${SKIP_HYPO:-0}
+SKIP_HYPO_QUERY=${SKIP_HYPO_QUERY:-0}
+SKIP_HYPO_EXEC=${SKIP_HYPO_EXEC:-0}
 SKIP_CEX_QUERIES=${SKIP_CEX_QUERIES:-0}
 
 if [ -z ${1} ];
@@ -136,9 +137,9 @@ do
 
 		HYPO_EXEC_TIME=0.0
 		echo "Start processing '${VARIANT}'"
-		if [ ${SKIP_HYPO} -eq 0 ];
+		if [ ${SKIP_HYPO_QUERY} -eq 0 ] || [ ${SKIP_HYPO_EXEC} -eq 0 ];
 		then
-			/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX} ${PSQL_HOST} ${PSQL_USER}
+			SKIP_QUERY=${SKIP_HYPO_QUERY} SKIP_EXEC=${SKIP_HYPO_EXEC} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX} ${PSQL_HOST} ${PSQL_USER}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run hypothesizer for ${VARIANT}!">&2

@@ -16,6 +16,9 @@ then
         usage
 fi
 
+SKIP_EXEC=${SKIP_EXEC:-0}
+SKIP_QUERY=${SKIP_QUERY:-0}
+
 DB=$1;shift
 
 USE_STACK=${1};shift
@@ -49,13 +52,18 @@ USER=${1};shift
 HYPO_INPUT=${PREFIX}-db-${VARIANT}.csv
 DURATION_FILE=`mktemp /tmp/output.XXXXX`
 
-echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
-/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_INPUT}"
-EXEC_TIME=`cat ${DURATION_FILE}`
-echo "Generating hypothesizer input took ${EXEC_TIME} secs."
+if [ ${SKIP_QUERY} -eq 0 ];
+then
+	echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_INPUT}"
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "Generating hypothesizer input took ${EXEC_TIME} secs."
+fi
 
-/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
-EXEC_TIME=`cat ${DURATION_FILE}`
-echo "Hypothesizer took ${EXEC_TIME} secs."
-
+if [ ${SKIP_EXEC} -eq 0 ];
+then
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
+	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "Hypothesizer took ${EXEC_TIME} secs."
+fi
 rm ${DURATION_FILE}
