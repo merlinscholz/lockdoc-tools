@@ -7,7 +7,7 @@
 TOOLS_PATH=`dirname ${0}`
 
 function usage() {
-        echo "usage: $0 <database> <use stack> <use subclasses> <prefix for the output fname> <host> <user>" >&2
+        echo "usage: $0 <database> <use stack> <use subclasses> <prefix for the output fname> <acceptance threshold> <host> <user>" >&2
         exit 1
 }
 
@@ -46,6 +46,7 @@ else
 fi
 
 PREFIX=${1};shift
+ACCEPT_THRESHOLD=${1};shift
 HOST=${1};shift
 USER=${1};shift
 
@@ -62,7 +63,7 @@ fi
 
 if [ ${SKIP_EXEC} -eq 0 ];
 then
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX} ${ACCEPT_THRESHOLD}
 	EXEC_TIME=`cat ${DURATION_FILE}`
 	echo "Hypothesizer took ${EXEC_TIME} secs."
 fi
