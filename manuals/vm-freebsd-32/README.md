@@ -230,7 +230,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo
+# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80
 ```
 
 **Achtung**
@@ -356,13 +356,14 @@ einen spezialisierten Source-Tree erzeugen und diesen anschließend übersetzen:
 # cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
-# MODULES_OVERRIDE="" LD=ld.lld make [-j X]
+# MODULES_OVERRIDE="" LD=ld.lld CC=clang80 make [-j X]
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc LD=ld.lld make install
 ```
 Es ist wichtig, die Variable `MODULES_OVERRIDE=""` zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist.
 Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt.
 Durch die Variable ```KODIR``` teilt man dem Makefile mit, dass der Kernel in ```/boot/lockdoc``` installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe ```kernel="..."``` in ```/boot/loader.conf```).
-Sollte beim Übersetzen eine Fehlermeldung (```line 127: amd64/arm64/i386 kernel requires linker ifunc support```) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable ```LD=""```: ```MODULES_OVERRIDE="" KODIR=/boot/lockdoc LD=ld.lld make [-j X]```.
+Sollte beim Übersetzen eine Fehlermeldung (```line 127: amd64/arm64/i386 kernel requires linker ifunc support```) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable ```LD=""```: ```MODULES_OVERRIDE=""  LD=ld.lld make [-j X]```.
+Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.
 
 <a id="%C3%9Cbersetzen-im-source-tree"></a>
 ### Übersetzen im Source-Tree

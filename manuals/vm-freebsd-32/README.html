@@ -179,7 +179,7 @@ Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.)
 <p>Mit dem folgenden Befehl lassen sich als <strong>root</strong> alle notwendigen Programme installieren.</p>
 <pre><code># pkg install &lt;paketname&gt;</code></pre>
 <p>Für unser Setup wurden u.a. folgende Pakete installiert:</p>
-<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo</code></pre>
+<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80</code></pre>
 <p><strong>Achtung</strong><br />
 Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p><a id="userland-einrichten"></a></p>
@@ -257,12 +257,13 @@ einen spezialisierten Source-Tree erzeugen und diesen anschließend übersetzen:
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
-# MODULES_OVERRIDE=&quot;&quot; LD=ld.lld make [-j X]
+# MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=clang80 make [-j X]
 # sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc LD=ld.lld make install</code></pre>
 <p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=&quot;&quot;</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist.<br />
 Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt.<br />
 Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel=&quot;...&quot;</code> in <code>/boot/loader.conf</code>).<br />
-Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=&quot;&quot;</code>: <code>MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc LD=ld.lld make [-j X]</code>.</p>
+Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=&quot;&quot;</code>: <code>MODULES_OVERRIDE=&quot;&quot;  LD=ld.lld make [-j X]</code>.<br />
+Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.</p>
 <p><a id="%C3%9Cbersetzen-im-source-tree"></a></p>
 <h3 id="ubersetzen-im-source-tree">Übersetzen im Source-Tree</h3>
 <p>Möchte man einfach den Kernel innerhalb des FreeBSD-Trees bauen, genügen folgende Befehle:</p>
