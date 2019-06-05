@@ -230,7 +230,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80
+# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc8-8.3.0_2
 ```
 
 **Achtung**
@@ -250,12 +250,14 @@ Möchte man die Bash als Standardshell setzen, geht dies mit folgendem Befehl:
 ```
 chsh -s /usr/local/bin/bash
 ```
+Es empfiehlt sich dies ebenfalls als `root` zu tun.
 
 Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.
 
 ```
 # ln -s /usr/local/bin/bash /bin/
 # ln -s /usr/local/bin/sysbench /usr/bin/
+# ln -s gcov8 /usr/local/bin/gcov
 ```
 Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der `/etc/fstab` eingetragen werden:
 
@@ -364,6 +366,21 @@ Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Tr
 Durch die Variable ```KODIR``` teilt man dem Makefile mit, dass der Kernel in ```/boot/lockdoc``` installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe ```kernel="..."``` in ```/boot/loader.conf```).
 Sollte beim Übersetzen eine Fehlermeldung (```line 127: amd64/arm64/i386 kernel requires linker ifunc support```) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable ```LD=""```: ```MODULES_OVERRIDE=""  LD=ld.lld make [-j X]```.
 Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.
+
+Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
+```
+# cd /opt/kernel/freebsd/src/sys/i386/conf
+# config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
+# MODULES_OVERRIDE="" LD=ld.lld CC=clang80 make [-j X]
+# sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-kcov LD=ld.lld make install
+```
+Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
+```
+# cd /opt/kernel/freebsd/src/sys/i386/conf
+# config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
+# MK_FORMAT_EXTENSION=no  MODULES_OVERRIDE="" LD=ld.lld CC=gcc8 COMPILER_TYPE=gcc make [-j X]
+# sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-gcov LD=ld.lld make install
+```
 
 <a id="%C3%9Cbersetzen-im-source-tree"></a>
 ### Übersetzen im Source-Tree

@@ -179,7 +179,7 @@ Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.)
 <p>Mit dem folgenden Befehl lassen sich als <strong>root</strong> alle notwendigen Programme installieren.</p>
 <pre><code># pkg install &lt;paketname&gt;</code></pre>
 <p>Für unser Setup wurden u.a. folgende Pakete installiert:</p>
-<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80</code></pre>
+<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc8-8.3.0_2</code></pre>
 <p><strong>Achtung</strong><br />
 Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p><a id="userland-einrichten"></a></p>
@@ -189,9 +189,11 @@ Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p>In <code>/usr/local/etc/sudoers</code> muss nun die Zeile <code>%wheel ALL=(ALL) ALL</code> auskommentiert werden.</p>
 <p>Möchte man die Bash als Standardshell setzen, geht dies mit folgendem Befehl:</p>
 <pre><code>chsh -s /usr/local/bin/bash</code></pre>
+<p>Es empfiehlt sich dies ebenfalls als <code>root</code> zu tun.</p>
 <p>Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.</p>
 <pre><code># ln -s /usr/local/bin/bash /bin/
-# ln -s /usr/local/bin/sysbench /usr/bin/</code></pre>
+# ln -s /usr/local/bin/sysbench /usr/bin/
+# ln -s gcov8 /usr/local/bin/gcov</code></pre>
 <p>Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der <code>/etc/fstab</code> eingetragen werden:</p>
 <pre><code>linproc         /compat/linux/proc  linprocfs  rw,late  0       0
 linsysfs        /compat/linux/sys   linsysfs        rw      0       0
@@ -264,6 +266,18 @@ Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Tr
 Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel=&quot;...&quot;</code> in <code>/boot/loader.conf</code>).<br />
 Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=&quot;&quot;</code>: <code>MODULES_OVERRIDE=&quot;&quot;  LD=ld.lld make [-j X]</code>.<br />
 Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.</p>
+<p>Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehler nötig:</p>
+<pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
+# config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
+# MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=clang80 make [-j X]
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-kcov LD=ld.lld make install
+GCOV build:
+# MK_FORMAT_EXTENSION=no  MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc8 COMPILER_TYPE=gcc make [-j X]</code></pre>
+<p>Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehler nötig:</p>
+<pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
+# config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
+# MK_FORMAT_EXTENSION=no  MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc8 COMPILER_TYPE=gcc make [-j X]
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-gcov LD=ld.lld make install</code></pre>
 <p><a id="%C3%9Cbersetzen-im-source-tree"></a></p>
 <h3 id="ubersetzen-im-source-tree">Übersetzen im Source-Tree</h3>
 <p>Möchte man einfach den Kernel innerhalb des FreeBSD-Trees bauen, genügen folgende Befehle:</p>
