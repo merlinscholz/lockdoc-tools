@@ -103,7 +103,10 @@ def write_dict_into_csv(trace_dict, first_column, filter_pattern):
                 functions_hit += 1
         fraction_lines = 100 * trace_dict[file_name]["lines_covered"] /trace_dict[file_name]["lines"]
         num_fns = len(trace_dict[file_name]["functions"].keys())
-        fraction_fns = 100 * functions_hit / num_fns
+        if num_fns == 0:
+            fraction_fns = 0
+        else:
+            fraction_fns = 100 * functions_hit / num_fns
         print("%s,%s,%s,%.2f,%s,%s,%.2f" %
             (file_name, trace_dict[file_name]["lines"], trace_dict[file_name]["lines_covered"], fraction_lines, num_fns, functions_hit, fraction_fns))
 
