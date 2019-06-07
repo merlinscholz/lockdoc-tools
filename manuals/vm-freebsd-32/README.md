@@ -435,13 +435,13 @@ Die Variable `GATHER_COV` sorgt dafür, dass das Skript `run-bench.sh` gewisse I
 Der erste Parameter von `./gcov-trace.sh` gibt an, wo der Kernel übersetzt wurde - hier `/opt/kernel/freebsd/obj-gcov/`.
 Der dritte Parameter gibt den Namen der Ausgabedatei an.
 ```
-GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh <benchmark>
+# GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh <benchmark>
 ```
 <a id="freebsd-code-abdeckung-bestimmen-kcov"></a>
 ## Code-Abdeckung bestimmen - KCOV
 `kcovtrace` muss als `root` ausgeführt werden.
 ```
-GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh <benchmark> 2> pcs.txt
+# GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh <benchmark> 2> pcs.txt
 ```
 <a id="freebsd-code-abdeckung-links"></a>
 ## Links

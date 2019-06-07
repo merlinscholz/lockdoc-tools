@@ -318,11 +318,11 @@ Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:<
 <p>Die Variable <code>GATHER_COV</code> sorgt dafür, dass das Skript <code>run-bench.sh</code> gewisse Initialisierungsbefehle auslässt.<br />
 Der erste Parameter von <code>./gcov-trace.sh</code> gibt an, wo der Kernel übersetzt wurde - hier <code>/opt/kernel/freebsd/obj-gcov/</code>.<br />
 Der dritte Parameter gibt den Namen der Ausgabedatei an.</p>
-<pre><code>GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;</code></pre>
+<pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;</code></pre>
 <p><a id="freebsd-code-abdeckung-bestimmen-kcov"></a></p>
 <h2 id="code-abdeckung-bestimmen---kcov">Code-Abdeckung bestimmen - KCOV</h2>
 <p><code>kcovtrace</code> muss als <code>root</code> ausgeführt werden.</p>
-<pre><code>GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh &lt;benchmark&gt; 2&gt; pcs.txt</code></pre>
+<pre><code># GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh &lt;benchmark&gt; 2&gt; pcs.txt</code></pre>
 <p><a id="freebsd-code-abdeckung-links"></a></p>
 <h2 id="links-2">Links</h2>
 <ul>
