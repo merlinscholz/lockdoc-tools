@@ -8,7 +8,8 @@
 # 
 # usage: ./gcov-trace.sh /opt/kernel/linux test.trace sleep 5
 
-GCOV_DIR="/sys/kernel/debug/gcov/"
+GCOV_DIR=${GCOV_DIR:-"/sys/kernel/debug/gcov/"}
+OS=`uname`
 
 if [ ${#} -lt 3 ]; then
   echo "Usage: $0 <path to kernel tree> <output filename> <programm to execute>" >&2
@@ -24,14 +25,37 @@ then
   exit 1
 fi
 
-echo 0 > ${GCOV_DIR}/reset
+if [ ! -d ${GCOV_DIR} ];
+then
+	echo "${GCOV_DIR} does not exist!" >&2
+	exit 1
+fi
+if [ ${OS} == "Linux" ];
+then
+	echo 0 > ${GCOV_DIR}/reset
+elif [ ${OS} == "FreeBSD" ];
+then
+	echo "Enabling GCOV"
+	sysctl debug.gcov.enable=1
+	echo "Resetting GCOV"
+	sysctl debug.gcov.reset=1
+fi
 
 ${@}
 
 TEMPDIR=$(mktemp -d)
 find ${GCOV_DIR} -type d -exec mkdir -p $TEMPDIR/\{\} \;
 find ${GCOV_DIR} -name '*.gcda' -exec sh -c 'cat < $0 > '${TEMPDIR}'/$0' {} \;
-find ${GCOV_DIR} -name '*.gcno' -exec sh -c 'cp -d $0 '${TEMPDIR}'/$0' {} \;
+
+if [ ${OS} == "Linux" ];
+then
+	find ${GCOV_DIR} -name '*.gcno' -exec sh -c 'cp -d $0 '${TEMPDIR}'/$0' {} \;
+elif [ ${OS} == "FreeBSD" ];
+then
+	find ${GCOV_DIR} -name '*.gcno' -exec sh -c 'cp -R $0 '${TEMPDIR}'/$0' {} \;
+	echo "Disabing GCOV"
+	sysctl debug.gcov.enable=0
+fi
 
 geninfo --output-filename ${OUTPUT_FILE} --base-directory ${KERNEL_TREE} ${TEMPDIR}
 
