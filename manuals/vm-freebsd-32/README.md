@@ -262,7 +262,7 @@ Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Lin
 ```
 # ln -s /usr/local/bin/bash /bin/
 # ln -s /usr/local/bin/sysbench /usr/bin/
-# ln -s gcov8 /usr/local/bin/gcov
+# ln -s gcov7 /usr/local/bin/gcov
 ```
 Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der `/etc/fstab` eingetragen werden:
 
@@ -430,6 +430,10 @@ Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert
 Zunächst das Linux-DebugFS einhängen:
 ```
 # mount -t debugfs debugfs /mnt
+```
+GCOV muss zunaechst mindestens einmal aktiviert werden. Andernfalls existiert das Verzeichnis `/mnt/gcov` nicht und das Skript `gcov-trace.sh` bricht ab.
+```
+# sysctl debug.gcov.enable=1
 ```
 Die Variable `GATHER_COV` sorgt dafür, dass das Skript `run-bench.sh` gewisse Initialisierungsbefehle auslässt.
 Der erste Parameter von `./gcov-trace.sh` gibt an, wo der Kernel übersetzt wurde - hier `/opt/kernel/freebsd/obj-gcov/`.

@@ -200,7 +200,7 @@ Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p>Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.</p>
 <pre><code># ln -s /usr/local/bin/bash /bin/
 # ln -s /usr/local/bin/sysbench /usr/bin/
-# ln -s gcov8 /usr/local/bin/gcov</code></pre>
+# ln -s gcov7 /usr/local/bin/gcov</code></pre>
 <p>Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der <code>/etc/fstab</code> eingetragen werden:</p>
 <pre><code>linproc         /compat/linux/proc  linprocfs  rw,late  0       0
 linsysfs        /compat/linux/sys   linsysfs        rw      0       0
@@ -315,6 +315,8 @@ Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:<
 <h2 id="code-abdeckung-bestimmen---gcov">Code-Abdeckung bestimmen - GCOV</h2>
 <p>Zunächst das Linux-DebugFS einhängen:</p>
 <pre><code># mount -t debugfs debugfs /mnt</code></pre>
+<p>GCOV muss zunaechst mindestens einmal aktiviert werden. Andernfalls existiert das Verzeichnis <code>/mnt/gcov</code> nicht und das Skript <code>gcov-trace.sh</code> bricht ab.</p>
+<pre><code># sysctl debug.gcov.enable=1</code></pre>
 <p>Die Variable <code>GATHER_COV</code> sorgt dafür, dass das Skript <code>run-bench.sh</code> gewisse Initialisierungsbefehle auslässt.<br />
 Der erste Parameter von <code>./gcov-trace.sh</code> gibt an, wo der Kernel übersetzt wurde - hier <code>/opt/kernel/freebsd/obj-gcov/</code>.<br />
 Der dritte Parameter gibt den Namen der Ausgabedatei an.</p>
