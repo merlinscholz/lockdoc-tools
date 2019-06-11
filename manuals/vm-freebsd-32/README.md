@@ -424,6 +424,10 @@ Außerdem müssen die folgenden zwei Headerdateien in das System-Include-Verzeic
 # cp /opt/kernel/freebsd/src/sys/sys/coverage.h /usr/include/sys/
 # clang80 -o kcovtrace kcovtrace.c
 ```
+Das Übersetzen mit dem `clang` geht nur, wenn es nicht für i386 übersetzt wird. Ansonsten muss der GCC genommen werden:
+```
+# gcc7 -march=i586 -o kcovtrace kcovtrace.c
+```
 Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert sollte als Standardshell für `root` die Bash eingestellt sein.
 <a id="freebsd-code-abdeckung-bestimmen-gcov"></a>
 ## Code-Abdeckung bestimmen - GCOV
