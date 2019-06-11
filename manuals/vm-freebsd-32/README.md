@@ -235,7 +235,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc8-8.3.0_2
+# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1
 ```
 
 **Achtung**
@@ -408,14 +408,14 @@ Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 ```
 # cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
-# MODULES_OVERRIDE="" LD=ld.lld CC=gcc8 COMPILER_TYPE=gcc make [-j X]
+# MK_FORMAT_EXTENSION=no MODULES_OVERRIDE="" LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-kcov LD=ld.lld make install
 ```
 Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 ```
 # cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
-# MK_FORMAT_EXTENSION=no  MODULES_OVERRIDE="" LD=ld.lld CC=gcc8 COMPILER_TYPE=gcc make [-j X]
+# MK_FORMAT_EXTENSION=no MODULES_OVERRIDE="" LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-gcov LD=ld.lld make install
 ```
 Außerdem müssen die folgenden zwei Headerdateien in das System-Include-Verzeichnis kopiert werden, damit `kcovtrace` übersetzt werden kann:
