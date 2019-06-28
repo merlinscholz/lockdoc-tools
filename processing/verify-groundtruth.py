@@ -21,12 +21,6 @@ LOGGER = logging.getLogger(__name__)
 def toKey(dataType, member, accessType):
 	return (dataType, member, accessType)
 
-def calcPercentage(basis, perquot):
-	if basis == 0:
-		return 0.0
-	else:
-		return (float(perquot) * 100.0) / float(basis)
-
 if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
@@ -181,8 +175,8 @@ if __name__ == '__main__':
 				print('%s,%d,%d,%d,%3.2f,%3.2f,%3.2f' %
 					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
 					 resultsEntry['noobservations'], resultsEntry['count'],
-					 calcPercentage(resultsEntry['count'], resultsEntry['full']), calcPercentage(resultsEntry['count'], resultsEntry['found']),
-					 calcPercentage(resultsEntry['count'], resultsEntry['notfound'])))
+					 util.calcPercentage(resultsEntry['count'], resultsEntry['full']), util.calcPercentage(resultsEntry['count'], resultsEntry['found']),
+					 util.calcPercentage(resultsEntry['count'], resultsEntry['notfound'])))
 			else:
 				print('%s,%d,%d,%d,%d,%d,%d' %
 					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
@@ -205,10 +199,10 @@ if __name__ == '__main__':
 			print('%s:' % datatype)
 			total = resultsEntry['count']
 			print('\tobservations: %3d (%3.2f %%),\tfull: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)\tnotfound: %3d (%3.2f%%)'
-				% (total, calcPercentage(total + resultsEntry['noobservations'], total),
-				 resultsEntry['full'], calcPercentage(total, resultsEntry['full']),
-				 resultsEntry['found'], calcPercentage(total, resultsEntry['found']),
-				 resultsEntry['notfound'], calcPercentage(total, resultsEntry['notfound'])))
+				% (total, util.calcPercentage(total + resultsEntry['noobservations'], total),
+				 resultsEntry['full'], util.calcPercentage(total, resultsEntry['full']),
+				 resultsEntry['found'], util.calcPercentage(total, resultsEntry['found']),
+				 resultsEntry['notfound'], util.calcPercentage(total, resultsEntry['notfound'])))
 			print('\tnoobservations: %3d\t#documented rules: %d'
 				% (resultsEntry['noobservations'], total + resultsEntry['noobservations']))
 

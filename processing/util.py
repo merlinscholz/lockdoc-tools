@@ -100,3 +100,10 @@ def genIndentation(lvl):
 def printLicenseExtConent(extContent):
 	for content in extContent:
 		print('Using %s, version %s, under %s license' % (content['fname'], content['rev'], content['license']))
+
+
+def calcPercentage(basis, perquot):
+	if basis == 0:
+		return 0.0
+	else:
+		return (float(perquot) * 100.0) / float(basis)
