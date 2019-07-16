@@ -13,18 +13,13 @@ import re
 import argparse
 from pprint import pprint
 import logging
+import util
 
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
 
 def toKey(dataType, member, accessType):
 	return (dataType, member, accessType)
-
-def calcPercentage(basis, perquot):
-	if basis == 0:
-		return 0.0
-	else:
-		return (float(perquot) * 100.0) / float(basis)
 
 if __name__ == '__main__':
 
@@ -80,32 +75,7 @@ if __name__ == '__main__':
 	#																  accepted: 0
 	#																  confidence: 0 (confidence will be set to 0.0 if TODO is found)
 	#																  counterexamples: "counterexample.sql.sh backing_dev_info r:bdi_list CEX SEQ '3(semaphore)"
-	tempFile = open(hypothesisCSV,'rb')
-	tempReader = csv.DictReader(tempFile, delimiter=';')
-	for line in tempReader:
-		if args.struct is not None and line['type'] not in args.struct:
-			continue
-		count = count + 1
-		key = toKey(line['type'], line['member'], line['accesstype'])
-		if key not in hypothesisDict:
-			hypothesisEntry = {'locks': dict()}
-			hypothesisDict[key] = hypothesisEntry
-		else:
-			hypothesisEntry = hypothesisDict[key]
-		# ! ! ! Attention ! ! !
-		# If this script will be extended beyond its current intention (verifying the groundtruth),
-		# one need to filter lock combinations that are actually no real combinations, e.g., 'no hypothesis with locks exceeds cutoff threshold'.
-		if line['locks'] not in hypothesisEntry['locks']:
-			if line['confidence'] == "TODO":
-				temp = 0
-			else:
-				temp = float(line['confidence'])
-			locksHeldEntry = {'occurrences': int(line['occurrences']), 'total': int(line['total']), 'percentage': float(line['percentage']), 'accepted': int(line['accepted']), 'confidence': temp, 'counterexample-parameters': line['counterexample-parameters']}
-			hypothesisEntry['locks'][line['locks']] = locksHeldEntry
-			#LOGGER.debug('Added lock combination (%s) for key %s', line['locks'], key)
-		else:
-			LOGGER.error('Lock combination (%s) does already exist for key %s', line['locks'], key)
-	LOGGER.debug('Read %d locking predictions for %d different (struct,member,accesstype) tuples from "%s"', count, len(hypothesisDict), hypothesisCSV)
+	hypothesisDict = util.readHypothesesDict(hypothesisCSV)
 	resultsDict = dict()
 
 	# resultsDict layout
@@ -205,8 +175,8 @@ if __name__ == '__main__':
 				print('%s,%d,%d,%d,%3.2f,%3.2f,%3.2f' %
 					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
 					 resultsEntry['noobservations'], resultsEntry['count'],
-					 calcPercentage(resultsEntry['count'], resultsEntry['full']), calcPercentage(resultsEntry['count'], resultsEntry['found']),
-					 calcPercentage(resultsEntry['count'], resultsEntry['notfound'])))
+					 util.calcPercentage(resultsEntry['count'], resultsEntry['full']), util.calcPercentage(resultsEntry['count'], resultsEntry['found']),
+					 util.calcPercentage(resultsEntry['count'], resultsEntry['notfound'])))
 			else:
 				print('%s,%d,%d,%d,%d,%d,%d' %
 					(datatype, resultsEntry['count']  + resultsEntry['noobservations'],
@@ -229,10 +199,10 @@ if __name__ == '__main__':
 			print('%s:' % datatype)
 			total = resultsEntry['count']
 			print('\tobservations: %3d (%3.2f %%),\tfull: %3d (%3.2f%%)\tfound: %3d (%3.2f%%)\tnotfound: %3d (%3.2f%%)'
-				% (total, calcPercentage(total + resultsEntry['noobservations'], total),
-				 resultsEntry['full'], calcPercentage(total, resultsEntry['full']),
-				 resultsEntry['found'], calcPercentage(total, resultsEntry['found']),
-				 resultsEntry['notfound'], calcPercentage(total, resultsEntry['notfound'])))
+				% (total, util.calcPercentage(total + resultsEntry['noobservations'], total),
+				 resultsEntry['full'], util.calcPercentage(total, resultsEntry['full']),
+				 resultsEntry['found'], util.calcPercentage(total, resultsEntry['found']),
+				 resultsEntry['notfound'], util.calcPercentage(total, resultsEntry['notfound'])))
 			print('\tnoobservations: %3d\t#documented rules: %d'
 				% (resultsEntry['noobservations'], total + resultsEntry['noobservations']))
 
