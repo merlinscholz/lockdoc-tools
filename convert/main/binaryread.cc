@@ -371,7 +371,9 @@ int binaryread_init(const char *vmlinuxName) {
 
 	// Init bfd
 	bfd_init();
-	kernelBfd = bfd_openr(vmlinuxName,"elf32-i386");
+	// Use NULL as target name for libbfd
+	// Libbfd tries to determine to correct target.
+	kernelBfd = bfd_openr(vmlinuxName, NULL);
 	if (kernelBfd == NULL) {
 		bfd_perror("open vmlinux");
 		return 1;
