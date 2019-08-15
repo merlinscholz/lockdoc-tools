@@ -665,8 +665,8 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,RWLock*>::iterator itLock, itTemp;
 	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
 	unsigned long long prevPreemptCount = 0, curPreemptCount = 0;
-	int lineCounter, isGZ;
-	char action = '.', param, *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
+	int lineCounter, isGZ, param;
+	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false, processPreemptCount = false;
 	enum IRQ_SYNC irqSync = LOCK_NONE;
 	enum LOCK_OP lockOP = P_WRITE;
