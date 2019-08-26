@@ -1,0 +1,147 @@
+#DESCRIPTION:Kernel system calls
+access01 access01
+access02 access02
+access03 access03
+access04 access04
+
+chdir01 chdir01
+chdir01A symlink01 -T chdir01
+chdir02 chdir02
+chdir03 chdir03
+chdir04 chdir04
+
+chmod01 chmod01
+chmod02 chmod02
+chmod03 chmod03
+chmod04 chmod04
+chmod05 chmod05
+chmod06 chmod06
+chmod07 chmod07
+
+chown01 chown01
+chown02 chown02
+chown03 chown03
+chown04 chown04
+chown05 chown05
+
+creat01 creat01
+creat03 creat03
+creat04 creat04
+creat05 creat05
+creat06 creat06
+creat07 creat07
+creat08 creat08
+
+flock01 flock01
+flock02 flock02
+flock03 flock03
+flock04 flock04
+flock06 flock06
+
+getxattr01 getxattr01
+getxattr02 getxattr02
+getxattr03 getxattr03
+
+inotify01 inotify01
+inotify02 inotify02
+inotify03 inotify03
+inotify04 inotify04
+inotify05 inotify05
+inotify06 inotify06
+inotify07 inotify07
+inotify08 inotify08
+inotify09 inotify09
+
+link02 link02
+link03 link03
+link04 link04
+link05 link05
+link06 link06
+link07 link07
+link08 link08
+
+listxattr01 listxattr01
+listxattr02 listxattr02
+listxattr03 listxattr03
+
+lremovexattr01 lremovexattr01
+
+mkdir02 mkdir02
+mkdir03 mkdir03
+mkdir04 mkdir04
+mkdir05 mkdir05
+mkdir09 mkdir09
+
+mount01 mount01
+mount02 mount02
+mount03 mount03
+mount04 mount04
+mount05 mount05
+mount06 mount06
+
+open01 open01
+open02 open02
+open03 open03
+open04 open04
+open05 open05
+open06 open06
+open07 open07
+open08 open08
+open09 open09
+open10 open10
+open11 open11
+open12 open12
+open13 open13
+open14 open14
+
+pipe01 pipe01
+pipe02 pipe02
+pipe03 pipe03
+pipe04 pipe04
+pipe05 pipe05
+pipe06 pipe06
+pipe07 pipe07
+pipe08 pipe08
+pipe09 pipe09
+pipe10 pipe10
+pipe11 pipe11
+
+pipe2_01 pipe2_01
+pipe2_02 pipe2_02
+
+poll01 poll01
+poll02 poll02
+
+read01 read01
+read02 read02
+read03 read03
+read04 read04
+
+readlink01 readlink01
+readlink03 readlink03
+
+symlink01 symlink01
+symlink02 symlink02
+symlink03 symlink03
+symlink04 symlink04
+symlink05 symlink05
+
+unlink05 unlink05
+unlink07 unlink07
+unlink08 unlink08
+
+#
+# These tests require an unmounted block device
+# to run correctly. Please see individual test
+# code for more information.
+#
+umount01 umount01
+umount02 umount02
+umount03 umount03
+
+write01 write01
+write02 write02
+write03 write03
+write04 write04
+write05 write05
+

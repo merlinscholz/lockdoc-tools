@@ -42,6 +42,7 @@ then
 		LOCKDOC_TEST_ITER="/proc/lockdoc/iterations"
 		DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
 	fi
+	LTP_CMD="${LTPROOT}/runltp -q"
 elif [ ${OS} == "FreeBSD" ];
 then
 	stty -f /dev/ttyu0.lock gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
@@ -65,6 +66,7 @@ then
 		DEFAULT_USER=1001
 		DEFAULT_GROUP=20
 	fi
+	LTP_CMD="chroot /compat/linux ${LTPROOT}/runltp -q"
 fi
 
 if [ ! -d ${DIR} ];
@@ -217,218 +219,18 @@ then
 	then
 		rm -r 00
 	fi
+elif [ "${BENCH}" == "ltp-syscalls" ];
+then
+	run_cmd ${LTP_CMD} -f syscalls
+elif [ "${BENCH}" == "ltp-syscalls-custom" ];
+then
+	run_cmd ${LTP_CMD} -f syscalls-custom
 elif [ "${BENCH}" == "ltp-fs" ];
 then
-	${LTPROOT}/runltp -f fs
-elif [ "${BENCH}" == "ltp-syscall-custom" ];
-then
-	# Content from <ltp>/runtest/syscalls
-	run_cmd access01
-	run_cmd access02
-	run_cmd access03
-	run_cmd access04
- 
-	run_cmd chdir01
-	run_cmd chdir02
-	run_cmd chdir03
-	run_cmd chdir04
-
-	run_cmd chmod01
-	run_cmd chmod02
-	run_cmd chmod03
-	run_cmd chmod04
-	run_cmd chmod05
-	run_cmd chmod06
-	run_md chmod07
-
-	run_cmd chown01
-	run_cmd chown02
-	run_cmd chown03
-	run_cmd chown04
-	run_cmd chown05
-
-	run_cmd close01
-	run_cmd close02
-	run_cmd close08
-
-	run_cmd creat01
-	run_cmd creat03
-	run_cmd creat04
-	run_cmd creat05
-	run_cmd creat06
-	run_cmd creat07
-	run_cmd creat08
-
-	run_cmd flock01
-	run_cmd flock02
-	run_cmd flock03
-	run_cmd flock04
-	run_cmd flock06
-
-	run_cmd getxattr01
-	run_cmd getxattr02
-	run_cmd getxattr03
-	# Uses XFS which is not support / of intereset
-#	run_cmd getxattr04
-#	run_cmd getxattr05
-
-	run_cmd inotify01
-	run_cmd inotify02
-	run_cmd inotify03
-	run_cmd inotify04
-	run_cmd inotify05
-	run_cmd inotify06
-	run_cmd inotify07
-	run_cmd inotify08
-	run_cmd inotify09
-
-	run_cmd link02
-	run_cmd link03
-	run_cmd link04
-	run_cmd link05
-	run_cmd link06
-	run_cmd link07
-	run_cmd link08
-
-	run_cmd listxattr01
-	run_cmd listxattr02
-	run_cmd listxattr03
-
-	run_cmd llistxattr01
-	run_cmd llistxattr02
-	run_cmd llistxattr03
-
-	run_cmd lremovexattr01
-
-	run_cmd mkdir02
-	run_cmd mkdir03
-	run_cmd mkdir04
-	run_cmd mkdir05
-	run_cmd mkdir09
-
-	run_cmd mount01
-	run_cmd mount02
-	run_cmd mount03
-	run_cmd mount04
-	run_cmd mount05
-	run_cmd mount06
-
-	run_cmd open01
-	run_cmd open02
-	run_cmd open03
-	run_cmd open04
-	run_cmd open05
-	run_cmd open06
-	run_cmd open07
-	run_cmd open08
-	run_cmd open09
-	run_cmd open10
-	run_cmd open11
-	run_cmd open12
-	run_cmd open13
-	run_cmd open14
-
-	run_cmd pipe01
-	run_cmd pipe02
-	run_cmd pipe03
-	run_cmd pipe04
-	run_cmd pipe05
-	run_cmd pipe06
-	run_cmd pipe07
-	run_cmd pipe08
-	run_cmd pipe09
-	run_cmd pipe10
-	run_cmd pipe11
-
-	run_cmd pipe2_01
-	run_cmd pipe2_02
-
-	run_cmd poll01
-	run_cmd poll02
-
-	run_cmd read01
-	run_cmd read02
-	run_cmd read03
-	run_cmd read04
-
-	run_cmd readlink01
-	run_cmd readlink03
-
-	run_cmd rmdir01
-	run_cmd rmdir02
-	run_cmd rmdir03
-
-	run_cmd symlink01
-	run_cmd symlink02
-	run_cmd symlink03
-	run_cmd symlink04
-	run_cmd symlink05
-
-	run_cmd umount01
-	run_cmd umount02
-	run_cmd umount03
-
-	run_cmd unlink05
-	run_cmd unlink07
-	run_cmd unlink08
-
-	run_cmd write01
-	run_cmd write02
-	run_cmd write03
-	run_cmd write04
-	run_cmd write05
+	run_cmd ${LTP_CMD} -f fs
 elif [ "${BENCH}" == "ltp-fs-custom" ];
 then
-	if [ ! -d foo ];
-	then
-		mkdir foo
-	fi
-	# Content from <ltp>/runtest/fs
-	# Original parameter settings: linktest.sh 1000 1000
-	run_cmd linktest.sh 10 10
-	# Original parameter settings: fs_inod foo 10 10 10
-	run_cmd fs_inod foo 10 10 1
-	run_cmd openfile -f10 -t10
-	run_cmd inode01
-	run_cmd inode02
-	run_cmd stream01
-	run_cmd stream02
-	run_cmd stream03
-	run_cmd stream04
-	run_cmd stream05
-	run_cmd ftest01
-	run_cmd ftest02
-	run_cmd ftest03
-	run_cmd ftest04
-	run_cmd ftest05
-	run_cmd ftest06
-	run_cmd ftest07
-	run_cmd ftest08
-	run_cmd lftest 10
-	run_cmd writetest
-	# Content from <ltp>/runtest/fs_perms_simple
-	run_cmd fs_perms 005 99 99 12 100 x 0
-	run_cmd fs_perms 050 99 99 200 99 x 0
-	run_cmd fs_perms 500 99 99 99 500 x 0
-	run_cmd fs_perms 002 99 99 12 100 w 0
-	run_cmd fs_perms 020 99 99 200 99 w 0
-	run_cmd fs_perms 200 99 99 99 500 w 0
-	run_cmd fs_perms 004 99 99 12 100 r 0
-	run_cmd fs_perms 040 99 99 200 99 r 0
-	run_cmd fs_perms 400 99 99 99 500 r 0
-	run_cmd fs_perms 000 99 99 99 99  r 1
-	run_cmd fs_perms 000 99 99 99 99  w 1
-	run_cmd fs_perms 000 99 99 99 99  x 1
-	run_cmd fs_perms 010 99 99 99 500 x 1
-	run_cmd fs_perms 100 99 99 200 99 x 1
-	run_cmd fs_perms 020 99 99 99 500 w 1
-	run_cmd fs_perms 200 99 99 200 99 w 1
-	run_cmd fs_perms 040 99 99 99 500 r 1
-	run_cmd fs_perms 400 99 99 200 99 r 1
-	if [ -d foo ];
-	then
-		rm -r foo
-	fi
+	run_cmd ${LTP_CMD} -f fs-custom
 elif [ "${BENCH}" == "startup" ];
 then
 	echo "Doing nothing!" | tee ${OUTDEV}
