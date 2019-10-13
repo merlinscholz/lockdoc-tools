@@ -91,6 +91,20 @@ else
 fi
 echo "Running "${BENCH} | tee ${OUTDEV}
 
+if [[ "${BENCH}" =~ ^.*-verbose$ ]];
+then
+	BENCH=${BENCH/%-verbose/}
+	echo "Verbose mode on" | tee ${OUTDEV}
+	if [ ${OS} == "Linux" ];
+	then
+		BENCH_OUTDEV=/dev/ttyS0
+		LTP_CMD="${LTPROOT}/runltp"
+	elif [ ${OS} == "FreeBSD" ];
+	then
+		BENCH_OUTDEV=/dev/ttyu0
+	fi
+fi
+
 if [[ ${BENCH} =~ ^lockdoc-test.*$ ]];
 then
 	if [ ! -e ${LOCKDOC_TEST_CTL} ] || [ ! -e ${LOCKDOC_TEST_ITER} ];
