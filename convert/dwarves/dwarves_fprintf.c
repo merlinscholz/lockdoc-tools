@@ -462,7 +462,7 @@ static bool type__fprintf(struct tag *type, const struct cu *cu,
 			/* Fall Thru */
 		default:
 			fprintf(fp, "%s",
-					   tag__name(type, cu, tbf, sizeof(tbf)));
+					   tag__name(type, cu, tbf, sizeof(tbf)  - 1));
 			break;
 		case DW_TAG_subroutine_type:
 			ftype__fprintf(tag__ftype(type), cu, name, 0, 0, fp);
@@ -693,7 +693,7 @@ void ftype__fprintf_parms(const struct ftype *ftype,
 						  0, 0, fp);
 			continue;
 		}
-		stype = tag__name(type, cu, sbf, sizeof(sbf));
+		stype = tag__name(type, cu, sbf, sizeof(sbf) - 1);
 print_it:
 		fprintf(fp, "%s%s%s", stype, name ? " " : "",
 				   name ?: "");
@@ -715,7 +715,7 @@ void ftype__fprintf(const struct ftype *ftype, const struct cu *cu,
 {
 	struct tag *type = cu__type(cu, ftype->tag.type);
 	char sbf[128];
-	const char *stype = tag__name(type, cu, sbf, sizeof(sbf));
+	const char *stype = tag__name(type, cu, sbf, sizeof(sbf) - 1);
 	fprintf(fp, "%s%s %s%s%s%s",
 				 inlined ? "inline " : "",
 				 stype,
