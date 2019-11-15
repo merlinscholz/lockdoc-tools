@@ -77,7 +77,6 @@ struct MemAccess {
 	int size;													// Size of memory access
 	unsigned long long address;									// Accessed address
 	unsigned long long stacktrace_id;								// Stack pointer
-	unsigned long long preemptCount;								// __preempt_count
 };
 
 /**
@@ -167,7 +166,6 @@ static void printUsageAndExit(const char *elf) {
 		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/function_blacklist.csv -m path/to/member_blacklist.csv input.csv[.gz]\n\n"
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
-		" -p  enable processing of hardirq/softirq levels from preempt_count as two pseudo locks\n"
 		" -v  show version\n"
 		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
 		" -u  include non-static locks with unknown allocation in output\n"
@@ -435,72 +433,6 @@ static void handlePV(
 	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelBaseDir);
 }
 
-/* taken from Linux 4.10 include/linux/preempt.h */
-#define PREEMPT_BITS	8
-#define SOFTIRQ_BITS	8
-#define HARDIRQ_BITS	4
-#define NMI_BITS		1
-
-#define PREEMPT_SHIFT	0
-#define SOFTIRQ_SHIFT	(PREEMPT_SHIFT + PREEMPT_BITS)
-#define HARDIRQ_SHIFT	(SOFTIRQ_SHIFT + SOFTIRQ_BITS)
-#define NMI_SHIFT		(HARDIRQ_SHIFT + HARDIRQ_BITS)
-
-#define __IRQ_MASK(x)	((1UL << (x))-1)
-
-#define PREEMPT_MASK	(__IRQ_MASK(PREEMPT_BITS) << PREEMPT_SHIFT)
-#define SOFTIRQ_MASK	(__IRQ_MASK(SOFTIRQ_BITS) << SOFTIRQ_SHIFT)
-#define HARDIRQ_MASK	(__IRQ_MASK(HARDIRQ_BITS) << HARDIRQ_SHIFT)
-
-static void handlePreemptCountChange(
-	bool enabled, unsigned long long prev, unsigned long long cur,
-	unsigned long long ts,
-	string const& file,
-	unsigned long long line,
-	string const& fn,
-	string const& typeStr,
-	string const& lockType,
-	unsigned long long preemptCount,
-	bool includeAllLocks,
-	unsigned long long pseudoAllocID,
-	ofstream& locksOFile,
-	ofstream& txnsOFile,
-	ofstream& locksHeldOFile,
-	const char *kernelBaseDir
-	)
-{
-	
-	if (!enabled) {
-		return;
-	}
-
-	bool
-		prev_softirq = !!(prev & SOFTIRQ_MASK),
-		 cur_softirq = !!( cur & SOFTIRQ_MASK),
-		prev_hardirq = !!(prev & HARDIRQ_MASK),
-		 cur_hardirq = !!( cur & HARDIRQ_MASK);
-
-	if (!prev_softirq && cur_softirq) {
-		/* P(softirq_pseudo_lock) */
-		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
-	} else if (prev_softirq && !cur_softirq) {
-		/* V(softirq_pseudo_lock) */
-		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_SOFTIRQ, file, line, fn, "static", "softirq",
-			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
-	}
-
-	if (!prev_hardirq && cur_hardirq) {
-		/* P(hardirq_pseudo_lock) */
-		handlePV(P_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
-	} else if (prev_hardirq && !cur_hardirq) {
-		/* V(hardirq_pseudo_lock) */
-		handlePV(V_WRITE, ts, PSEUDOLOCK_ADDR_HARDIRQ, file, line, fn, "static", "hardirq",
-			preemptCount, LOCK_NONE, 0, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
-	}
-}
-
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
 	vector<MemAccess>::iterator itAccess;
 	MemAccess window[LOOK_BEHIND_WINDOW];
@@ -552,7 +484,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
-		*pMemAccessOFile << delimiter << sql_null_if(tempAccess.preemptCount,tempAccess.preemptCount == (unsigned long long)-1) << "\n";
+		*pMemAccessOFile << "\n";
 		++accessCount;
 	}
 
@@ -664,10 +596,9 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	map<unsigned long long,RWLock*>::iterator itLock, itTemp;
 	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
-	unsigned long long prevPreemptCount = 0, curPreemptCount = 0;
 	int lineCounter, isGZ, param;
 	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
-	bool processSeqlock = false, includeAllLocks = false, processPreemptCount = false;
+	bool processSeqlock = false, includeAllLocks = false;
 	enum IRQ_SYNC irqSync = LOCK_NONE;
 	enum LOCK_OP lockOP = P_WRITE;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
@@ -688,11 +619,6 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'u':
 			includeAllLocks = true;
-			break;
-		case 'p':
-			processPreemptCount = true;
-			cerr << "Processing of preempt count is currently broken!" << endl;
-			return EXIT_FAILURE;
 			break;
 		case 'm':
 			memberBlacklistName = optarg;
@@ -817,7 +743,7 @@ int main(int argc, char *argv[]) {
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
 	accessOFile << "ts" << delimiter;
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
-	accessOFile << "stacktrace_id" << delimiter << "preemptcount" << delimiter << "fn" << endl;
+	accessOFile << "stacktrace_id" << delimiter << "fn" << endl;
 
 	locksOFile << "id" << delimiter << "address" << delimiter;
 	locksOFile << "embedded_in" << delimiter << "lock_type_name" << delimiter;
@@ -916,9 +842,7 @@ int main(int argc, char *argv[]) {
 					line = std::stoull(lineElems.at(9));
 					fn = lineElems.at(10);
 					lockType = lineElems.at(6);
-					prevPreemptCount = curPreemptCount;
-					curPreemptCount =
-						preemptCount = std::stoull(lineElems.at(12),NULL,16);
+					preemptCount = std::stoull(lineElems.at(12),NULL,16);
 					temp = std::stoi(lineElems.at(13),NULL,10);
 					flags = std::stoi(lineElems.at(15),NULL,10);
 					switch(temp) {
@@ -964,10 +888,6 @@ int main(int argc, char *argv[]) {
 							cerr << "Line (ts=" << ts << ") contains invalid value for lock_op" << endl;
 							return EXIT_FAILURE;
 					}
-					handlePreemptCountChange(
-						processPreemptCount, prevPreemptCount, curPreemptCount,
-						ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
-						locksOFile, txnsOFile,locksHeldOFile, kernelBaseDir);
 					break;
 				}
 			case 'r':
@@ -978,17 +898,7 @@ int main(int argc, char *argv[]) {
 					baseAddress = std::stoull(lineElems.at(5),NULL,16);
 					instrPtr = std::stoull(lineElems.at(11),NULL,16);
 					stacktrace = lineElems.at(14);
-					if (lineElems.at(12).compare("NULL") != 0) {
-						prevPreemptCount = curPreemptCount;
-						curPreemptCount =
-							preemptCount = std::stoull(lineElems.at(11),NULL,16);
-						handlePreemptCountChange(
-							processPreemptCount, prevPreemptCount, curPreemptCount,
-							ts, file, line, fn, typeStr, lockType, preemptCount, includeAllLocks, pseudoAllocID,
-							locksOFile, txnsOFile,locksHeldOFile, kernelBaseDir);
-					} else {
-						preemptCount = -1;
-					}
+					preemptCount = -1;
 					break;
 				}
 			}
@@ -1131,7 +1041,6 @@ int main(int argc, char *argv[]) {
 				tempAccess.size = size;
 				tempAccess.address = address;
 				tempAccess.stacktrace_id = addStacktrace(kernelBaseDir, stacktracesOFile, delimiter, instrPtr, stacktrace);
-				tempAccess.preemptCount = preemptCount;
 				break;
 				}
 		default:

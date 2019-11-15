@@ -39,7 +39,6 @@ CREATE TABLE accesses (
   size smallint CHECK (size > 0) NOT NULL,		-- How many bytes were written?
   address bigint CHECK (address > 0) NOT NULL,		-- The start address of this access
   stacktrace_id int CHECK (stacktrace_id > 0) NOT NULL,		-- References a stacktrace
-  preemptcount bigint CHECK (preemptcount > 0) DEFAULT NULL,		-- current __preempt_count pointer when the access happened
   PRIMARY KEY (id)
 ) 
 ;
