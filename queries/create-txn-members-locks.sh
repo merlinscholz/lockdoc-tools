@@ -98,7 +98,7 @@ FROM
 	(
 		-- GROUP_CONCAT all member accesses within a TXN and a specific allocation
 		SELECT fac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, fac.alloc_id, fac.txn_id,
-			string_agg(CONCAT(fac.type, ':', fac.member), ',' ORDER BY fac.byte_offset) AS members_accessed
+			string_agg(CONCAT(fac.type, ':', mn.name), ',' ORDER BY fac.byte_offset) AS members_accessed
 		FROM
 
 		(
@@ -107,13 +107,14 @@ FROM
 			-- access is a write, otherwise a read.
 			-- NOTE: The above property does *NOT* apply if the the results are grouped by stacktrace_id.
 			-- NOTE: This does not fold accesses to two different allocations.
-			SELECT ac.alloc_id, ac.txn_id, MAX(ac.ac_type) AS type, ac.subclass_id AS subclass_id, mn.name AS member, ac.byte_offset, ac.data_type_id
-				FROM accesses_flat ac
-				LEFT JOIN member_names mn
-				  ON mn.id = ac.member_name_id
-				WHERE True
-				${DATATYPE_FILTER}
-				${MEMBER_FILTER}
+			SELECT ac.alloc_id, ac.txn_id, MAX(ac.ac_type) AS type, ac.subclass_id AS subclass_id, ac.member_name_id, ac.byte_offset, ac.data_type_id
+			FROM accesses_flat ac
+			LEFT JOIN member_blacklist m_bl
+			  ON m_bl.subclass_id = ac.subclass_id
+			 AND m_bl.member_name_id = ac.member_name_id
+			WHERE True
+			${DATATYPE_FILTER}
+			${MEMBER_FILTER}
 			-- ====================================
 			AND ac.txn_id IS NOT NULL
 			AND NOT EXISTS
@@ -123,8 +124,6 @@ FROM
 				FROM accesses_flat s_ac
 				JOIN stacktraces AS s_st
 				  ON s_ac.stacktrace_id = s_st.id
-				LEFT JOIN member_names s_mn
-				  ON s_mn.id = s_ac.member_name_id
 				LEFT JOIN function_blacklist s_fn_bl
 				  ON s_fn_bl.fn = s_st.function
 				 AND 
@@ -139,24 +138,24 @@ FROM
 				   AND
 				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 				 )
-				LEFT JOIN member_blacklist s_m_bl
-				  ON s_m_bl.subclass_id = s_ac.subclass_id
-				 AND s_m_bl.member_name_id = s_ac.member_name_id
 				WHERE ac.ac_id = s_ac.ac_id
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
 				-- ====================================
 				AND
 				(
-					s_fn_bl.fn IS NOT NULL OR s_m_bl.member_name_id IS NOT NULL
+					s_fn_bl.fn IS NOT NULL
 				)
 				LIMIT 1
 			)
+			AND m_bl.member_name_id IS NULL
 			-- The fields ac.alloc_id, ac.txn_id, and sl.byte_offset matter for the result.
 			-- The remaining fields are just listed to silence the PostgreSQL engine.
-			GROUP BY ac.alloc_id, ac.txn_id, ac.byte_offset, ac.data_type_id, ac.subclass_id, mn.name
+			GROUP BY ac.alloc_id, ac.txn_id, ac.byte_offset, ac.data_type_id, ac.subclass_id, ac.member_name_id
 		) AS fac -- = Folded ACcesses
 
+		LEFT JOIN member_names mn
+		  ON mn.id = fac.member_name_id
 		JOIN subclasses sc
 		  ON fac.subclass_id = sc.id
 		JOIN data_types dt
@@ -201,6 +200,9 @@ FROM
 	  ON dt.id = ac.data_type_id
 	LEFT JOIN member_names mn
 	  ON mn.id = ac.member_name_id
+	LEFT JOIN member_blacklist m_bl
+	  ON m_bl.subclass_id = ac.subclass_id
+	 AND m_bl.member_name_id = ac.member_name_id
 	WHERE True
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
@@ -213,8 +215,6 @@ FROM
 		FROM accesses_flat s_ac
 		JOIN stacktraces AS s_st
 		  ON s_ac.stacktrace_id = s_st.id
-		LEFT JOIN member_names s_mn
-		  ON s_mn.id = s_ac.member_name_id
 		LEFT JOIN function_blacklist s_fn_bl
 		  ON s_fn_bl.fn = s_st.function
 		 AND 
@@ -229,19 +229,17 @@ FROM
 		   AND
 		   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 		 )
-		LEFT JOIN member_blacklist s_m_bl
-		  ON s_m_bl.subclass_id = s_ac.subclass_id
-		 AND s_m_bl.member_name_id = s_ac.member_name_id
 		WHERE ac.ac_id = s_ac.ac_id
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
 		-- ====================================
 		AND
 		(
-			s_fn_bl.fn IS NOT NULL OR s_m_bl.member_name_id IS NOT NULL
+			s_fn_bl.fn IS NOT NULL
 		)
 		LIMIT 1
 	)
+	AND m_bl.member_name_id IS NULL
 ) AS withlocks
 
 GROUP BY ${TYPE_ID_ALIAS}, members_accessed, locks_held, type_name
@@ -291,6 +289,9 @@ FROM
 		(
 			SELECT ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type AS ac_type, ac.subclass_id AS subclass_id, ac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, CONCAT(ac.ac_type, ':', mn.name) AS member, ac.byte_offset, ac.stacktrace_id
 			FROM accesses_flat ac
+			LEFT JOIN member_blacklist m_bl
+			  ON m_bl.subclass_id = ac.subclass_id
+			 AND m_bl.member_name_id = ac.member_name_id
 			LEFT JOIN member_names mn
 			  ON mn.id = ac.member_name_id
 			WHERE True
@@ -304,8 +305,6 @@ FROM
 				FROM accesses_flat s_ac
 				JOIN stacktraces AS s_st
 				  ON s_ac.stacktrace_id = s_st.id
-				LEFT JOIN member_names s_mn
-				  ON s_mn.id = s_ac.member_name_id
 				LEFT JOIN function_blacklist s_fn_bl
 				  ON s_fn_bl.fn = s_st.function
 				 AND 
@@ -320,19 +319,17 @@ FROM
 				   AND
 				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 				 )
-				LEFT JOIN member_blacklist s_m_bl
-				  ON s_m_bl.subclass_id = s_ac.subclass_id
-				 AND s_m_bl.member_name_id = s_ac.member_name_id
 				WHERE ac.ac_id = s_ac.ac_id
 				${DATATYPE_FILTER}
 				${MEMBER_FILTER}
 				-- ====================================
 				AND
 				(
-					s_fn_bl.fn IS NOT NULL OR s_m_bl.member_name_id IS NOT NULL
+					s_fn_bl.fn IS NOT NULL
 				)
 				LIMIT 1
 			)
+			AND m_bl.member_name_id IS NULL
 			GROUP BY ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type, ac.subclass_id, ac.${TYPE_ID_COLUMN}, member, ac.byte_offset, ac.stacktrace_id
 		) AS fac -- = Folded ACcesses
 		JOIN subclasses sc
@@ -371,6 +368,9 @@ FROM
 		  ON dt.id = ac.data_type_id
 		LEFT JOIN member_names mn
 		  ON mn.id = ac.member_name_id
+		LEFT JOIN member_blacklist m_bl
+		  ON m_bl.subclass_id = ac.subclass_id
+		 AND m_bl.member_name_id = ac.member_name_id
 		WHERE True
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
@@ -382,8 +382,6 @@ FROM
 			FROM accesses_flat s_ac
 			JOIN stacktraces AS s_st
 			  ON s_ac.stacktrace_id = s_st.id
-			LEFT JOIN member_names s_mn
-			  ON s_mn.id = s_ac.member_name_id
 			LEFT JOIN function_blacklist s_fn_bl
 			  ON s_fn_bl.fn = s_st.function
 			 AND 
@@ -398,19 +396,17 @@ FROM
 			   AND
 			   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 			 )
-			LEFT JOIN member_blacklist s_m_bl
-			  ON s_m_bl.subclass_id = s_ac.subclass_id
-			 AND s_m_bl.member_name_id = s_ac.member_name_id
 			WHERE ac.ac_id = s_ac.ac_id
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- ====================================
 			AND
 			(
-				s_fn_bl.fn IS NOT NULL OR s_m_bl.member_name_id IS NOT NULL
+				s_fn_bl.fn IS NOT NULL
 			)
 			LIMIT 1
 		)
+		AND m_bl.member_name_id IS NULL
 		GROUP BY ac.ac_id, ac.${TYPE_ID_COLUMN}, type_name, members, ac.stacktrace_id
 	) AS concatlocks
 	GROUP BY concatlocks.${TYPE_ID_ALIAS}, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id, concatlocks.type_name
