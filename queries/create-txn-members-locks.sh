@@ -109,46 +109,38 @@ FROM
 			-- NOTE: This does not fold accesses to two different allocations.
 			SELECT ac.alloc_id, ac.txn_id, MAX(ac.ac_type) AS type, ac.subclass_id AS subclass_id, ac.member_name_id, ac.byte_offset, ac.data_type_id
 			FROM accesses_flat ac
-			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.subclass_id = ac.subclass_id
-			 AND m_bl.member_name_id = ac.member_name_id
 			WHERE True
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- ====================================
+			AND NOT EXISTS
+			(
+				SELECT
+				FROM member_blacklist m_bl
+				WHERE m_bl.subclass_id = ac.subclass_id
+				 AND m_bl.member_name_id = ac.member_name_id
+			)
 			AND ac.txn_id IS NOT NULL
 			AND NOT EXISTS
 			(
-				-- Get all accesses that happened on an init path or accessed a blacklisted member
-				SELECT 1
-				FROM accesses_flat s_ac
-				JOIN stacktraces AS s_st
-				  ON s_ac.stacktrace_id = s_st.id
-				LEFT JOIN function_blacklist s_fn_bl
+				SELECT
+				FROM  stacktraces AS s_st
+				INNER JOIN function_blacklist s_fn_bl
 				  ON s_fn_bl.fn = s_st.function
-				 AND 
-				 (
-				   (
-				      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-				      OR
-				      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-				      OR
-				      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
-				   )
-				   AND
-				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-				 )
-				WHERE ac.ac_id = s_ac.ac_id
-				${DATATYPE_FILTER}
-				${MEMBER_FILTER}
-				-- ====================================
+				WHERE ac.stacktrace_id = s_st.id
 				AND
 				(
-					s_fn_bl.fn IS NOT NULL
+					(
+					      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					      OR
+					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					      OR
+					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
+					)
+					AND
+					(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 				)
-				LIMIT 1
 			)
-			AND m_bl.member_name_id IS NULL
 			-- The fields ac.alloc_id, ac.txn_id, and sl.byte_offset matter for the result.
 			-- The remaining fields are just listed to silence the PostgreSQL engine.
 			GROUP BY ac.alloc_id, ac.txn_id, ac.byte_offset, ac.data_type_id, ac.subclass_id, ac.member_name_id
@@ -198,48 +190,40 @@ FROM
 	  ON ac.subclass_id = sc.id
 	JOIN data_types dt
 	  ON dt.id = ac.data_type_id
-	LEFT JOIN member_names mn
+	JOIN member_names mn
 	  ON mn.id = ac.member_name_id
-	LEFT JOIN member_blacklist m_bl
-	  ON m_bl.subclass_id = ac.subclass_id
-	 AND m_bl.member_name_id = ac.member_name_id
 	WHERE True
 	${DATATYPE_FILTER}
 	${MEMBER_FILTER}
 	-- ====================================
+	AND NOT EXISTS
+	(
+		SELECT
+		FROM member_blacklist m_bl
+		WHERE m_bl.subclass_id = ac.subclass_id
+		 AND m_bl.member_name_id = ac.member_name_id
+	)
 	AND ac.txn_id IS NULL
 	AND NOT EXISTS
 	(
-		-- Get all accesses that happened on an init path or accessed a blacklisted member
-		SELECT 1
-		FROM accesses_flat s_ac
-		JOIN stacktraces AS s_st
-		  ON s_ac.stacktrace_id = s_st.id
-		LEFT JOIN function_blacklist s_fn_bl
+		SELECT
+		FROM  stacktraces AS s_st
+		INNER JOIN function_blacklist s_fn_bl
 		  ON s_fn_bl.fn = s_st.function
-		 AND 
-		 (
-		   (
-		      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-		      OR
-		      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-		      OR
-		      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
-		   )
-		   AND
-		   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-		 )
-		WHERE ac.ac_id = s_ac.ac_id
-		${DATATYPE_FILTER}
-		${MEMBER_FILTER}
-		-- ====================================
-		AND
+		WHERE ac.stacktrace_id = s_st.id
+		AND 
 		(
-			s_fn_bl.fn IS NOT NULL
+			(
+			      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
+			      OR
+			      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			      OR
+			      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
+			)
+			AND
+			(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 		)
-		LIMIT 1
 	)
-	AND m_bl.member_name_id IS NULL
 ) AS withlocks
 
 GROUP BY ${TYPE_ID_ALIAS}, members_accessed, locks_held, type_name
@@ -289,47 +273,40 @@ FROM
 		(
 			SELECT ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type AS ac_type, ac.subclass_id AS subclass_id, ac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, CONCAT(ac.ac_type, ':', mn.name) AS member, ac.byte_offset, ac.stacktrace_id
 			FROM accesses_flat ac
-			LEFT JOIN member_blacklist m_bl
-			  ON m_bl.subclass_id = ac.subclass_id
-			 AND m_bl.member_name_id = ac.member_name_id
-			LEFT JOIN member_names mn
+			JOIN member_names mn
 			  ON mn.id = ac.member_name_id
 			WHERE True
 			${DATATYPE_FILTER}
 			${MEMBER_FILTER}
 			-- ====================================
+			AND NOT EXISTS
+			(
+				SELECT
+				FROM member_blacklist m_bl
+				WHERE m_bl.subclass_id = ac.subclass_id
+				 AND m_bl.member_name_id = ac.member_name_id
+			)
 			AND ac.txn_id IS NOT NULL
 			AND NOT EXISTS
 			(
-				SELECT 1
-				FROM accesses_flat s_ac
-				JOIN stacktraces AS s_st
-				  ON s_ac.stacktrace_id = s_st.id
-				LEFT JOIN function_blacklist s_fn_bl
+				SELECT
+				FROM  stacktraces AS s_st
+				INNER JOIN function_blacklist s_fn_bl
 				  ON s_fn_bl.fn = s_st.function
-				 AND 
-				 (
-				   (
-				      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-				      OR
-				      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-				      OR
-				      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
-				   )
-				   AND
-				   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-				 )
-				WHERE ac.ac_id = s_ac.ac_id
-				${DATATYPE_FILTER}
-				${MEMBER_FILTER}
-				-- ====================================
+				WHERE ac.stacktrace_id = s_st.id
 				AND
 				(
-					s_fn_bl.fn IS NOT NULL
+					(
+					      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
+					      OR
+					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+					      OR
+					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
+					)
+					AND
+					(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 				)
-				LIMIT 1
 			)
-			AND m_bl.member_name_id IS NULL
 			GROUP BY ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type, ac.subclass_id, ac.${TYPE_ID_COLUMN}, member, ac.byte_offset, ac.stacktrace_id
 		) AS fac -- = Folded ACcesses
 		JOIN subclasses sc
@@ -375,38 +352,34 @@ FROM
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
 		-- ====================================
+		AND NOT EXISTS
+		(
+			SELECT
+			FROM member_blacklist m_bl
+			WHERE m_bl.subclass_id = ac.subclass_id
+			 AND m_bl.member_name_id = ac.member_name_id
+		)
 		AND ac.txn_id IS NULL
 		AND NOT EXISTS
 		(
-			SELECT 1
-			FROM accesses_flat s_ac
-			JOIN stacktraces AS s_st
-			  ON s_ac.stacktrace_id = s_st.id
-			LEFT JOIN function_blacklist s_fn_bl
+			SELECT
+			FROM  stacktraces AS s_st
+			INNER JOIN function_blacklist s_fn_bl
 			  ON s_fn_bl.fn = s_st.function
-			 AND 
-			 (
-			   (
-			      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-			      OR
-			      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-			      OR
-			      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
-			   )
-			   AND
-			   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-			 )
-			WHERE ac.ac_id = s_ac.ac_id
-			${DATATYPE_FILTER}
-			${MEMBER_FILTER}
-			-- ====================================
+			WHERE ac.stacktrace_id = s_st.id
 			AND
 			(
-				s_fn_bl.fn IS NOT NULL
+				(
+				      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
+				      OR
+				      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+				      OR
+				      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
+				)
+				AND
+				(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
 			)
-			LIMIT 1
 		)
-		AND m_bl.member_name_id IS NULL
 		GROUP BY ac.ac_id, ac.${TYPE_ID_COLUMN}, type_name, members, ac.stacktrace_id
 	) AS concatlocks
 	GROUP BY concatlocks.${TYPE_ID_ALIAS}, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id, concatlocks.type_name

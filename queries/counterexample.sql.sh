@@ -278,40 +278,23 @@ cat <<EOT
 				)
 				AND NOT EXISTS
 				(
-					-- Get all accesses that happened on an init path
-					SELECT 1
-					FROM accesses_flat s_ac
-					JOIN subclasses s_sc
-					  ON s_sc.id = s_ac.subclass_id
-					${SUBCLASS_FILTER_SUB}
-					JOIN data_types s_dt
-					  ON s_ac.data_type_id = s_dt.id
-					  AND s_dt.name = '$DATATYPE'
-					JOIN stacktraces AS s_st
-					  ON s_ac.stacktrace_id = s_st.id
-					LEFT JOIN member_names s_mn
-					  ON s_mn.id = s_ac.member_name_id
-					 AND s_mn.name = '$MEMBER'
-					LEFT JOIN function_blacklist s_fn_bl
+					SELECT
+					FROM  stacktraces AS s_st
+					INNER JOIN function_blacklist s_fn_bl
 					  ON s_fn_bl.fn = s_st.function
-					 AND
-					 (
-					   (
-					      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-					      OR
-					      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-					      OR
-					      (s_fn_bl.subclass_id = s_ac.subclass_id AND s_fn_bl.member_name_id = s_ac.member_name_id) -- for this member blacklisted
-					   )
-					   AND
-					   (s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-					 )
-					WHERE
-					s_ac.ac_id = ac.ac_id AND
-					s_ac.ac_type = '$ACCESSTYPE'
-					-- ====================================
-					AND s_fn_bl.fn IS NOT NULL
-					LIMIT 1
+					WHERE ac.stacktrace_id = s_st.id
+					AND
+					(
+						(
+						      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
+						      OR
+						      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+						      OR
+						      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
+						)
+						AND
+						(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
+					)
 				)
 			) ac
 
