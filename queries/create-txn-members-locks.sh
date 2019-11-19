@@ -343,11 +343,8 @@ FROM
 		  ON ac.subclass_id = sc.id
 		JOIN data_types dt
 		  ON dt.id = ac.data_type_id
-		LEFT JOIN member_names mn
+		JOIN member_names mn
 		  ON mn.id = ac.member_name_id
-		LEFT JOIN member_blacklist m_bl
-		  ON m_bl.subclass_id = ac.subclass_id
-		 AND m_bl.member_name_id = ac.member_name_id
 		WHERE True
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
