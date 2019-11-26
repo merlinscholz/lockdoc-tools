@@ -35,7 +35,6 @@ fi
 if [ ${USE_SUBCLASSES} -eq 1 ];
 then
 	TYPE_NAME_COLUMN="(CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END)"
-	TYPE_ID_ALIAS="subclass_id_group"
 	TYPE_ID_COLUMN="subclass_id"
 	LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_a_dt.name ELSE CONCAT(lock_a_dt.name, ':', lock_sc.name) END)"
 	TYPE_NAME_JOIN_STACKS="
@@ -45,7 +44,6 @@ JOIN data_types dt
   ON dt.id = sc.data_type_id"
 else
 	TYPE_NAME_COLUMN="dt.name"
-	TYPE_ID_ALIAS="data_type_id_group"
 	TYPE_ID_COLUMN="data_type_id"
 	LOCKNAME_FORMAT="lock_a_dt.name"
 	TYPE_NAME_JOIN_STACKS="
@@ -72,40 +70,39 @@ FROM
 
 (
 	-- add GROUP_CONCAT of all held locks (in locking order) to each list of accessed members
-	SELECT concatgroups.${TYPE_ID_ALIAS}, concatgroups.type_name, concatgroups.members_accessed,
+	SELECT concatgroups.${TYPE_ID_COLUMN}, concatgroups.type_name, concatgroups.members_accessed,
 		string_agg(
 			CASE
---			WHEN l.embedded_in IS NULL THEN CONCAT(l.id, '(', l.data_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation)
---			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id THEN CONCAT('EMBSAME(', l.data_type_name, '[', l.sub_lock, '])') -- embedded in same
-----			ELSE CONCAT('EXT(', lock_a_dt.name, '.', l.data_type_name, '[', l.sub_lock, '])') -- embedded in other
---			ELSE CONCAT('EMB:', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- embedded in other
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* no name available)
+				-- global (or embedded in unknown allocation *and* no name available)
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])')
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
+				-- global (or embedded in unknown allocation *and* a name is available)
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])')
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = concatgroups.alloc_id
+				-- local lock and embedded in the same data type
 				THEN CONCAT('EMBSAME(', CONCAT(${LOCKNAME_FORMAT}, '.',
 					CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 						mn_lock_member.name
 					ELSE 
 						CONCAT(mn_lock_member.name, '?')
 					END
-					), '[', l.sub_lock, '])') -- embedded in same
+					), '[', l.sub_lock, '])')
 			ELSE CONCAT('EMBOTHER', '(',  CONCAT(${LOCKNAME_FORMAT}, '.',
+				-- local lock and embedded in the another data type
 				CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
 					mn_lock_member.name
 				ELSE 
 					CONCAT(mn_lock_member.name, '?')
 				END
 				), '[', l.sub_lock, '])') -- embedded in other
-	--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.byte_offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
 			END
 			 , ',' ORDER BY lh.start) AS locks_held
 	FROM
 
 	(
 		-- GROUP_CONCAT all member accesses within a TXN and a specific allocation
-		SELECT fac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, fac.alloc_id, fac.txn_id,
+		SELECT fac.${TYPE_ID_COLUMN}, ${TYPE_NAME_COLUMN} AS type_name, fac.alloc_id, fac.txn_id,
 			string_agg(CONCAT(fac.type, ':', mn.name), ',' ORDER BY fac.byte_offset) AS members_accessed
 		FROM
 
@@ -158,14 +155,14 @@ FROM
 	-- else                                      => the lock is contained in this member, exact name unknown
 	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_name_id
-	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.${TYPE_ID_ALIAS}, concatgroups.type_name, concatgroups.members_accessed
+	GROUP BY concatgroups.alloc_id, concatgroups.txn_id, concatgroups.${TYPE_ID_COLUMN}, concatgroups.type_name, concatgroups.members_accessed
 
 	UNION ALL
 
 	-- Memory accesses to known allocations without any locks held: We
 	-- cannot group these into TXNs, instead we assume them each in their
 	-- own TXN for the purpose of this query.
-	SELECT ac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, CONCAT(ac.ac_type, ':', mn.name) AS members_accessed, '' AS locks_held
+	SELECT ac.${TYPE_ID_COLUMN}, ${TYPE_NAME_COLUMN} AS type_name, CONCAT(ac.ac_type, ':', mn.name) AS members_accessed, '' AS locks_held
 	FROM accesses_flat ac
 	JOIN subclasses sc
 	  ON ac.subclass_id = sc.id
@@ -180,8 +177,8 @@ FROM
 	AND ac.txn_id IS NULL
 ) AS withlocks
 
-GROUP BY ${TYPE_ID_ALIAS}, members_accessed, locks_held, type_name
-ORDER BY ${TYPE_ID_ALIAS}, occurrences, members_accessed, locks_held
+GROUP BY ${TYPE_ID_COLUMN}, members_accessed, locks_held, type_name
+ORDER BY ${TYPE_ID_COLUMN}, occurrences, members_accessed, locks_held
 ;
 EOT
 elif [ ${USE_STACK} -eq 1 ];
