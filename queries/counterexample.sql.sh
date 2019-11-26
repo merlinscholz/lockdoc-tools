@@ -276,26 +276,6 @@ cat <<EOT
 					s_ac.ac_id = ac.ac_id AND
 					s_ac.ac_type = '$ACCESSTYPE'
 				)
-				AND NOT EXISTS
-				(
-					SELECT
-					FROM  stacktraces AS s_st
-					INNER JOIN function_blacklist s_fn_bl
-					  ON s_fn_bl.fn = s_st.function
-					WHERE ac.stacktrace_id = s_st.id
-					AND
-					(
-						(
-						      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-						      OR
-						      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-						      OR
-						      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
-						)
-						AND
-						(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-					)
-				)
 			) ac
 
 			JOIN stacktraces AS st
