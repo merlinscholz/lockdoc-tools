@@ -38,11 +38,19 @@ then
 	TYPE_ID_ALIAS="subclass_id_group"
 	TYPE_ID_COLUMN="subclass_id"
 	LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_a_dt.name ELSE CONCAT(lock_a_dt.name, ':', lock_sc.name) END)"
+	TYPE_NAME_JOIN_STACKS="
+JOIN subclasses sc
+  ON sc.id = fstacks.${TYPE_ID_COLUMN}
+JOIN data_types dt
+  ON dt.id = sc.data_type_id"
 else
 	TYPE_NAME_COLUMN="dt.name"
 	TYPE_ID_ALIAS="data_type_id_group"
 	TYPE_ID_COLUMN="data_type_id"
 	LOCKNAME_FORMAT="lock_a_dt.name"
+	TYPE_NAME_JOIN_STACKS="
+JOIN data_types dt
+  ON dt.id = fstacks.${TYPE_ID_COLUMN}"
 fi
 
 if [ ${USE_STACK} -eq 0 ];
@@ -179,88 +187,57 @@ EOT
 elif [ ${USE_STACK} -eq 1 ];
 then
 cat <<EOT
+-- Count stacktraces with distinct locks-held sets.
+--
+-- Hint: Read subquery comments from the innermost query "upwards".
 SELECT
-	type_name,
-	member, locks_held,
-	COUNT(*) AS occurrences
+	${TYPE_NAME_COLUMN} AS type_name, CONCAT(fstacks.ac_type, ':', mn.name) AS member, fstacks.locks_held, fstacks.occurrences
 FROM
 (
+	-- Now, group all memory accesses by (data_type/subclass, ac_type, member, locks_held).
+	-- Count the *distinct* values of stacktrace_id. Distinct is very important since there might several
+	-- memory accesses for the same value of (data_type/subclass, ac_type, member, locks_held, stacktrace_id).
+	-- For example, one allocation is accessed at least twice with the same set of locks and the same stacktrace.
 	SELECT 
-		type_name, ${TYPE_ID_ALIAS},
-		member, locks_held
+		obs.${TYPE_ID_COLUMN}, obs.member_name_id, obs.ac_type, obs.locks_held,
+		COUNT(DISTINCT obs.stacktrace_id) AS occurrences
 	FROM
 	(
-		SELECT fac.${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, fac.member, fac.stacktrace_id,
-			string_agg(
+		-- Get all combinations of (locks_held, stacktrace_id) for each tuple of (data_type/subclass, ac_type, member)
+		-- First, we need to determine the locks held for *every* memory access
+		-- We can group the results later on.
+		SELECT ac_1.${TYPE_ID_COLUMN}, ac_1.member_name_id, ac_1.ac_type, ac_1.stacktrace_id,
+			string_agg(CASE
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
+				-- global (or embedded in unknown allocation *and* no name available)
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])')
+			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
+				-- global (or embedded in unknown allocation *and* a name is available)
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') 
+			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = ac_1.alloc_id
+				-- local lock and embedded in the same data type
+				THEN CONCAT('EMBSAME(', CONCAT(${LOCKNAME_FORMAT}, '.',
 				CASE
-				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-					THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* no name available)
-				WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-					THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])') -- global (or embedded in unknown allocation *and* a name is available)
-				WHEN l.embedded_in IS NOT NULL AND l.embedded_in = fac.alloc_id
-					THEN CONCAT('EMBSAME(', CONCAT(${LOCKNAME_FORMAT}, '.',
-						CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
-							mn_lock_member.name
-						ELSE 
-							CONCAT(mn_lock_member.name, '?')
-						END
-						), '[', l.sub_lock, '])') -- embedded in same
-				ELSE CONCAT('EMBOTHER', '(',  CONCAT(${LOCKNAME_FORMAT}, '.',
-					CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN 
-						mn_lock_member.name
+					WHEN l.address - lock_a.base_address = lock_member.byte_offset
+						THEN mn_lock_member.name
 					ELSE 
 						CONCAT(mn_lock_member.name, '?')
-					END
-					), '[', l.sub_lock, '])') -- embedded in other
-		--			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_a_dt.name, '.', IF(l.address - lock_a.base_address = lock_member.byte_offset, mn_lock_member.name, CONCAT(mn_lock_member.name, '?'))), '[', l.sub_lock, '])') -- embedded in other
 				END
-				, ',' ORDER BY lh.start) AS locks_held
-		FROM
-		(
-			SELECT ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type AS ac_type, ac.subclass_id AS subclass_id, ac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, CONCAT(ac.ac_type, ':', mn.name) AS member, ac.byte_offset, ac.stacktrace_id
-			FROM accesses_flat ac
-			JOIN member_names mn
-			  ON mn.id = ac.member_name_id
-			WHERE True
-			${DATATYPE_FILTER}
-			${MEMBER_FILTER}
-			-- ====================================
-			AND NOT EXISTS
-			(
-				SELECT
-				FROM member_blacklist m_bl
-				WHERE m_bl.subclass_id = ac.subclass_id
-				 AND m_bl.member_name_id = ac.member_name_id
-			)
-			AND ac.txn_id IS NOT NULL
-			AND NOT EXISTS
-			(
-				SELECT
-				FROM  stacktraces AS s_st
-				INNER JOIN function_blacklist s_fn_bl
-				  ON s_fn_bl.fn = s_st.function
-				WHERE ac.stacktrace_id = s_st.id
-				AND
-				(
-					(
-					      (s_fn_bl.subclass_id IS NULL  AND s_fn_bl.member_name_id IS NULL) -- globally blacklisted function
-					      OR
-					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-					      OR
-					      (s_fn_bl.subclass_id = ac.subclass_id AND s_fn_bl.member_name_id = ac.member_name_id) -- for this member blacklisted
-					)
-					AND
-					(s_fn_bl.sequence IS NULL OR s_fn_bl.sequence = s_st.sequence) -- for functions that appear at a certain position within the trace
-				)
-			)
-			GROUP BY ac.ac_id, ac.alloc_id, ac.txn_id, ac.ac_type, ac.subclass_id, ac.${TYPE_ID_COLUMN}, member, ac.byte_offset, ac.stacktrace_id
-		) AS fac -- = Folded ACcesses
-		JOIN subclasses sc
-		  ON fac.subclass_id = sc.id
-		JOIN data_types dt
-		  ON dt.id = sc.data_type_id
+				), '[', l.sub_lock, '])')
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT(${LOCKNAME_FORMAT}, '.',
+				-- local lock and embedded in the another data type
+				CASE
+					WHEN l.address - lock_a.base_address = lock_member.byte_offset
+						THEN mn_lock_member.name
+					ELSE 
+						CONCAT(mn_lock_member.name, '?')
+				END
+				), '[', l.sub_lock, '])')
+			END
+			, ',' ORDER BY lh.start) AS locks_held
+		FROM accesses_flat ac_1
 		JOIN locks_held lh
-		  ON lh.txn_id = fac.txn_id
+		  ON lh.txn_id = ac_1.txn_id
 		JOIN locks l
 		  ON l.id = lh.lock_id
 		-- find out more about each held lock (allocation -> structs_layout
@@ -274,34 +251,31 @@ FROM
 		LEFT JOIN structs_layout_flat lock_member
 		  ON lock_sc.data_type_id = lock_member.data_type_id
 		 AND l.address - lock_a.base_address = lock_member.helper_offset
-		-- lock_a.id IS NULL                         => not embedded
-		-- l.address - lock_a.base_address = lock_member.offset   => the lock is exactly this member (or at the beginning of a complex sub-struct)
-		-- else                                      => the lock is contained in this member, exact name unknown
 		LEFT JOIN member_names mn_lock_member
 		  ON mn_lock_member.id = lock_member.member_name_id
-		GROUP BY fac.ac_id, fac.${TYPE_ID_ALIAS}, type_name, fac.member, fac.stacktrace_id
+		Where True
+		${DATATYPE_FILTER}
+		${MEMBER_FILTER}
+		-- ====================================
+		GROUP BY ac_1.ac_id, ac_1.${TYPE_ID_COLUMN}, ac_1.member_name_id, ac_1.ac_type, ac_1.stacktrace_id
 
 		UNION ALL
 
-		SELECT ac.${TYPE_ID_COLUMN} AS ${TYPE_ID_ALIAS}, ${TYPE_NAME_COLUMN} AS type_name, CONCAT(ac.ac_type, ':', mn.name) AS members, ac.stacktrace_id, '' AS locks_held
-		FROM accesses_flat ac
-		JOIN subclasses sc
-		  ON ac.subclass_id = sc.id
-		JOIN data_types dt
-		  ON dt.id = ac.data_type_id
-		JOIN member_names mn
-		  ON mn.id = ac.member_name_id
+		-- Get all memory accesses without any lock held
+		SELECT ac_2.${TYPE_ID_COLUMN}, ac_2.member_name_id, ac_2.ac_type, ac_2.stacktrace_id, '' AS locks_held
+		FROM accesses_flat ac_2
 		WHERE ac_2.txn_id IS NULL
 		${DATATYPE_FILTER}
 		${MEMBER_FILTER}
 		-- ====================================
-		GROUP BY ac.ac_id, ac.${TYPE_ID_COLUMN}, type_name, members, ac.stacktrace_id
-	) AS concatlocks
-	GROUP BY concatlocks.${TYPE_ID_ALIAS}, concatlocks.member, concatlocks.locks_held, concatlocks.stacktrace_id, concatlocks.type_name
+		GROUP BY ac_2.ac_id, ac_2.${TYPE_ID_COLUMN}, ac_2.member_name_id, ac_2.ac_type, ac_2.stacktrace_id
+	) AS obs
+	GROUP BY obs.${TYPE_ID_COLUMN}, obs.member_name_id, obs.ac_type, obs.locks_held
 ) AS fstacks
-GROUP BY fstacks.${TYPE_ID_ALIAS}, fstacks.member, fstacks.locks_held, fstacks.type_name
-ORDER BY fstacks.${TYPE_ID_ALIAS}, fstacks.member, fstacks.locks_held, occurrences
-;
+${TYPE_NAME_JOIN_STACKS}
+JOIN member_names mn
+  ON mn.id = fstacks.member_name_id
+ORDER BY fstacks.${TYPE_ID_COLUMN}, fstacks.member_name_id, fstacks.ac_type, fstacks.locks_held, occurrences;
 EOT
 else
 	echo "Unknown mode!"
