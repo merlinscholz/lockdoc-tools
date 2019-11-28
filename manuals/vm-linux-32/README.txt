@@ -44,5 +44,5 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
 7. Benchmark-Suite vorbereiten
 	- git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
 	- git checkout -b lockdoc-ltp 20190115
-	- {syscalls,fs}-custom aus manuals/vm-linux-32/scripts/ nach /opt/kernel/ltp/src/runtest/ kopieren
+	- {syscalls,{syscalls,fs}-custom} aus manuals/vm-linux-32/scripts/ nach /opt/kernel/ltp/src/runtest/ kopieren
 	- ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
