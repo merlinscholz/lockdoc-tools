@@ -10,9 +10,13 @@
 #include <algorithm>
 #include <tuple>
 #include <iomanip>
+#include <deque>
+#include <assert.h>
 
 #include "optionparser.h"
 #include "optionparser_ext.h"
+
+//#define DEBUG
 
 // hypothesizer: Creates hypotheses on locking rules, and tests them against a
 // set of observations/lock combinations.
@@ -22,10 +26,12 @@
 // Note: It is possible to limit the number of used threads by setting the
 // OMP_NUM_THREADS environment variable.
 
-const double accept_threshold_default = .9, cutoff_threshold_default = .1, confidence_threshold_default = 50.0;
+const double accept_threshold_default = .9, nolock_threshold_default = .05, cutoff_threshold_default = .1, confidence_threshold_default = 50.0, reduction_factor_default = .05;
 
+enum SelectionStrategy { TOPDOWN, BOTTOMUP, SHARPEN };
 enum optionIndex { UNKNOWN, HELP,
-	ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
+	REDUCTIONFACTOR, SELECTIONSTRATEGY,
+	NOLOCKTHRESHOLD, ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
 	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD };
 const option::Descriptor usage[] = {
 {
@@ -34,8 +40,17 @@ const option::Descriptor usage[] = {
 }, {
   HELP, 0, "h", "help", Arg::None, "--help  \tPrint usage and exit"
 }, {
+  NOLOCKTHRESHOLD, 0, "n", "nolock-threshold", Arg::Required,
+  "-n/--nolock-threshold n  \tSet threshold for assuming that no lock is required to n% (default: 5.0)"
+}, {
   ACCEPTTHRESHOLD, 0, "a", "accept-threshold", Arg::Required,
   "-a/--accept-threshold n  \tSet hypothesis accept threshold to n% (default: 90.0)"
+}, {
+  REDUCTIONFACTOR, 0, "f", "reduction-factor", Arg::Required,
+  "-f/--reduction-factor n  \tSet max. allowed reduction in rel. support when selecting a more restrictive hypothesis to n% (default: 5.0)"
+}, {
+  SELECTIONSTRATEGY, 0, "g", "selection-strategy", Arg::Required,
+  "-g/--selection-strategy n  \tSelect the strategy for determining the winning hypothesis: \"list\", or a \"graph\". "
 }, {
   CUTOFFTHRESHOLD, 0, "t", "cutoff-threshold", Arg::Required,
   "-t/--cutoff-threshold n  \tSet hypothesis cutoff threshold to n% (default: 10.0)"
@@ -150,6 +165,7 @@ struct LockingHypothesisMatches {
 };
 
 struct Member {
+	static const std::vector<myid_t> root_node;
 	Member(std::string datatype, std::string combined_name) : datatype(datatype)
 	{
 		parse_name(combined_name);
@@ -159,6 +175,10 @@ struct Member {
 		name.clear();
 		combinations.clear();
 		hypotheses.clear();
+		conflict_list.clear();
+		winning_hypothesis.clear();
+		hypotheses.clear();
+		graph.clear();
 	}
 	void parse_name(std::string combined_name)
 	{
@@ -172,11 +192,27 @@ struct Member {
 	std::string datatype;
 	std::string name; // without r: / w: prefix (this is kept in the accesstype member)
 	uint64_t occurrences = 0; // counts all accesses to this member
+	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
 	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
+	std::map<std::vector<myid_t>, std::set<std::vector<myid_t>>> graph;
+	/*
+	 * Store equal hypotheses
+	 * Two hypotheses are considered equal if the same amount of locks
+	 * are involved and both have the same relative support.
+	 * The first entry is used as representative for this group.
+	 * It furthermore is used as concrete winning hypothesis.
+	 * Each element is a pair of hypotheses. The first hypothesis is
+	 * a sorted list of locks. Whereas the second entry is a particular
+	 * locking hypothesis having the locks in a correct order.
+	 */
+	std::deque<std::pair<std::vector<myid_t>, std::vector<myid_t>>> conflict_list;
+	std::vector<myid_t> winning_hypothesis;
+	bool winner_found = false;
 	bool show = true; // set to false if filtered out by user parameters
 	char accesstype; // r / w
 };
+const std::vector<myid_t> Member::root_node;
 
 // All members seen in the input.  The index of each element is used as a key
 // in other data structures.
@@ -213,6 +249,361 @@ std::string locks2string(const std::vector<myid_t>& l, const std::string separat
 	return ss.str();
 }
 
+std::string ids2string(const std::vector<myid_t>& l, const std::string separator = " -> ", const std::string quote = "")
+{
+	std::stringstream ss;
+	if (l.size() == 0) {
+		ss << "(no locks held)";
+	}
+	for (auto it = l.cbegin(); it != l.cend(); ++it) {
+		ss << quote << *it << quote;
+		if (it + 1 != l.cend()) {
+			ss << separator;
+		}
+	}
+	return ss.str();
+}
+
+int diff_hypotheses(const std::vector<myid_t>& lhs, const std::vector<myid_t>& rhs)
+{
+	assert(rhs.size() >= lhs.size());
+
+	unsigned int diff = rhs.size() - lhs.size();
+
+	for (unsigned int i = 0; i <= diff; i++) {
+		unsigned int found = 0;
+		for (unsigned int k = 0; k < lhs.size(); k++) {
+			if (lhs[k] == rhs[k + i]) {
+				found++;
+			}
+		}
+		if (found == lhs.size()) {
+			return diff;
+		}
+	}
+	return -1;
+}
+
+bool in_conflict_list(const std::deque<std::pair<std::vector<myid_t>, std::vector<myid_t>>>& conflict_list, const std::vector<myid_t>& hypothesis) {
+	for (auto &elem : conflict_list) {
+		if (elem.second == hypothesis) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void print_graph(Member& member) {
+	std::deque<std::vector<myid_t>> nodes;
+	nodes.push_back(Member::root_node);
+
+	while (nodes.size() > 0) {
+		std::vector<myid_t> cur_node_sorted = nodes.front();
+		auto hypothesis = member.hypotheses[cur_node_sorted];
+		uint64_t occurerences = 0;
+		for (auto match : hypothesis.matches) {
+			occurerences += match.second;
+		}
+		std::cout << "node: " << locks2string(cur_node_sorted, " + ") << " , occurrences: " << occurerences << std::endl;
+		std::cout << "children:" << std::endl;
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+			std::cout << "\t" << locks2string(child, " + ") << std::endl;
+		}
+		nodes.pop_front();
+	}
+}
+
+void determine_winning_hypothesis(Member& member, void* param,
+	void (*eval_cb)(Member&, void*, std::deque<std::vector<myid_t>>&, std::vector<myid_t>&, std::vector<myid_t>&, double&, double&),
+	void (*init_cb)(Member&, void*, std::deque<std::vector<myid_t>>&, double&)) {
+#ifdef DEBUG
+	std::cout << "Member: " << member.accesstype << ":" << member.name << std::endl;
+#endif
+	std::deque<std::vector<myid_t>> nodes;
+
+#ifdef DEBUG
+	print_graph(member);
+#endif
+
+	/*
+	 * Most of our algorithms use the root node (aka nolock hypothesis) 
+	 * as default hypothesis.
+	 * We therefore set it as the winner upon initialization.
+	 * It has a relative support of 100%.
+	 */
+	double rel_support_winner = 1.0;
+	member.conflict_list.clear();
+	member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(Member::root_node,Member::root_node));
+	member.winner_found = true;
+	/*
+	 * The the breadth-first search below only proceeds if 
+	 * a new node (aka hypothesis) is better than the current one.
+	 * Since we set the root node (aka the nolock hypothesis) as
+	 * the winning hypothesis at the beginning, an algorithm would
+	 * compare the root node with itself, and might stop immediatley. 
+	 * We therefore init the list of nodes with the children of the root node.
+	 * An algorithm is free to change this behavior by providing an init callback
+	 * as shown by evaluate_hypothesis_init_topdown().
+	 */
+	for (auto child : member.graph[Member::root_node]) {
+		nodes.push_back(child);
+	}
+	if (init_cb != NULL) {
+		init_cb(member, param, nodes, rel_support_winner);
+	}
+
+	while (nodes.size() > 0) {
+		std::vector<myid_t> cur_node_sorted = nodes.front();
+		std::vector<myid_t> cur_node_ordered;
+		auto hypothesis = member.hypotheses[cur_node_sorted];
+		uint64_t max_occurerences = 0;
+
+		// If there is more than hypothesis with these locks,
+		// consider the lock order.
+		// Choose the hypothesis with the highiest amonut of occurrences as representative.
+		for (auto match : hypothesis.matches) {
+			if (match.second > max_occurerences) {
+				max_occurerences = match.second;
+				cur_node_ordered = match.first;
+			}
+		}
+
+		double cur_rel_sup =  (double)hypothesis.matches[cur_node_ordered] / (double)member.occurrences;
+#ifdef DEBUG
+		std::cout << "Examining: " << locks2string(cur_node_ordered, " -> ") << ", " << cur_rel_sup << "%" << "(" << hypothesis.matches[cur_node_ordered] << ")" << std::endl;
+#endif
+		eval_cb(member, param, nodes, cur_node_sorted, cur_node_ordered, rel_support_winner, cur_rel_sup);
+
+		nodes.pop_front();
+	}
+
+#ifdef DEBUG
+	std::cout << "conflict list length: " << member.conflict_list.size() << std::endl;
+#endif
+
+	if (member.winner_found) {
+		auto winner = member.conflict_list.front();
+		member.winning_hypothesis = winner.second;
+#ifdef DEBUG
+		std::cout << "Winning hypothesis:" << locks2string(member.winning_hypothesis, " -> ") << std::endl;
+#endif
+	} else {
+#ifdef DEBUG
+		std::cout << "No winning hypothesis found" << std::endl;
+#endif
+	}
+}
+
+void evaluate_hypothesis_bottomup(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,
+	std::vector<myid_t>& cur_node_sorted, std::vector<myid_t>& cur_node_ordered, double& rel_support_winner, double& cur_rel_sup) {
+	double accept_threshold = *(double*)param;
+
+	if (member.conflict_list.front().first.size() == cur_node_sorted.size() && cur_rel_sup == rel_support_winner) {
+		// We've found an equal hypothesis. Just save it.
+		if (!in_conflict_list(member.conflict_list, cur_node_ordered)) {
+			member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+#ifdef DEBUG
+			std::cout << "adding to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		} else {
+#ifdef DEBUG
+			std::cout << "already in to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		}
+		// Examine the children
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+#ifdef DEBUG
+			std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+		}
+	} else if ((accept_threshold <= cur_rel_sup && cur_rel_sup < rel_support_winner) ||
+		(cur_node_sorted.size() > member.conflict_list.front().first.size() && cur_rel_sup == rel_support_winner)) {
+		/*
+		 * Found a better hypothesis:
+		 * (rel. support is below current winner AND above accept threshold) OR
+		 * (greater number of involved locks AND same rel. support)
+		 */
+#ifdef DEBUG
+		std::cout << "Better node found. Resetting." << std::endl;
+#endif
+		member.winner_found = true;
+		member.conflict_list.clear();
+		member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+		rel_support_winner = cur_rel_sup;
+		/*
+		 * Since we've found a new potential winner, we'll examine
+		 * the children.
+		 * A child might have the same rel. support but
+		 * more locks involved, for example.
+		 */
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+#ifdef DEBUG
+			std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+		}
+	}
+}
+
+void evaluate_hypothesis_sharpen(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,
+	std::vector<myid_t>& cur_node_sorted, std::vector<myid_t>& cur_node_ordered, double& rel_support_winner, double& cur_rel_sup) {
+	double reduction_factor = *(double*)param;
+	double delta = (1.0 - cur_rel_sup / rel_support_winner);
+
+	if (member.conflict_list.front().first.size() == cur_node_sorted.size() && cur_rel_sup == rel_support_winner) {
+		// We've found an equal hypothesis. Just save it.
+		if (!in_conflict_list(member.conflict_list, cur_node_ordered)) {
+			member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+#ifdef DEBUG
+			std::cout << "adding to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		} else {
+#ifdef DEBUG
+			std::cout << "already in to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		}
+#ifdef DEBUG
+		std::cout << " adding to conflict list" << std::endl;
+#endif
+		// Examine the children
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+		}
+	} else if (cur_node_sorted.size() > member.conflict_list.front().first.size() &&
+			  (cur_rel_sup == rel_support_winner || delta <= reduction_factor)) {
+		// Found a better hypothesis: More locks involved AND (same rel. support OR reduktion in rel. sup less or equal to reduction factor)
+		member.winner_found = true;
+		member.conflict_list.clear();
+		member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+		rel_support_winner = cur_rel_sup;
+		/*
+		 * Since we've found a new potential winner, we'll examine
+		 * the children.
+		 * A child might have the same rel. support but
+		 * more locks involved, for example.
+		 */
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+		}
+#ifdef DEBUG
+		std::cout << " adding children" << std::endl;
+#endif
+	}
+}
+
+void evaluate_hypothesis_init_topdown(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,  double& rel_support_winner) {
+	rel_support_winner = 0.0;
+	member.winner_found = false;
+	nodes.clear();
+	nodes.push_back(Member::root_node);
+}
+
+void evaluate_hypothesis_topdown(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,
+	std::vector<myid_t>& cur_node_sorted, std::vector<myid_t>& cur_node_ordered, double& rel_support_winner, double& cur_rel_sup) {
+
+	double accept_threshold = ((double*)param)[0];
+	double nolock_threshold = ((double*)param)[1];
+
+	// handle accesses w/o locks
+	double nolock_fraction =
+		(double) (member.occurrences - member.occurrences_with_locks) /
+		(double) member.occurrences;
+	bool nolock_is_winner = nolock_fraction >= nolock_threshold;
+
+	if (!nolock_is_winner) {
+		if (cur_node_sorted == Member::root_node) {
+			for (auto child : member.graph[cur_node_sorted]) {
+				nodes.push_back(child);
+#ifdef DEBUG
+				std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+			}
+		} else if (member.conflict_list.front().first.size() == cur_node_sorted.size() && cur_rel_sup == rel_support_winner) {
+			// We've found an equal hypothesis. Just save it.
+			if (!in_conflict_list(member.conflict_list, cur_node_ordered)) {
+				member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+#ifdef DEBUG
+				std::cout << "adding to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+			} else {
+#ifdef DEBUG
+				std::cout << "already in to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+			}
+		// Examine the children
+			for (auto child : member.graph[cur_node_sorted]) {
+				nodes.push_back(child);
+#ifdef DEBUG
+				std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+			}
+		} else if (accept_threshold <= cur_rel_sup && cur_rel_sup >= rel_support_winner &&
+			member.conflict_list.front().first.size() <= cur_node_sorted.size()) {
+			/*
+			 * Found a better hypothesis:
+			 * (rel. support is above accept threshold AND greater equal the current winner) AND
+			 * (greater or equal amount of locks are involved)
+			 */
+#ifdef DEBUG
+			std::cout << "Better node found. Resetting: " <<  locks2string(cur_node_sorted, " -> ") << std::endl;
+#endif
+			member.winner_found = true;
+			member.conflict_list.clear();
+			member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+			rel_support_winner = cur_rel_sup;
+			/*
+			 * Since we've found a new potential winner, we'll examine
+			 * the children.
+			 * A child might have the same rel. support but
+			 * more locks involved, for example.
+			 */
+			for (auto child : member.graph[cur_node_sorted]) {
+				nodes.push_back(child);
+#ifdef DEBUG
+				std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+			}
+		}
+	} else {
+		member.winner_found = true;
+		if (member.conflict_list.size() == 0) {
+			member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(Member::root_node, Member::root_node));
+		}
+#ifdef DEBUG
+		std::cout << "Nolock is the winner. Doing nothing." << std::endl;
+#endif
+	}
+}
+
+void add_hypothesis_to_graph(Member& member, const std::vector<myid_t>& hypothesis)
+{
+	if (hypothesis.size() == 0) {
+		return;
+	}
+	std::deque<std::vector<myid_t>> nodes;
+	nodes.push_back(Member::root_node);
+
+	while (nodes.size() > 0) {
+		auto& cur_node = nodes.front();
+		//std::cout << "Using node:" << locks2string(cur_node, " + ") << std::endl;
+		int ret = diff_hypotheses(cur_node, hypothesis);
+		assert(ret != 0);
+		if (ret > 0) {
+			if (ret == 1) {
+				//std::cout << "Adding: " << locks2string(hypothesis, " + ") << " to " << locks2string(cur_node, " + ") << std::endl;
+				member.graph[cur_node].emplace(hypothesis);
+			} else {
+				for (auto&& child : member.graph[cur_node]) {
+					nodes.push_back(child);
+				}
+			}
+		}
+		nodes.pop_front();
+	}
+}
+
 void evaluate_hypothesis(Member& member, const std::vector<myid_t>& hypothesis)
 {
 	auto ret = member.hypotheses.emplace(std::piecewise_construct,
@@ -229,9 +620,12 @@ void evaluate_hypothesis(Member& member, const std::vector<myid_t>& hypothesis)
 			matches.occurrences += lc.occurrences;
 			matches.sorted_hypothesis = hypothesis;
 			matches.matches[lc.lock_order(hypothesis)] += lc.occurrences;
+			//std::cout << "Added: " << locks2string(lc.lock_order(hypothesis)) << " " << lc.occurrences << " occurrences" << std::endl;
 		}
 	}
 	//std::cout << ", matches: " << matches.occurrences << std::endl;
+
+	add_hypothesis_to_graph(member, hypothesis);
 }
 
 void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned next_lockpos, std::vector<myid_t>& cur, unsigned depth)
@@ -242,6 +636,7 @@ void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned nex
 	}
 	for (unsigned lockpos = next_lockpos; lockpos < lc.locks_held_sorted.size(); ++lockpos) {
 		cur.push_back(lc.locks_held_sorted[lockpos]);
+		//std::cout << "TESTING:" << locks2string(cur, " + ") << std::endl;
 		find_hypotheses_rek(member, lc, lockpos + 1, cur, depth - 1);
 		cur.pop_back();
 	}
@@ -251,6 +646,7 @@ void find_hypotheses(Member& member)
 {
 	std::vector<myid_t> cur;
 
+	//std::cout << "Member " << member.accesstype << ":" << member.name << std::endl;
 	// depth = 0 -> evaluate the no-lock hypothesis
 	// depth = 1 -> evaluate all one-lock hypotheses
 	// depth = 2 -> evaluate all two-lock hypotheses
@@ -258,10 +654,10 @@ void find_hypotheses(Member& member)
 	for (unsigned depth = 0; ; ++depth) {
 		size_t prev_hypothesis_count = member.hypotheses.size();
 
-		//std::cerr << "depth " << depth << std::endl;
+		//std::cout << "depth " << depth << std::endl;
 
 		for (const auto& lc : member.combinations) {
-			//std::cout << locks2string(obs.locks_held_sorted, " + ") << std::endl;
+			//std::cout << locks2string(lc.locks_held_sorted, " + ") << std::endl;
 			cur.clear();
 			find_hypotheses_rek(member, lc, 0, cur, depth);
 		}
@@ -305,8 +701,8 @@ void print_bugsql(const std::string& prefix, const std::string& postfix,
 }
 
 void print_hypotheses(const Member& member,
-	double accept_threshold, double cutoff_threshold,
-	ReportMode reportmode, bool bugsql, double confidence_threshold)
+	double cutoff_threshold, ReportMode reportmode,
+	bool bugsql, double confidence_threshold)
 {
 	if (reportmode == ReportMode::NORMAL) {
 		std::cout << member.datatype << " member: "
@@ -315,6 +711,15 @@ void print_hypotheses(const Member& member,
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
 	}
 
+	//std::cout << "Graph for " << member.accesstype << ":" << member.name << " :" << std::endl;
+	//for (auto entry : member.graph) {
+	//	std::cout << locks2string(entry.first, " + ") << std::endl;
+	//	for (auto child : entry.second) {
+	//		const auto h = member.hypotheses.find(child)->second;
+	//		std::cout << "\t\t\t" << locks2string(child, " + ") << ": " << std::setw(5) << (double) h.occurrences / (double) member.occurrences * 100 << " %" << std::endl;
+	//	}
+	//}
+
 	// sort lock hypotheses by the number of memory accesses where each *set*
 	// of locks is held (for now disregarding the lock order, this happens
 	// within the output loop)
@@ -322,7 +727,7 @@ void print_hypotheses(const Member& member,
 	map2vec(member.hypotheses, sorted_hypotheses);
 	sort(sorted_hypotheses.begin(), sorted_hypotheses.end(),
 		[](const LockingHypothesisMatches& a, const LockingHypothesisMatches& b)
-		{ return a.occurrences < b.occurrences || // ascending occurrences
+		{ return a.occurrences > b.occurrences || // ascending occurrences
 			(a.occurrences == b.occurrences &&
 			// more locks first: as we pick the first (= lowest-support)
 			// hypothesis with a relative support >= accept_threshold as the
@@ -368,7 +773,7 @@ void print_hypotheses(const Member& member,
 				[](const std::pair<std::vector<myid_t>, uint64_t>& a,
 					const std::pair<std::vector<myid_t>, uint64_t>& b)
 					{
-						return a.second < b.second;
+						return a.second > b.second;
 					});
 
 			// show locking-order distribution
@@ -378,20 +783,32 @@ void print_hypotheses(const Member& member,
 				// fraction within all memory accesses
 				relative_support = (double) match.second / (double) member.occurrences;
 
-				bool this_is_the_winner = !found_winner && relative_support >= accept_threshold;
+				bool this_is_the_winner = !found_winner && member.winning_hypothesis == match.first && member.winner_found;
+				bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, match.first);
 				found_winner = found_winner || this_is_the_winner;
 
 				if (reportmode == ReportMode::NORMAL) {
-					std::string prefix = std::string(this_is_the_winner ? "!" : " ") + "      ";
+					std::string prefix;
+					if (this_is_the_winner) {
+						prefix += "!";
+					} else {
+						if (is_conflict) {
+							prefix += "?";
+						} else {
+							prefix += " ";
+						}
+					}
+					prefix += "      ";
 					std::cout << prefix
 						<< std::setw(5) << local_fraction * 100 << "% "
-						<< locks2string(match.first) << std::endl;
+						 << locks2string(match.first) << std::endl;
 					if (bugsql) {
 						print_bugsql(prefix, "\n", member, match.first, true,
 							member.occurrences - match.second);
 					}
 				} else if (reportmode == ReportMode::CSV ||
-							(reportmode == ReportMode::CSVWINNER && this_is_the_winner)) {
+							(reportmode == ReportMode::CSVWINNER && 
+							this_is_the_winner)) {
 					std::cout << member.datatype << ";"
 						<< member.name << ";"
 						<< member.accesstype << ";"
@@ -400,8 +817,8 @@ void print_hypotheses(const Member& member,
 						<< member.occurrences << ";"
 						<< std::setprecision(5)
 						<< relative_support * 100 << ";"
-						<< this_is_the_winner << ";"
-						<< relative_support * smoothstep(0, confidence_threshold, match.second) << ";";
+						<< (this_is_the_winner  ? 1 : (is_conflict ? 2 : 0))<< ";";
+						std::cout << relative_support * smoothstep(0, confidence_threshold, match.second) << ";";
 					print_bugsql("", "\n", member, match.first, true,
 						member.occurrences - match.second);
 				} else if (reportmode == ReportMode::DOC && this_is_the_winner) {
@@ -412,16 +829,28 @@ void print_hypotheses(const Member& member,
 		} else {
 			// only one locking order observed, show this one right away
 
-			bool this_is_the_winner = !found_winner && relative_support >= accept_threshold;
+			auto winner = h.matches.begin()->first;
+			bool this_is_the_winner = !found_winner && member.winning_hypothesis == winner && member.winner_found;
 			found_winner = found_winner || this_is_the_winner;
 
-			std::string prefix = std::string(this_is_the_winner ? "!" : " ") + "   ";
+			std::string prefix;
+			if (this_is_the_winner) {
+				prefix += "!";
+			} else {
+				bool found = in_conflict_list(member.conflict_list, winner);
+				if (found) {
+					prefix += "?";
+				} else {
+					prefix += " ";
+				}
+			}
+			prefix += "   ";
 			std::cout << prefix
 				<< std::setw(5) << relative_support * 100 << "% ("
 				<< h.occurrences << " out of " << member.occurrences << " mem accesses): "
-				<< locks2string(h.matches.begin()->first) << std::endl;
+				<<  locks2string(winner) << std::endl;
 			if (bugsql) {
-				print_bugsql(prefix, "\n", member, h.matches.begin()->first, true,
+				print_bugsql(prefix, "\n", member, winner, true,
 					member.occurrences - h.occurrences);
 			}
 		}
@@ -479,6 +908,32 @@ int main(int argc, char **argv)
 		return options[HELP] ? 0 : 1;
 	}
 
+	double reduction_factor = reduction_factor_default;
+	if (options[REDUCTIONFACTOR]) {
+		try {
+			reduction_factor = std::stod(options[REDUCTIONFACTOR].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse reduction factor value " << options[REDUCTIONFACTOR].last()->arg << std::endl;
+			return 1;
+		}
+		reduction_factor /= 100.0;
+	}
+
+	enum SelectionStrategy selection_strategy = SHARPEN;
+	if (options[SELECTIONSTRATEGY]) {
+		std::string criterion = options[SELECTIONSTRATEGY].last()->arg;
+		if (criterion == "topdown") {
+			selection_strategy = SelectionStrategy::TOPDOWN;
+		} else if (criterion == "bottomup") {
+			selection_strategy = SelectionStrategy::BOTTOMUP;
+		} else if (criterion == "sharpen") {
+			selection_strategy = SelectionStrategy::SHARPEN;
+		} else {
+			std::cerr << "Unknown hypothesis sort criterion " << criterion << std::endl;
+			return 1;
+		}
+	}
+
 	double accept_threshold = accept_threshold_default;
 	if (options[ACCEPTTHRESHOLD]) {
 		try {
@@ -488,6 +943,17 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		accept_threshold /= 100.0;
+	}
+
+	double nolock_threshold = nolock_threshold_default;
+	if (options[NOLOCKTHRESHOLD]) {
+		try {
+			nolock_threshold = std::stod(options[NOLOCKTHRESHOLD].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse nolock threshold value " << options[NOLOCKTHRESHOLD].last()->arg << std::endl;
+			return 1;
+		}
+		nolock_threshold /= 100.0;
 	}
 
 	double cutoff_threshold = cutoff_threshold_default;
@@ -667,6 +1133,9 @@ int main(int argc, char **argv)
 			// up as a zero-element lock-ID vector in members_combinations (and
 			// later members[member_id].combinations).
 			members[member_id].occurrences += occurrences;
+			if (locks_held.size() > 0) {
+				members[member_id].occurrences_with_locks += occurrences;
+			}
 			auto& combinations = members_combinations[member_id];
 			auto ret = combinations.emplace(std::piecewise_construct,
 				std::forward_as_tuple(locks_held), std::forward_as_tuple(occurrences, locks_held));
@@ -726,11 +1195,27 @@ int main(int argc, char **argv)
 		}
 
 		find_hypotheses(member);
+		switch (selection_strategy) {
+			case SelectionStrategy::SHARPEN:
+				determine_winning_hypothesis(member, &reduction_factor, evaluate_hypothesis_sharpen, NULL);
+				break;
+
+			case SelectionStrategy::TOPDOWN:
+				double param[2];
+				param[0] = accept_threshold;
+				param[1] = nolock_threshold;
+				determine_winning_hypothesis(member, &param, evaluate_hypothesis_topdown, evaluate_hypothesis_init_topdown);
+				break;
+
+			case SelectionStrategy::BOTTOMUP:
+				determine_winning_hypothesis(member, &accept_threshold, evaluate_hypothesis_bottomup, NULL);
+				break;
+		}
 
 #pragma omp critical
 {
 		if (sortby == SortCriterion::NONE) {
-			print_hypotheses(member, accept_threshold, cutoff_threshold, reportmode, bugsql, confidence_threshold);
+			print_hypotheses(member, cutoff_threshold, reportmode, bugsql, confidence_threshold);
 
 			member.clear();
 		} else {
@@ -764,7 +1249,7 @@ int main(int argc, char **argv)
 
 		for (const auto& member : members) {
 			if (member.show) {
-				print_hypotheses(member, accept_threshold, cutoff_threshold, reportmode, bugsql, confidence_threshold);
+				print_hypotheses(member, cutoff_threshold, reportmode, bugsql, confidence_threshold);
 			}
 		}
 	}
