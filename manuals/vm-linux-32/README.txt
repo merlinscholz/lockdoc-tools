@@ -1,21 +1,19 @@
-1. Eine Debian X VM für i386 aufsetzen
-	+ Folgende Pakete installieren (unvollständig): lcov libncurses5-dev git-core build-essential bison flex
-2. Kernel-Repo nach /opt/kernel/ auschecken
-	git clone https://gitos.cs.tu-dortmund.de/lockdoc/linux.git 
-	git checkout -b lockdebugging-4-10
-3. Kernel bauen und installieren(v4.10)
-	cp config-lockdebugging .config
-	make oldconfig
-	make -j X
-	make install
-4. Kernel sichern (v4.10)
-	Das *optionale* Suffix kann genutzt werden, um eine spezielle Variante zu identifiezieren.
-	Das Kernelimage liegt anschließend in /fs/scratch/al/lockdoc/experiment/ und heißt: vmlinux-4-10-nococci-$DATE-$GIT-HASH$SUFFIX
-	./copy-to-ios.sh <suffix>
-5. Grub für den Autostart des Benchmarks vorbereiten
-	- In /etc/default/grub die Variable GRUB_DEFAULT auf saved setzen.
-	- In /etc/grub.d/40_custom Folgendes eintragen:
-menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class os $menuentry_id_option 'lockdoc-4.10.0-al+' {
+- Setup a Debian X i386 VM
+	+ Install the following packages (incomplete list): lcov libncurses5-dev git-core build-essential bison flex
+- Build your own kernel
+	+ Checkout kernel in /opt/kernel/XXX
+	+ It has proven to use GCC 7.X. GCC 8.x has issues resolving instruction pointers that point to a leaf in the callgraph correctly.
+	+ Build it:
+		# cp config-lockdebugging .config
+		# make oldconfig
+		# make -j X
+		# make install
+	+ Copy the built vmlinux to your host. You can use the copy-to-host.sh script located in the kernel src directory.
+	  The script adds a version string to the vmlinux before copying it.
+- Setup Grub to automatically start the benchmark:
+	+ Set variable GRUB_DEFAULT to saved in /etc/default/grub
+	+ Add the following to /etc/grub.d/40_custom:
+menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class os $menuentry_id_option 'lockdoc-X.YY-al+' {
         load_video
         insmod gzio
         if [ x$grub_platform = xxen ]; then insmod xzio; insmod lzopio; fi
@@ -23,26 +21,26 @@ menuentry 'LockDoc-4.10-al' --class debian --class gnu-linux --class gnu --class
         insmod ext2
         set root='hd0,msdos1'
         if [ x$feature_platform_search_hint = xy ]; then
-          search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1  a6a47d48-af9e-4c65-b249-ac1fad11cd2b
+          search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1  <blkid of the root partition>
         else
-          search --no-floppy --fs-uuid --set=root a6a47d48-af9e-4c65-b249-ac1fad11cd2b
+          search --no-floppy --fs-uuid --set=root a
         fi
-        echo    'Loading Linux 4.10.0-al+ ...'
-        linux   /boot/vmlinuz-4.10.0-al+ root=UUID=a6a47d48-af9e-4c65-b249-ac1fad11cd2b ro quiet loglevel=0 init=/lockdoc/run-bench.sh
+        echo    'Loading Linux X.YY-al+ ...'
+        linux   /boot/vmlinuz-X.YY-al+ root=UUID=<blkid of the root partition> ro quiet loglevel=0 init=/lockdoc/run-bench.sh
         echo    'Loading initial ramdisk ...'
-        initrd  /boot/initrd.img-4.10.0-al+
+        initrd  /boot/initrd.img-X.YY-al+
 }
-	- Ggf. sind die Pfade zu dem Benchmark-Skript (siehe init=) anzupassen.
-	- Den o.g. Eintrag als Standard setzen
-		grub-set-default "lockdoc-4.10.0-al+"
-	- Alle Änderungen aktivieren:
-		update-grub
-	- Achtung: Ab sofort muss bei einem Neustart im Grub-Menü der entsprechende Eintrag für das gewöhnliche Userland ausgewählt werden. Ansonsten startet automatisch der Benchmark.
-6. Benchmark-Skript installieren
-	- Aus dem tools-Repo aus manuals/vm-linux-32/scripts/ das Skript 'run-bench.sh' in das Verzeichnis /lockdoc schieben.
-	- Außerdem das Verzeichnis /lockdoc/bench-out anlegen und dort die Datei fork.c aus manuals/vm-linux-32/scripts/ kopieren. Diese ist für den Pipe-Test nötig.
-7. Benchmark-Suite vorbereiten
-	- git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
-	- git checkout -b lockdoc-ltp 20190115
-	- {syscalls,{syscalls,fs}-custom} aus manuals/vm-linux-32/scripts/ nach /opt/kernel/ltp/src/runtest/ kopieren
-	- ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
+	+ Set the default entry:
+		# grub-set-default "lockdoc-X.YY-al+"
+		# update-grub
+	+ Attention: From now on, you have to intercept the Grub menu to boot the usual userland. Otherwise, the benchmark starts automatically.
+
+- Install the benchmark
+	+ Create directory /lockdoc and /lockdoc/bench-out
+	+ Copy 'run-bench.sh' and fork.c from manuals/vm-linux-32/scripts to /lockdoc
+	+ Get LTP
+		# git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
+ 		# git checkout -b lockdoc-ltp 20190115
+		# Copy {syscalls,{syscalls,fs}-custom} from manuals/vm-linux-32/scripts/ to /opt/kernel/ltp/src/runtest/
+		# ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
+

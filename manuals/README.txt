@@ -1,59 +1,82 @@
 Kernel
 ======
+- Branches: lockdebugging-{3-16,4-10}, lockdoc-5-4
+- Default config is located in the root directory:: config-lockdebugging or default-config
 
-- Repo: ssh://ios.cs.tu-dortmund.de/fs/staff/al/repos/lockdebugging/linux
-- Branches: lockdebugging-{3-16,4-10}
-- Default Config liegt in root-Verzeichnis: config-lockdebugging bzw. default-config
-- Nach einem neu Bauen des Kernels:
-	* installieren: make install (modules_install is nicht nötig, da es ein statischer Kernel ist)
-	* VMLINUX sichern: scp vmlinux ios:/fs/scratch/al/coccinelle/tools/data/vmlinux-4-10-nococci-20170402 (vmlinux-<Kernel-Version>-<mit oder ohne Coccinelle>-<Datum>)
-- Es ist ggf. sinnvoll, einen aktuellen Compiler, wie z.B. GCC8.1, zu verwenden, damit jeder Instruktionptr korrekt aufgelöst werden kann.
+VM
+==
+- Each VM has two serial consoles
+	+ The *first* console is used for logging: VM --> FAIL*-Experiment
+	+ The *second* console tells the guest OS which benchmark to run: FAIL*-Experiment --> VM 
 
 Benchmarks:
 ===========
-Die Benchmark-Namen können direkt als Parameter an den FAIL-Client übergeben werden.
+The desired benchmark is selected via a commandline argument to FAIL*.
+The following benchmarks are available:
 
 - sysbench
-	Parameter für Sysbench: --test=fileio --file-total-size=2G --file-num=20 --file-test-mode=rndrw
-- mixed-fs
-	Subset der Benchmarks aus dem Linux-Test-Project
-- lockdoc-test
-	Führt den LockDoc-Test aus. Dabei wird der Code mit der richtigen Lock-Reihenfolge CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS-mal ausgeführt.
-	Dieser Wert kann über die Kernel-Konfig verändert werden.
-	Alternativ kann man die Anzahl der Iterationen auch über den Benchmark spezifizieren: lockdoc-test-100.
-	Hierbei ist zu beachten, dass die Anzahl *nicht* größer sein darf als CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS. Ansonsten fällt der Test automatisch
-	auf den konfigurierten Wert zurück.
-	CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS wird gleichzeitig verwendet, um die Größe des Ringpuffer zu bestimmen. Ist die Anzahl der Iterationen größer als der Ringpuffer,
-	würde der Ringpuffer voll- bzw. leerlaufen. Hierdurch würden andere Codepfade ausgeführt.
-	Der Ringpuffer muss in die beobachtete Datenstruktur eingebettet sein, damit unsere Analyse korrekt funktioniert. Daher kann er nicht dynamisch zur Laufzeit alloziert werden.
+	Parameters for Sysbench: --test=fileio --file-total-size=2G --file-num=20 --file-test-mode=rndrw
 
-Datenbanken
+- mixed-fs
+	A manually choosen subset of benchmarks from the Linux Test Project
+
+- ltp-syscall{,-custom}
+	The LTP syscall benchmark suite. The custom variant is a subset of the original benchmark.
+	'Unnecessary' benchmarks have been removed.
+
+- ltp-fs{,-custom}
+	The LTP fs benchmark suite. The custom variant is a subset of the original benchmark.
+	'Unnecessary' benchmarks have been removed.
+
+- lockdoc-test
+	Runs the integerated LockDoc test. It executes various correct and faulty locking patterns on a ring buffer.
+	The correct lock pattern is run CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS times. This value can be overwritten at runtime
+	via the benchmark name: lockdoc-test-100. However, the upper bound is given by CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS.
+	For LockDoc to function correctly, the ring buffer must be embedded in the observed datatype. Hence, it's size has to be
+	determined at compile time. It is derived using CONFIG_ESS_LOCK_ANALYSIS_TEST_ITERATIONS.
+
+Databases
 ===========
 
-- Namensschema: lockdebugging_<Benchmark>_<Kernel-Version>_<mit oder ohne Cocci>
+- LockDoc needs one database for each processed run
+- We recommend the following scheme for the database name: lockdoc_<os>_<benchmark>_<bernel version>
 
 
 Fail
 ====
 
-- ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=<port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
-	Beispiel: ./fail-client -Wf,--benchmark=mixed-fs -Wf,--port=4711 -Wf,--vmlinux=/fs/scratch/al/coccinelle/experiment/vmlinux-4-10-nococci-20180717-g029f74393479-dirty-grub -q -f bochsrc-4-10-testing-4711-al 2>&1 | tee out.txt
-- Hinweis für BOCHS:
-	- Je nach Festplatten-Image muss die Geometrie in der BOCHS-Konfig angepasst werden:
-		Adjust cylinders to your image size: cylinders = imageSize / (heads * spt * 512)
-		For more details have a look at $BOCHS/iodev/harddrv.c:{288-291,347}
-	- Passiert das nicht, erscheint folgende Fehlermeldung in der Datei bochsout.txt: "00000000000p[HD   ] >>PANIC<< ata0-0 disk size doesn't match specified geometry"
-	  BOCHS bricht die Ausführung deshalb aber *nicht* ab, stattdessen wird keine Festplatte emuliert.
-- Empfohlene Einstellungen:
-	- Linux-Image (25G):	ata0-master: type=disk, mode=volatile, path="$virtuos-vms/lockdoc-fbsd.img", cylinders=102400, heads=16, spt=32, biosdetect=auto
-	- FreeBSD-Image (26GB): ata0-master: type=disk, mode=volatile, path="$virtuos-vms/lock-debugging.img", cylinders=163840, heads=16, spt=32, biosdetect=auto
-		($virtuos-vms = virtuos:/home/vms)
-	- Auch wenn es sinnvoll erscheinen mag, die Systemzeit auf eine bestimmte Uhrzeit bzw. ein bestimmtes Datum festzulegen, um ein deterministisches Verhalten zu erzeugen, ist es das nicht.
-	  Da das Plattenabbild für Veränderungen ggf. in QEMU benutzt wird, werden alle Zeitstempel, die irgendwo im Dateisystem gesetzt werden, neuer sein als das gesetzte Datum.
-	  Dadurch wird beim Start immer ein Dateisystemcheck ausgelöst. Daher: clock: sync=none, time0=local
+- For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
+- FAIL* requires an ag++ to be installed.
+- Building FAIL*
+	+ mkdir build
+	+ cd build
+	+ cmake ..
+	+ ccmake .
+		# Select: BUILD_BOCHS, BUILD_DUMP_TRACE
+		# Set EXPERIMENTS_ACTIVATED to lockdebugging
+		# Set PLUGINS_ACTIVATED to tracing
+		# Press c
+		# Press g
+	+ make -j X
 
-VM
-==
-- Zwei serielle Konsolen
-	Die *erste* serielle Schnittstelle: VM --> FAIL*-Experiment
-	Die *zweite* serielle Schnittstelle: FAIL*-Experiment --> VM (Dienst nur zum Mitteilen des auszuführenden Benchmarks)
+- Running FAIL*
+	+ An example BOCHSRC is located in this directory.
+	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC.
+	+ ./fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
+	+ Notes about BOCHS:
+		# You have to pay attention when setting up the disk image. It has to be a raw image. BOCHS cannot deal with QCOW2 and others.
+		# The disk geometry specified in the BOCHSRC has to meet the actual image:
+			Adjust cylinders to your image size: cylinders = imageSize / (heads * spt * 512)
+			For more details have a look at $BOCHS/iodev/harddrv.c:{288-291,347}
+		# If you do not adjust the geometry, the following errors occurs in bochsout.txt: "00000000000p[HD   ] >>PANIC<< ata0-0 disk size doesn't match specified geometry"
+		  BOCHS, however, will continue executing. It does not emulate a HDD.
+
+		# Recommended settings:
+			- 40G HDD image: ata0-master: type=disk, mode=volatile, path="XX.img", cylinders=163840, heads=16, spt=32, biosdetect=auto
+			- 25G HDD image: ata0-master: type=disk, mode=volatile, path="XX.img", cylinders=102400, heads=16, spt=32, biosdetect=auto
+		# It might seem a good idea to set the system time via BOCHSRC to a specific time. This might create a deterministic behavior.
+		  If you, however, run the image in QEMU to make some changes, this setting also creates the need for the OS to run a filesystem check when
+		  the BOCHS is started the next time.
+		  We, therefore, set the system time to: clock: sync=none, time0=local
+
+
