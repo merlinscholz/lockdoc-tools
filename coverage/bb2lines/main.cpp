@@ -470,7 +470,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	}
 	// search functions with source file name from addr2line
 	auto search_functions = functions_map.find(bfdSearchCtx.file);
-	if (search_functions != functions_map.end())
+	if (search_functions != functions_map.end() && search_functions->second.size() != 0)
 	{
 		// search function with function name from addr2line
 		auto search_function = search_functions->second.find(bfdSearchCtx.fn);
