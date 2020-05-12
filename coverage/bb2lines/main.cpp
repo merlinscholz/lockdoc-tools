@@ -39,18 +39,18 @@ struct basic_block
 {
 	unsigned blockno;
 	std::string source;
-	std::vector<unsigned> lines;
+	std::set<unsigned> lines;
 	bool operator<(const basic_block& rhs) const
 	{
-		return lines.front() < rhs.lines.front();
+		return *lines.begin() < *rhs.lines.begin();
 	}
 	bool operator>(const basic_block& rhs) const
 	{
-		return lines.front() > rhs.lines.front();
+		return *lines.begin() > *rhs.lines.begin();
 	}
 	bool operator==(const basic_block& rhs) const
 	{
-		return lines.front() == rhs.lines.front();
+		return *lines.begin() == *rhs.lines.begin();
 	}
 };
 
@@ -369,7 +369,7 @@ static void read_graph_file (const char *filename)
 
 				if (lineno)
 				{
-					bb.lines.push_back(lineno);
+					bb.lines.insert(lineno);
 				}
 				else
 				{
@@ -381,7 +381,7 @@ static void read_graph_file (const char *filename)
 			if (fn->basic_blocks.count(bb) > 0)
 			{
 				printf_verbose(COMMON_FAILURE, "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
-						source_name.c_str(), bb.lines.front());
+						source_name.c_str(), *bb.lines.begin());
 				continue;
 			}
 
@@ -497,17 +497,17 @@ basic_block* get_basic_block(unsigned long bb_addr)
 			// to find the basic block the line has to be smaller than the start line of the basic block
 			// and smaller than the start line of the succeding basic block
 			basic_block bb;
-			bb.lines.push_back(bfdSearchCtx.line);
+			bb.lines.insert(bfdSearchCtx.line);
 			function_info *fn = search_function->second;
 			auto search_bb = fn->basic_blocks.upper_bound(bb);
 			if (search_bb != fn->basic_blocks.begin())
 			{
 				search_bb--;
-				if (search_bb->lines.front() != bfdSearchCtx.line)
+				if (*search_bb->lines.begin() != bfdSearchCtx.line)
 				{
 					printf_verbose(ADDITIONAL_INFORMATION,
 							"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
-							bb_addr, bfdSearchCtx.file, search_bb->lines.front());
+							bb_addr, bfdSearchCtx.file, *search_bb->lines.begin());
 				}
 				basic_blocks_addr_map[bb_addr] = *search_bb;
 				return &basic_blocks_addr_map[bb_addr];
