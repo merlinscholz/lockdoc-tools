@@ -171,7 +171,14 @@ int main (int argc, char **argv)
 	{
 		for (auto& function_it: functions_it.second)
 		{
-			printf("source: %s\nfunction name: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
+			printf("source: %s\t\tfunction name: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
+			for (auto& bb: function_it.second->basic_blocks)
+			{
+				for (auto& line: bb.lines)
+				{
+					printf("%d\n", line);
+				}
+			}
 		}
 	}
 
@@ -190,6 +197,7 @@ static void print_usage ()
 	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
 	printf ("  -b, --binary                   Path of the binary\n");
 }
+
 
 /**
  * Determine the coverage with basic block addresses after functions_map is filled with the data from the .gcno files.
@@ -512,8 +520,8 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		}
 		else
 		{
-			printf_verbose(RARE_FAILURE, "file %s was found, but not the function %s for basic block address %lx\n",
-						   bfdSearchCtx.file, bfdSearchCtx.fn, bb_addr);
+			printf_verbose(RARE_FAILURE, "file %s was found, but not the function %s with line %d for basic block address %lx\n",
+						   bfdSearchCtx.file, bfdSearchCtx.fn, bfdSearchCtx.line, bb_addr);
 		}
 	}
 	return nullptr;
