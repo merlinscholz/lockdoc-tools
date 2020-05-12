@@ -166,6 +166,15 @@ int main (int argc, char **argv)
 			read_graph_file(filename.c_str());
 		}
 	}
+
+	for (auto& functions_it: functions_map)
+	{
+		for (auto& function_it: functions_it.second)
+		{
+			printf("source: %s\nfunction name: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
+		}
+	}
+
 	determine_coverage();
 
 	return 0;
