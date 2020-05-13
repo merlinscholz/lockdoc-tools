@@ -47,6 +47,7 @@ Fail
 
 - For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
 - FAIL* requires an ag++ to be installed.
+- Checkout the FAIL* repo from our project, and use branch lockdebugging
 - Building FAIL*
 	+ mkdir build
 	+ cd build
@@ -58,7 +59,6 @@ Fail
 		# Press c
 		# Press g
 	+ make -j X
-
 - Running FAIL*
 	+ An example BOCHSRC is located in this directory.
 	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC.
@@ -79,4 +79,32 @@ Fail
 		  the BOCHS is started the next time.
 		  We, therefore, set the system time to: clock: sync=none, time0=local
 
+Post Processing
+===============
 
+- For the PostgreSQL cmdline tool to work properly, create '.pgpass' in your home directory, and add the following line:
+IP address of the PostgreSQL host:5432:*:username:passwort
+- Do not forget to create the database, and grant your user the proper permissions
+- Create a directory for the results of the post processing
+- Change into that directory
+- Create the config file 'convert.conf':
+DATA=path to the fail output.csv.gut
+KERNEL=path to the vmlinux
+KERNEL_TREE=base directory where the kernel tree is located within your VM
+BASE_URL=base URL to the exlisir instance, used by the bug report generator: e.g. https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdoc-v5.4.0-rc4-0.2/source
+GUEST_OS=guest OS type
+PSQL_HOST=IP of the PostgreSQL host
+PSQL_USER=username
+DELIMITER='#'
+ACCEPT_THRESHOLD=99.0
+- Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE 2&>1 | tee post-process-trace.out
+	+ The convert tool (see convert/) converts the trace into the relational database
+	+ convert's output is stored in conv-out.txt
+	+ variants
+		* nostack vs. stack:  Uses the stack trace to generate the hypotheses
+		* nosubclasses vs. subclasses: Generate hypotheses for each subclass, e.g., inode:ext4 vs. inode:devtmpfs
+	+ all-txns-members-locks-db-*.csv: Input for the hypothesizer; each row contains one transaction including the held locks and the accessed members
+	+ all-txns-members-locks-hypo-*: Contains the generated hypotheses for each tuple of (data type, member, access type)
+	+ all-txns-members-locks-hypo-bugs-*: Same as all-txns-members-locks-hypo-*; additionally includes the generated calls to counterexamples.sql.sh
+	+ all-txns-members-locks-hypo-winner-*.csv: Just contains the winning hypothesis for each tuple of (data type, member, access type)
+	+ The files cex-*{.csv,html} contain the counterexamples. One file per data type. The html variant contains a pretty printed overview.
