@@ -174,11 +174,13 @@ int main (int argc, char **argv)
 			printf("source: %s\t\tfunction name: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
 			for (auto& bb: function_it.second->basic_blocks)
 			{
+				printf("blockno: %d\n", bb.blockno);
 				for (auto& line: bb.lines)
 				{
 					printf("%d\n", line);
 				}
 			}
+			printf("------------------------------------------------------------------------\n");
 		}
 	}
 
@@ -369,13 +371,16 @@ static void read_graph_file (const char *filename)
 
 				if (lineno)
 				{
+					printf("%d\n", lineno);
 					bb.lines.insert(lineno);
 				}
 				else
 				{
+					printf("source: %s\n", source);
 					bb.source = source;
 				}
 			}
+			printf("_________________________________________\n");
 
 			std::string source_name = file_prefix + bb.source;
 			if (fn->basic_blocks.count(bb) > 0)
