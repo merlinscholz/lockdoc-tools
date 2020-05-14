@@ -8,6 +8,7 @@ VM
 - Each VM has two serial consoles
 	+ The *first* console is used for logging: VM --> FAIL*-Experiment
 	+ The *second* console tells the guest OS which benchmark to run: FAIL*-Experiment --> VM 
+- For setting up the individual VMs, please have a look at the respective manuals: vm-*-32/README*
 
 Benchmarks:
 ===========
@@ -41,12 +42,12 @@ Databases
 - LockDoc needs one database for each processed run
 - We recommend the following scheme for the database name: lockdoc_<os>_<benchmark>_<bernel version>
 
-
 Fail
 ====
 
 - For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
-- FAIL* requires an ag++ to be installed.
+- FAIL* requires an ag++ to be installed. First, check if it already present. Otherwise, try either the current version 2.2 or the nightly build
+  Both are available at http://aspectc.org/Download.php.
 - Checkout the FAIL* repo from our project, and use branch lockdebugging
 - Building FAIL*
 	+ mkdir build
@@ -62,9 +63,13 @@ Fail
 - Running FAIL*
 	+ An example BOCHSRC is located in this directory.
 	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC.
-	+ ./fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
+	* Create a temporary directory where you can run the fail client
+	* Copy all files from manuals/bochs/* to that directory
+	* Adapt the path to your hdd image in your BOCHSRC
+	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
 	+ Notes about BOCHS:
 		# You have to pay attention when setting up the disk image. It has to be a raw image. BOCHS cannot deal with QCOW2 and others.
+		  You can, however, convert a QCOW2 image, for example, to a raw image. For that, refer to qemu-img.
 		# The disk geometry specified in the BOCHSRC has to meet the actual image:
 			Adjust cylinders to your image size: cylinders = imageSize / (heads * spt * 512)
 			For more details have a look at $BOCHS/iodev/harddrv.c:{288-291,347}
