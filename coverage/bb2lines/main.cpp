@@ -39,18 +39,18 @@ struct basic_block
 {
 	unsigned blockno;
 	std::string source;
-	std::set<unsigned> lines;
+	std::vector<unsigned> lines;
 	bool operator<(const basic_block& rhs) const
 	{
-		return *lines.begin() < *rhs.lines.begin();
+		return lines.front() < rhs.lines.front();
 	}
 	bool operator>(const basic_block& rhs) const
 	{
-		return *lines.begin() > *rhs.lines.begin();
+		return lines.front() > rhs.lines.front();
 	}
 	bool operator==(const basic_block& rhs) const
 	{
-		return *lines.begin() == *rhs.lines.begin();
+		return lines.front() == rhs.lines.front();
 	}
 };
 
@@ -79,6 +79,8 @@ std::unordered_map<unsigned long, basic_block> basic_blocks_addr_map;
 std::unordered_map<std::string, std::set<unsigned>> covered_lines;
 // key: name of source file; value: map of functions in file with the function name as key
 std::unordered_map<std::string, std::unordered_map<std::string, function_info*>> functions_map;
+
+std::unordered_map<std::string, std::set<basic_block*>> basic_blocks_map;
 
 // file prefix for the source file names of basic blocks and functions from the .gcno file
 // addr2line has the absolute path with filename by default
@@ -355,6 +357,8 @@ static void read_graph_file (const char *filename)
 		else if (fn && tag == GCOV_TAG_LINES)
 		{
 			basic_block bb;
+			bool read_basic_block = false;
+			bool is_in_fs = false;
 			bb.blockno = gcov_read_unsigned ();
 
 			while (true)
@@ -371,32 +375,47 @@ static void read_graph_file (const char *filename)
 
 				if (lineno)
 				{
-					printf("%d\n", lineno);
-					bb.lines.insert(lineno);
+					if (is_in_fs)
+					{
+						printf("%d\n", lineno);
+						bb.lines.push_back(lineno);
+					}
 				}
 				else
 				{
 					printf("source: %s\n", source);
-					bb.source = source;
+					std::string source_tmp = source;
+					if (source_tmp.substr(0, 3) == "fs/")
+					{
+						bb.source = source;
+						is_in_fs = true;
+						read_basic_block = true;
+					}
+					else
+					{
+						is_in_fs = false;
+					}
 				}
 			}
 			printf("_________________________________________\n");
 
-			std::string source_name = file_prefix + bb.source;
-			if (fn->basic_blocks.count(bb) > 0)
+			if (read_basic_block)
 			{
-				printf_verbose(COMMON_FAILURE, "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
-						source_name.c_str(), *bb.lines.begin());
-				continue;
-			}
+				std::string source_name = file_prefix + bb.source;
+				if (fn->basic_blocks.count(bb) > 0) {
+					printf_verbose(COMMON_FAILURE,
+								   "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
+								   source_name.c_str(), bb.lines.front());
+					continue;
+				}
 
-			// create empty entry for the source name in covered_lines
-			if (covered_lines.count(bb.source) == 0)
-			{
-				covered_lines[bb.source] = std::set<unsigned int>();
-			}
+				// create empty entry for the source name in covered_lines
+				if (covered_lines.count(bb.source) == 0) {
+					covered_lines[bb.source] = std::set<unsigned int>();
+				}
 
-			fn->basic_blocks.insert(bb);
+				fn->basic_blocks.insert(bb);
+			}
 		}
 		else if (current_tag && !GCOV_TAG_IS_SUBTAG (current_tag, tag))
 		{
@@ -410,7 +429,6 @@ static void read_graph_file (const char *filename)
 			printf_verbose (RARE_FAILURE, "%s:corrupted\n", filename);
 			break;
 		}
-
 	}
 	gcov_close ();
 }
@@ -502,13 +520,13 @@ basic_block* get_basic_block(unsigned long bb_addr)
 			// to find the basic block the line has to be smaller than the start line of the basic block
 			// and smaller than the start line of the succeding basic block
 			basic_block bb;
-			bb.lines.insert(bfdSearchCtx.line);
+			bb.lines.push_back(bfdSearchCtx.line);
 			function_info *fn = search_function->second;
 			auto search_bb = fn->basic_blocks.upper_bound(bb);
 			if (search_bb != fn->basic_blocks.begin())
 			{
 				search_bb--;
-				if (*search_bb->lines.begin() != bfdSearchCtx.line)
+				if (search_bb->lines.front() != bfdSearchCtx.line)
 				{
 					printf_verbose(ADDITIONAL_INFORMATION,
 							"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
