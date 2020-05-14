@@ -18,6 +18,7 @@
 		# make install
 	+ Copy the built vmlinux to your host. You need it for running the experiment as well as for the post processing.
 	  You can use the copy-to-host.sh script located in the kernel src directory.
+		 ./copy-to-host.sh thasos ~/lockdoc/experiment "-gcc73" -> Copies the vmlinux to ~/lockdoc/experiment on host thasos, and adds the suffix "-gcc73" to the vmlinux.
 	  The script adds a version string to the vmlinux before copying it.
 - Setup Grub to automatically start the benchmark:
 	+ Set variable GRUB_DEFAULT to saved in /etc/default/grub
@@ -45,7 +46,7 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 	+ Attention: From now on, you have to intercept the Grub menu to boot the usual userland. Otherwise, the benchmark starts automatically.
 
 - Install the benchmark
-	+ Create directory /lockdoc and /lockdoc/bench-out
+	+ Create the following directories: /lockdoc and /lockdoc/bench-out
 	+ Copy 'run-bench.sh' and fork.c from manuals/vm-linux-32/scripts to /lockdoc
 	+ Get LTP
 		# git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
