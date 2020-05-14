@@ -80,7 +80,7 @@ std::unordered_map<std::string, std::set<unsigned>> covered_lines;
 // key: name of source file; value: map of functions in file with the function name as key
 std::unordered_map<std::string, std::unordered_map<std::string, function_info*>> functions_map;
 
-std::unordered_map<std::string, std::set<basic_block*>> basic_blocks_map;
+std::unordered_map<std::string, std::set<basic_block>> basic_blocks_map;
 
 // file prefix for the source file names of basic blocks and functions from the .gcno file
 // addr2line has the absolute path with filename by default
@@ -399,7 +399,7 @@ static void read_graph_file (const char *filename)
 			}
 			printf("_________________________________________\n");
 
-			if (read_basic_block)
+			if (read_basic_block && !bb.lines.empty())
 			{
 				std::string source_name = file_prefix + bb.source;
 				if (fn->basic_blocks.count(bb) > 0) {
@@ -415,6 +415,8 @@ static void read_graph_file (const char *filename)
 				}
 
 				fn->basic_blocks.insert(bb);
+
+				basic_blocks_map[source_name].insert(bb);
 			}
 		}
 		else if (current_tag && !GCOV_TAG_IS_SUBTAG (current_tag, tag))
@@ -509,41 +511,30 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		return nullptr;
 	}
 	// search functions with source file name from addr2line
-	auto search_functions = functions_map.find(bfdSearchCtx.file);
-	if (search_functions != functions_map.end() && search_functions->second.size() != 0)
+	auto search_basic_blocks = basic_blocks_map.find(bfdSearchCtx.file);
+	if (search_basic_blocks != basic_blocks_map.end() && !search_basic_blocks->second.empty())
 	{
-		// search function with function name from addr2line
-		auto search_function = search_functions->second.find(bfdSearchCtx.fn);
-		if (search_function != search_functions->second.end())
+		// search basic block with line from addr2line
+		// to find the basic block the line has to be smaller than the start line of the basic block
+		// and smaller than the start line of the succeding basic block
+		basic_block bb;
+		bb.lines.push_back(bfdSearchCtx.line);
+		auto search_bb = search_basic_blocks->second.upper_bound(bb);
+		if (search_bb != search_basic_blocks->second.begin())
 		{
-			// search basic block with line from addr2line
-			// to find the basic block the line has to be smaller than the start line of the basic block
-			// and smaller than the start line of the succeding basic block
-			basic_block bb;
-			bb.lines.push_back(bfdSearchCtx.line);
-			function_info *fn = search_function->second;
-			auto search_bb = fn->basic_blocks.upper_bound(bb);
-			if (search_bb != fn->basic_blocks.begin())
+			search_bb--;
+			if (search_bb->lines.front() != bfdSearchCtx.line)
 			{
-				search_bb--;
-				if (search_bb->lines.front() != bfdSearchCtx.line)
-				{
-					printf_verbose(ADDITIONAL_INFORMATION,
-							"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
-							bb_addr, bfdSearchCtx.file, *search_bb->lines.begin());
-				}
-				basic_blocks_addr_map[bb_addr] = *search_bb;
-				return &basic_blocks_addr_map[bb_addr];
+				printf_verbose(ADDITIONAL_INFORMATION,
+						"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
+						bb_addr, bfdSearchCtx.file, *search_bb->lines.begin());
 			}
-			else
-			{
-				printf_verbose(RARE_FAILURE, "file %s and function %s was found, but not the line %d for basic block address %lx\n",
-							   bfdSearchCtx.file, bfdSearchCtx.fn, bfdSearchCtx.line, bb_addr);
-			}
+			basic_blocks_addr_map[bb_addr] = *search_bb;
+			return &basic_blocks_addr_map[bb_addr];
 		}
 		else
 		{
-			printf_verbose(RARE_FAILURE, "file %s was found, but not the function %s with line %d for basic block address %lx\n",
+			printf_verbose(RARE_FAILURE, "file %s and function %s was found, but not the line %d for basic block address %lx\n",
 						   bfdSearchCtx.file, bfdSearchCtx.fn, bfdSearchCtx.line, bb_addr);
 		}
 	}
