@@ -1,14 +1,23 @@
 - Setup a Debian X i386 VM
-	+ Install the following packages (incomplete list): lcov libncurses5-dev git-core build-essential bison flex
+	+ Attention: You must use a raw image for your VM. Do *not* use QCOW2 and others.
+	+ Install the following packages (incomplete list): lcov libncurses5-dev git-core build-essential bison flex libssl-dev
+	+ We recommend 2 cores, 2GB of RAM and 40GB of hdd space for the VM.
 - Build your own kernel
-	+ Checkout kernel in /opt/kernel/XXX
-	+ It has proven to use GCC 7.X. GCC 8.x has issues resolving instruction pointers that point to a leaf in the callgraph correctly.
-	+ Build it:
+	+ Checkout kernel in /opt/kernel/XXX, for the moment use branch lockdebugging-4-10
+	+ We recommend using GCC 7.X. GCC 8.x has issues resolving instruction pointers that point to a leaf in the callgraph correctly.
+		# git clone git://gcc.gnu.org/git/gcc.git /opt/kernel/gcc/src
+		# cd /opt/kernel/gcc/src/
+		# git checkout -b releases/gcc-7.2.0 releases/gcc-7.2.0
+		# ./configure --enable-lto --prefix=/opt/kernel/gcc/installed/ --enable-languages=c,c++,lto
+		# make -j3
+		# make install
+	+ Building the kernel:
 		# cp config-lockdebugging .config
 		# make oldconfig
 		# make -j X
 		# make install
-	+ Copy the built vmlinux to your host. You can use the copy-to-host.sh script located in the kernel src directory.
+	+ Copy the built vmlinux to your host. You need it for running the experiment as well as for the post processing.
+	  You can use the copy-to-host.sh script located in the kernel src directory.
 	  The script adds a version string to the vmlinux before copying it.
 - Setup Grub to automatically start the benchmark:
 	+ Set variable GRUB_DEFAULT to saved in /etc/default/grub
