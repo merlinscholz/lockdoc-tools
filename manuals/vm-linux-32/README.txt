@@ -12,6 +12,7 @@
 		# make -j3
 		# make install
 	+ Building the kernel:
+		# If you have choosen to build your own gcc, make it sure it is used: export PATH=/opt/kernel/gcc/installed/:$PATH
 		# cp config-lockdebugging .config
 		# make oldconfig
 		# make -j X
