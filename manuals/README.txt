@@ -46,7 +46,7 @@ Fail
 ====
 
 - For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
-- FAIL* requires an ag++ to be installed. First, check if it already present. Otherwise, try either the current version 2.2 or the nightly build
+- FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.2 or the nightly build
   Both are available at http://aspectc.org/Download.php.
 - Checkout the FAIL* repo from our project, and use branch lockdebugging
 - Building FAIL*
@@ -67,6 +67,7 @@ Fail
 	* Copy all files from manuals/bochs/* to that directory
 	* Adapt the path to your hdd image in your BOCHSRC
 	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
+		Example: /home/al/fail/build/bin/fail-client -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
 	+ Notes about BOCHS:
 		# You have to pay attention when setting up the disk image. It has to be a raw image. BOCHS cannot deal with QCOW2 and others.
 		  You can, however, convert a QCOW2 image, for example, to a raw image. For that, refer to qemu-img.
