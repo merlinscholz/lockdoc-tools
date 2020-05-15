@@ -12,7 +12,7 @@
 		# make -j3
 		# make install
 	+ Building the kernel:
-		# If you have choosen to build your own gcc, make it sure it is used: export PATH=/opt/kernel/gcc/installed/:$PATH
+		# If you have choosen to build your own gcc, make it sure it is used: export PATH=/opt/kernel/gcc/installed/bin/:$PATH
 		# cp config-lockdebugging .config
 		# make oldconfig
 		# make -j X
@@ -41,6 +41,8 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
         echo    'Loading initial ramdisk ...'
         initrd  /boot/initrd.img-X.YY-al+
 }
+	+ Use tool blkid to determine the UUID of your root partition. Use 'mount' to determine the proper partition, and then run blkid, e.g., blkd /dev/sda5
+	+ Replace 'vmlinuz-X.YY-al+' and 'initrd.img-X.YY-al+' by the respective filenames. Look at /boot if you're uncertain.
 	+ Set the default entry:
 		# grub-set-default "lockdoc-X.YY-al+"
 		# update-grub
