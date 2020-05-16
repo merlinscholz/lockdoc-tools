@@ -55,7 +55,7 @@ Fail
 	+ cmake ..
 	+ ccmake .
 		# Select: BUILD_BOCHS, BUILD_DUMP_TRACE
-		# Set EXPERIMENTS_ACTIVATED to lockdebugging
+		# Set EXPERIMENTS_ACTIVATED to lock-debugging
 		# Set PLUGINS_ACTIVATED to tracing
 		# Press c
 		# Press g
