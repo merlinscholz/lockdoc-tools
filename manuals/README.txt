@@ -48,7 +48,7 @@ Fail
 - For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
 - FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.2 or the nightly build
   Both are available at http://aspectc.org/Download.php.
-- Checkout the FAIL* repo from our project, and use branch lockdebugging
+- Checkout the FAIL* repo from our project, and use branch lock-debugging
 - Building FAIL*
 	+ mkdir build
 	+ cd build
