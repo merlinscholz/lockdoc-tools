@@ -62,12 +62,8 @@ Fail
 	+ make -j X
 - Running FAIL*
 	+ An example BOCHSRC is located in this directory.
-	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC.
-	* Create a temporary directory where you can run the fail client
-	* Copy all files from manuals/bochs/* to that directory
-	* Adapt the path to your hdd image in your BOCHSRC
-	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
-		Example: /home/al/fail/build/bin/fail-client -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
+	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC. Simply search for com2:
+		com2: enabled=1, mode=socket-server, dev=localhost:4711
 	+ Notes about BOCHS:
 		# You have to pay attention when setting up the disk image. It has to be a raw image. BOCHS cannot deal with QCOW2 and others.
 		  You can, however, convert a QCOW2 image, for example, to a raw image. For that, refer to qemu-img.
@@ -84,6 +80,12 @@ Fail
 		  If you, however, run the image in QEMU to make some changes, this setting also creates the need for the OS to run a filesystem check when
 		  the BOCHS is started the next time.
 		  We, therefore, set the system time to: clock: sync=none, time0=local
+	+ Create a temporary directory where you can run the fail client
+	+ Copy all files from manuals/bochs/* to that directory
+	+ Adapt the path to your hdd image in your BOCHSRC
+	+ Make sure you have shut down your VM, before launching FAIL*. It will start it's own VM using BOCHS.
+	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
+		Example: /home/al/fail/build/bin/fail-client -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
 
 Post Processing
 ===============
