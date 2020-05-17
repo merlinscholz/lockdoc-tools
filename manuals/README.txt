@@ -119,3 +119,30 @@ ACCEPT_THRESHOLD=99.0
 		* all-txns-members-locks-hypo-bugs-*: Same as all-txns-members-locks-hypo-*; additionally includes the generated calls to counterexamples.sql.sh
 		* all-txns-members-locks-hypo-winner-*.csv: Just contains the winning hypothesis for each tuple of (data type, member, access type)
 		* The files cex-*{.csv,html} contain the counterexamples. One file per data type. The html variant contains a pretty printed overview.
+
+Code Coverage in Linux
+======================
+
+- Checkout the kernel tree again in a separate directory, e.g., linux-32-gcov. For now, please stick to branch lockdebugging-4-10.
+- cp config-lockdebugging .config
+- make menuconfig
+	* Uncheck "Enable ESS lock analysis facility"
+	* "General Setup" --> "Local version - append to kernel release" --> Enter "gcov"
+	* "General Setup" --> "GCOV-based kernel profiling" --> "Enable gcov-based kernel profiling"
+							    |
+							    --> "Specify GCOV format" --> "Autodetect"
+- "Exit" --> "Save config"
+- make -j 3
+- make install
+- On reboot, select the GCOV kernel. The GRUB entry should end with "-gcov".
+- Ensure the debugfs is mounted. Otherwise, run as root: mount -t debugfs none /sys/kernel/debug
+- Copy processing/gcov-trace.sh to your VM
+- Gather profiling information using gcov-trace.sh
+	* Become root, e.g., sudo u
+	* ./gcov-trace.sh PATH_TO_YOUR_KERNEL_TREE OUTPUT_FILE COMMAND ARGS
+	* Example for profiling "sleep 5": ./gcov-trace.sh /opt/kernel/linux-32-gcov test.trace sleep 5
+- Copy the output to your host
+- To retrieve the code coverage from the output file, use processing/gcov-summary.py
+	* ./gcov-summary.py --kernel-directory PATH_TO_YOUR_KERNEL_TREE_IN_VM --per-directory [--filter 'REGEX']
+	* Example: Summarize code coverage for each directory containing fs, expect fs/proc
+		+ gcov-summary.py --kernel-directory /opt/kernel/linux-32-gcov/ --per-directory --filter '^fs(?!/proc)' test.trace
