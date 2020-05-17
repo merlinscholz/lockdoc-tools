@@ -34,23 +34,38 @@ along with Gcov; see the file COPYING3.  If not see
 #include <regex>
 #include "binaryread.h"
 
+struct source_line
+{
+	std::string filename;
+	std::vector<unsigned> lines;
+};
 
 struct basic_block
 {
 	unsigned blockno;
-	std::string source;
-	std::vector<unsigned> lines;
+	std::vector<source_line> source_lines;
+
+	const unsigned get_start_line() const
+	{
+		return source_lines.front().lines.front();
+	}
+
+	const std::string& get_filename() const
+	{
+		return source_lines.front().filename;
+	}
+
 	bool operator<(const basic_block& rhs) const
 	{
-		return lines.front() < rhs.lines.front();
+		return get_start_line() < rhs.get_start_line();
 	}
 	bool operator>(const basic_block& rhs) const
 	{
-		return lines.front() > rhs.lines.front();
+		return get_start_line() > rhs.get_start_line();
 	}
 	bool operator==(const basic_block& rhs) const
 	{
-		return lines.front() == rhs.lines.front();
+		return get_start_line() == rhs.get_start_line();
 	}
 };
 
@@ -64,10 +79,9 @@ struct function_info
 
 void determine_coverage();
 static void read_graph_file (const char *);
-static void print_usage (void);
+static void print_usage();
 std::pair<unsigned int, unsigned long> count_all_files_and_lines();
 unsigned long count_all_lines_in_file(std::string& filename);
-unsigned long count_all_lines_in_function(function_info *fn);
 std::vector<std::string> get_all_files_in_dir(const std::string &dirPath);
 basic_block* get_basic_block(unsigned long);
 void print_basic_block(const basic_block*);
@@ -77,6 +91,7 @@ extern int main (int, char **);
 std::unordered_map<unsigned long, basic_block> basic_blocks_addr_map;
 // key: name of source file; value: set of covered lines in a source file
 std::unordered_map<std::string, std::set<unsigned>> covered_lines;
+std::unordered_map<std::string, std::set<unsigned>> coverable_lines;
 // key: name of source file; value: map of functions in file with the function name as key
 std::unordered_map<std::string, std::unordered_map<std::string, function_info*>> functions_map;
 
@@ -177,9 +192,13 @@ int main (int argc, char **argv)
 			for (auto& bb: function_it.second->basic_blocks)
 			{
 				printf("blockno: %d\n", bb.blockno);
-				for (auto& line: bb.lines)
+				for (auto& source_line: bb.source_lines)
 				{
-					printf("%d\n", line);
+					printf("%s\n", source_line.filename.c_str());
+					for (auto& line: source_line.lines)
+					{
+						printf("%d\n", line);
+					}
 				}
 			}
 			printf("------------------------------------------------------------------------\n");
@@ -207,18 +226,24 @@ static void print_usage ()
  * Determine the coverage with basic block addresses after functions_map is filled with the data from the .gcno files.
  * The statistics of the coverage is printed as csv to stdout.
  */
-void determine_coverage() {
+void determine_coverage()
+{
 	printf_verbose(ADDITIONAL_INFORMATION, "covered basic blocks:\n");
 	// get all covered basic blocks from the basic block addresses from stdin
-	for (std::string line; std::getline(std::cin, line);) {
+	for (std::string line; std::getline(std::cin, line);)
+	{
 		unsigned long block_start_address = std::stoul(line, nullptr, 16);
 		basic_block *bb = get_basic_block(block_start_address);
 		if (bb == nullptr) {
 			printf_verbose(COMMON_FAILURE, "Basic block at start address %lx not found.\n", block_start_address);
 			continue;
 		}
-		for (auto &bb_line: bb->lines) {
-			covered_lines[bb->source].insert(bb_line);
+		for (auto &bb_source_line: bb->source_lines)
+		{
+			for (auto &bb_line: bb_source_line.lines)
+			{
+				covered_lines[bb_source_line.filename].insert(bb_line);
+			}
 		}
 		print_basic_block(bb);
 	}
@@ -247,11 +272,12 @@ void determine_coverage() {
 	printf("filename\tlines_covered\tlines\n");
 	for (auto& it: covered_lines)
 	{
-		std::string full_filename = file_prefix + it.first;
-		unsigned long all_lines_count = count_all_lines_in_file(full_filename);
-		printf("%s\t%lu\t%lu\n", it.first.c_str(), it.second.size(), all_lines_count);
+		std::string filename = it.first;
+		std::set<unsigned> &lines = it.second;
+		unsigned long all_lines_count = count_all_lines_in_file(filename);
+		printf("%s\t%lu\t%lu\n", filename.c_str(), lines.size(), all_lines_count);
 		if (statistic_information) {
-			for (auto &line: it.second) {
+			for (auto &line: lines) {
 				printf("%u\n", line);
 			}
 			printf("\n");
@@ -357,8 +383,6 @@ static void read_graph_file (const char *filename)
 		else if (fn && tag == GCOV_TAG_LINES)
 		{
 			basic_block bb;
-			bool read_basic_block = false;
-			bool is_in_fs = false;
 			bb.blockno = gcov_read_unsigned ();
 
 			while (true)
@@ -375,49 +399,43 @@ static void read_graph_file (const char *filename)
 
 				if (lineno)
 				{
-					if (is_in_fs)
-					{
-						printf("%d\n", lineno);
-						bb.lines.push_back(lineno);
-					}
+					printf("%d\n", lineno);
+					bb.source_lines.back().lines.push_back(lineno);
 				}
 				else
 				{
 					printf("source: %s\n", source);
-					std::string source_tmp = source;
-					if (source_tmp.substr(0, 3) == "fs/")
-					{
-						bb.source = source;
-						is_in_fs = true;
-						read_basic_block = true;
-					}
-					else
-					{
-						is_in_fs = false;
-					}
+					source_line bb_source_line;
+					bb_source_line.filename = source;
+					bb.source_lines.push_back(bb_source_line);
 				}
 			}
 			printf("_________________________________________\n");
 
-			if (read_basic_block && !bb.lines.empty())
-			{
-				std::string source_name = file_prefix + bb.source;
-				if (fn->basic_blocks.count(bb) > 0) {
-					printf_verbose(COMMON_FAILURE,
-								   "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
-								   source_name.c_str(), bb.lines.front());
-					continue;
-				}
-
-				// create empty entry for the source name in covered_lines
-				if (covered_lines.count(bb.source) == 0) {
-					covered_lines[bb.source] = std::set<unsigned int>();
-				}
-
-				fn->basic_blocks.insert(bb);
-
-				basic_blocks_map[source_name].insert(bb);
+			std::string source_name = file_prefix + bb.get_filename();
+			if (fn->basic_blocks.count(bb) > 0) {
+				printf_verbose(COMMON_FAILURE,
+							   "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
+							   source_name.c_str(), bb.get_start_line());
+				continue;
 			}
+
+			// create empty entries for the source names in covered_lines and add all lines of bb to coverable_lines
+			for (auto &bb_source_line: bb.source_lines)
+			{
+				if (covered_lines.count(bb_source_line.filename) == 0)
+				{
+					covered_lines[bb_source_line.filename] = std::set<unsigned>();
+				}
+				for (auto &line: bb_source_line.lines)
+				{
+					coverable_lines[bb_source_line.filename].insert(line);
+				}
+			}
+
+			fn->basic_blocks.insert(bb);
+
+			basic_blocks_map[source_name].insert(bb);
 		}
 		else if (current_tag && !GCOV_TAG_IS_SUBTAG (current_tag, tag))
 		{
@@ -438,19 +456,14 @@ static void read_graph_file (const char *filename)
 /**
  * @return count of all coverable files and functions
  */
-std::pair<unsigned int, unsigned long> count_all_files_and_lines()
+std::pair<unsigned, unsigned long> count_all_files_and_lines()
 {
-	std::set<std::string> all_files;
 	unsigned long count_lines = 0;
-	for (auto& functions_in_file: functions_map)
+	for (auto &it: coverable_lines)
 	{
-		for (auto& it_fn: functions_in_file.second)
-		{
-			all_files.insert(it_fn.second->source);
-			count_lines += count_all_lines_in_function(it_fn.second);
-		}
+		count_lines += it.second.size();
 	}
-	return std::pair<unsigned int, unsigned long>{all_files.size(), count_lines};
+	return std::pair<unsigned, unsigned long>{coverable_lines.size(), count_lines};
 }
 
 /**
@@ -460,27 +473,10 @@ std::pair<unsigned int, unsigned long> count_all_files_and_lines()
 unsigned long count_all_lines_in_file(std::string& filename)
 {
 	unsigned long count_lines = 0;
-	auto search_functions = functions_map.find(filename);
-	if (search_functions != functions_map.end())
+	auto search_lines = coverable_lines.find(filename);
+	if (search_lines != coverable_lines.end())
 	{
-		for (auto& it_fn: search_functions->second)
-		{
-			count_lines += count_all_lines_in_function(it_fn.second);
-		}
-	}
-	return count_lines;
-}
-
-/**
- * @param function in which all coverable lines are counted
- * @return count of all coverable lines in function
- */
-unsigned long count_all_lines_in_function(function_info *function)
-{
-	unsigned long count_lines = 0;
-	for (auto& bb: function->basic_blocks)
-	{
-		count_lines += bb.lines.size();
+		count_lines += search_lines->second.size();
 	}
 	return count_lines;
 }
@@ -518,16 +514,18 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		// to find the basic block the line has to be smaller than the start line of the basic block
 		// and smaller than the start line of the succeding basic block
 		basic_block bb;
-		bb.lines.push_back(bfdSearchCtx.line);
+		source_line bb_source_line;
+		bb_source_line.lines.push_back(bfdSearchCtx.line);
+		bb.source_lines.push_back(bb_source_line);
 		auto search_bb = search_basic_blocks->second.upper_bound(bb);
 		if (search_bb != search_basic_blocks->second.begin())
 		{
 			search_bb--;
-			if (search_bb->lines.front() != bfdSearchCtx.line)
+			if (search_bb->get_start_line() != bfdSearchCtx.line)
 			{
 				printf_verbose(ADDITIONAL_INFORMATION,
 						"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
-						bb_addr, bfdSearchCtx.file, *search_bb->lines.begin());
+						bb_addr, bfdSearchCtx.file, search_bb->get_start_line());
 			}
 			basic_blocks_addr_map[bb_addr] = *search_bb;
 			return &basic_blocks_addr_map[bb_addr];
@@ -587,10 +585,14 @@ void print_basic_block(const basic_block* bb)
 {
 	if (bb != nullptr && verbose >= ADDITIONAL_INFORMATION)
 	{
-		printf_verbose(ADDITIONAL_INFORMATION, "Basicblock %d: %s: ", bb->blockno, bb->source.c_str());
-		for (unsigned line: bb->lines)
+		printf_verbose(ADDITIONAL_INFORMATION, "Basicblock %d: %s: ", bb->blockno, bb->get_filename().c_str());
+		for (auto &bb_source_line: bb->source_lines)
 		{
-			printf_verbose(ADDITIONAL_INFORMATION, "%d ", line);
+			printf_verbose(ADDITIONAL_INFORMATION, "%s ", bb_source_line.filename.c_str());
+			for (unsigned line: bb_source_line.lines)
+			{
+				printf_verbose(ADDITIONAL_INFORMATION, "%d ", line);
+			}
 		}
 		printf_verbose(ADDITIONAL_INFORMATION, "\n");
 	}
