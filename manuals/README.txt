@@ -103,7 +103,7 @@ PSQL_HOST=IP of the PostgreSQL host
 PSQL_USER=username
 DELIMITER='#'
 ACCEPT_THRESHOLD=99.0
-- Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE_NAME 2&>1 | tee post-process-trace.out
+- Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE_NAME 2>&1 | tee post-process-trace.out
 	+ post-process-trace.sh will do the rest for you including calling convert
 		* The convert tool (see convert/) converts the trace into the relational database
 		* convert's log is stored in conv-out.txt
