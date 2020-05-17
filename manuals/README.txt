@@ -94,23 +94,25 @@ IP address of the PostgreSQL host:5432:*:username:passwort
 - Create a directory for the results of the post processing
 - Change into that directory
 - Create the config file 'convert.conf':
-DATA=path to the fail output.csv.gut
-KERNEL=path to the vmlinux
-KERNEL_TREE=base directory where the kernel tree is located within your VM
-BASE_URL=base URL to the exlisir instance, used by the bug report generator: e.g. https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdoc-v5.4.0-rc4-0.2/source
-GUEST_OS=guest OS type
+DATA=path to the output produced by FAIL*, e.g., actions.csv.gz. The precise name can be obtained by reading the output of fail-client.
+KERNEL=path to the vmlinux (outside the VM)
+KERNEL_TREE=directory where the kernel tree is located within your VM
+BASE_URL=base URL to the elixir instance, it is used by the bug report generator: e.g. https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdoc-v5.4.0-rc4-0.2/source
+GUEST_OS=guest OS type, linux or freebsd
 PSQL_HOST=IP of the PostgreSQL host
 PSQL_USER=username
 DELIMITER='#'
 ACCEPT_THRESHOLD=99.0
-- Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE 2&>1 | tee post-process-trace.out
-	+ The convert tool (see convert/) converts the trace into the relational database
-	+ convert's output is stored in conv-out.txt
-	+ variants
-		* nostack vs. stack:  Uses the stack trace to generate the hypotheses
-		* nosubclasses vs. subclasses: Generate hypotheses for each subclass, e.g., inode:ext4 vs. inode:devtmpfs
-	+ all-txns-members-locks-db-*.csv: Input for the hypothesizer; each row contains one transaction including the held locks and the accessed members
-	+ all-txns-members-locks-hypo-*: Contains the generated hypotheses for each tuple of (data type, member, access type)
-	+ all-txns-members-locks-hypo-bugs-*: Same as all-txns-members-locks-hypo-*; additionally includes the generated calls to counterexamples.sql.sh
-	+ all-txns-members-locks-hypo-winner-*.csv: Just contains the winning hypothesis for each tuple of (data type, member, access type)
-	+ The files cex-*{.csv,html} contain the counterexamples. One file per data type. The html variant contains a pretty printed overview.
+- Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE_NAME 2&>1 | tee post-process-trace.out
+	+ post-process-trace.sh will do the rest for you including calling convert
+		* The convert tool (see convert/) converts the trace into the relational database
+		* convert's log is stored in conv-out.txt
+		* Explanation of the variants
+			* nostack vs. stack:  Uses the stack trace to generate the hypotheses
+			* nosubclasses vs. subclasses: Generate hypotheses for each subclass, e.g., inode:ext4 vs. inode:devtmpfs
+	+ output files
+		* all-txns-members-locks-db-*.csv: Input for the hypothesizer; each row contains one transaction including the held locks and the accessed members
+		* all-txns-members-locks-hypo-*: Contains the generated hypotheses for each tuple of (data type, member, access type)
+		* all-txns-members-locks-hypo-bugs-*: Same as all-txns-members-locks-hypo-*; additionally includes the generated calls to counterexamples.sql.sh
+		* all-txns-members-locks-hypo-winner-*.csv: Just contains the winning hypothesis for each tuple of (data type, member, access type)
+		* The files cex-*{.csv,html} contain the counterexamples. One file per data type. The html variant contains a pretty printed overview.
