@@ -64,7 +64,7 @@ Fail
 	+ An example BOCHSRC is located in this directory.
 	+ The experiments communicates via a serial port mapped to TCP socket with the guest OS. The TCP port is set in the BOCHSRC.
 	* Create a temporary directory where you can run the fail client
-	* Copy all files from manuals/bochs/* to that directory
+	* Copy all files from manuals/bochs/* to that directory. Copy also the example BOCHSRC (bochsrc-example).
 	* Adapt the path to your hdd image in your BOCHSRC
 	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
 		Example: /home/al/fail/build/bin/fail-client -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
@@ -88,8 +88,11 @@ Fail
 Post Processing
 ===============
 
+- Change to directory convert, and run make
+- Change to directory hypothesizer, and run make
 - For the PostgreSQL cmdline tool to work properly, create '.pgpass' in your home directory, and add the following line:
 IP address of the PostgreSQL host:5432:*:username:passwort
+  Ensure it is only writeable by your user (-> chmod 0600 .pgpass)
 - Do not forget to create the database, and grant your user the proper permissions
 - Create a directory for the results of the post processing
 - Change into that directory
