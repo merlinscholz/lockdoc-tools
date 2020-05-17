@@ -120,6 +120,25 @@ ACCEPT_THRESHOLD=99.0
 		* all-txns-members-locks-hypo-winner-*.csv: Just contains the winning hypothesis for each tuple of (data type, member, access type)
 		* The files cex-*{.csv,html} contain the counterexamples. One file per data type. The html variant contains a pretty printed overview.
 
+
+Behind the scenes
+=================
+
+- FAIL* runs our experiment called lock-debugging. Src is at fail/src/experiments/lock-debugging/.
+- FAIL* uses BOCHS for running a VM. Hence, it has access to the guest memory.
+- The experiment reads the address of the buffer on expertiment startup from the vmlinux. It uses embedded ELF information for that.
+- When the instrumented kernel reaches an instrumented lock operation, an alloc, or a free, it gathers all needed information.
+  See log_lock() and log_memory() in linux/include/linux/lockdoc.h
+- Those information are then written into the aforementioned buffer.
+- The guest OS sends a 'P' via the IO port at adress 0xe9.
+- At this moment, the FAIL* experiment takes over, and the guest OS is suspended.
+- The experiment copies the content from the shared buffer (guest memory) to its on memory.
+- Based on the value of the member 'action' it performs certain actions:
+	* If it is a memory operation, it starts/ends observing a certain memory area for memory accesses.
+	* There's nothing to do for a lock operation.
+	* Finally, it logs the event to the output file.
+- The experiment yields, and the guest OS resumes.
+
 Code Coverage in Linux
 ======================
 
