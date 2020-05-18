@@ -433,6 +433,8 @@ static void read_graph_file (const char *filename)
 				printf_verbose(COMMON_FAILURE,
 							   "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
 							   source_name.c_str(), bb.get_start_line());
+				print_basic_block(&bb);
+				printf("____");
 				bb_is_already_in_bb_map_count++;
 				continue;
 			}
