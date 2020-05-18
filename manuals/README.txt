@@ -124,15 +124,25 @@ ACCEPT_THRESHOLD=99.0
 Behind the scenes
 =================
 
-- FAIL* runs our experiment called lock-debugging. Src is at fail/src/experiments/lock-debugging/.
+- FAIL* runs our experiment called lock-debugging. Src is located in fail/src/experiments/lock-debugging/.
 - FAIL* uses BOCHS for running a VM. Hence, it has access to the guest memory.
-- The experiment reads the address of the buffer on expertiment startup from the vmlinux. It uses embedded ELF information for that.
+- FAIL* experiment and guest exchange information via a shared buffer in the guest memory.
+- The experiment reads the address of the buffer on expertiment startup from the vmlinux. It uses the embedded ELF information for that.
+- Instead of starting the OS-specific init program, it launches our script: /lockdoc/run-bench.sh (--> manuals/vm-linux-32/scripts/run-bench.sh)
+- First, it asks the running kernel for its version string. On linux: /proc/version-git, on FreeBSD: /dev/lockdoc/version. 
+  The version string is send to the experiment via the first serial console. The experiments intercepts the serial console by listening to the respective IO port(s).
+  See handleIOConsole() in fail/src/experiments/lock-debugging/experiment.cc
+- The script asks the experiment via the first serial console for the benchmark to run.
+- The experiment responds via the second serial console (TCP socket in serialSentThreadWork() in fail/src/experiments/lock-debugging/experiment.cc).
+- run-bench.sh then starts the selected benchmark
 - When the instrumented kernel reaches an instrumented lock operation, an alloc, or a free, it gathers all needed information.
-  See log_lock() and log_memory() in linux/include/linux/lockdoc.h
+  These happens from the moment the guest kernel is alive. This is mostly way before run-bench.sh is executed.
+  For more details on how to gather those information look at log_lock() and log_memory() in linux/include/linux/lockdoc.h
 - Those information are then written into the aforementioned buffer.
 - The guest OS sends a 'P' via the IO port at adress 0xe9.
-- At this moment, the FAIL* experiment takes over, and the guest OS is suspended.
-- The experiment copies the content from the shared buffer (guest memory) to its on memory.
+- At this moment, the FAIL* experiment takes over, and the guest OS is suspended. This happens for every event an experiment has registered for.
+  See handleKernelConsole() in fail/src/experiments/lock-debugging/experiment.cc
+- The experiment copies the content from the shared buffer (guest memory) to its own memory.
 - Based on the value of the member 'action' it performs certain actions:
 	* If it is a memory operation, it starts/ends observing a certain memory area for memory accesses.
 	* There's nothing to do for a lock operation.
