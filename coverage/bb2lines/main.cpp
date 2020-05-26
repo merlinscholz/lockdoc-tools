@@ -122,6 +122,9 @@ unsigned bb_at_addr_not_found_count = 0;
 unsigned file_is_null_in_addr2line_count = 0;
 unsigned file_found_line_not_found_count = 0;
 
+unsigned input_addr_count = 0;
+unsigned bb_read_count = 0;
+
 int printf_verbose(int verbosity, const char * format, ...)
 {
 	if(verbose < verbosity)
@@ -129,7 +132,7 @@ int printf_verbose(int verbosity, const char * format, ...)
 
 	va_list args;
 	va_start(args, format);
-	int ret = vprintf(format, args);
+	int ret = vfprintf(stderr, format, args);
 	va_end(args);
 
 	return ret;
@@ -191,26 +194,24 @@ int main (int argc, char **argv)
 		}
 	}
 
-	for (auto& functions_it: functions_map)
-	{
-		for (auto& function_it: functions_it.second)
-		{
-			printf("source: %s\t\tfunction name: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
-			for (auto& bb: function_it.second->basic_blocks)
-			{
-				printf("blockno: %d\n", bb.blockno);
-				for (auto& source_line: bb.source_lines)
-				{
-					printf("%s\n", source_line.filename.c_str());
-					for (auto& line: source_line.lines)
-					{
-						printf("%d\n", line);
-					}
-				}
-			}
-			printf("------------------------------------------------------------------------\n");
-		}
-	}
+//	for (auto& functions_it: functions_map)
+//	{
+//		for (auto& function_it: functions_it.second)
+//		{
+//			printf_verbose(ADDITIONAL_INFORMATION, "bb_in_map: source=%s lines= fn: %s\n", function_it.second->source.c_str(), function_it.second->fn_name.c_str());
+//			for (auto& bb: function_it.second->basic_blocks)
+//			{
+//				for (auto& source_line: bb.source_lines)
+//				{
+//					printf_verbose(ADDITIONAL_INFORMATION, "; source=%s, lines=", source_line.filename.c_str());
+//					for (unsigned line: source_line.lines)
+//					{
+//						printf("%d", line);
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	determine_coverage();
 
@@ -239,10 +240,11 @@ void determine_coverage()
 	// get all covered basic blocks from the basic block addresses from stdin
 	for (std::string line; std::getline(std::cin, line);)
 	{
+		input_addr_count++;
 		unsigned long block_start_address = std::stoul(line, nullptr, 16);
 		basic_block *bb = get_basic_block(block_start_address);
-		if (bb == nullptr) {
-			printf_verbose(COMMON_FAILURE, "Basic block at start address %lx not found.\n", block_start_address);
+		if (bb == nullptr)
+		{
 			bb_at_addr_not_found_count++;
 			continue;
 		}
@@ -253,9 +255,9 @@ void determine_coverage()
 				covered_lines[bb_source_line.filename].insert(bb_line);
 			}
 		}
-		print_basic_block(bb);
+		// print_basic_block(bb);
 	}
-	printf_verbose(COMMON_FAILURE, "\n");
+	printf_verbose(ADDITIONAL_INFORMATION, "\n");
 
 	unsigned int file_count = 0;
 	unsigned long line_count = 0;
@@ -267,16 +269,21 @@ void determine_coverage()
 		}
 	}
 
+	// failure summary
+	fprintf(stderr, "Failure summary:\n");
+	fprintf(stderr, "Address resolves not the start line of a basic block: %d/%d\n",
+			addr_not_start_line_count, input_addr_count);
+	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
+			bb_is_already_in_bb_map_count, bb_read_count);
+	fprintf(stderr, "Basic block not found in .gcno files: %d/%d\n",
+			bb_at_addr_not_found_count, input_addr_count);
+	fprintf(stderr, "addr2line returns null for file: %d/%d\n",
+			file_is_null_in_addr2line_count, input_addr_count);
+	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n\n",
+			file_found_line_not_found_count, input_addr_count);
+
 	if (statistic_information)
 	{
-		// failure summary
-		printf("Failure summary:\n");
-		printf("Address resolves not the start line of a basic block: %d\n", addr_not_start_line_count);
-		printf("Basic block was already read from the .gcno files: %d\n", bb_is_already_in_bb_map_count);
-		printf("Basic block not found in .gcno files: %d\n", bb_at_addr_not_found_count);
-		printf("addr2line returns null for file: %d\n", file_is_null_in_addr2line_count);
-		printf("File from addr2line was found in .gcno files, but not the line: %d\n", file_found_line_not_found_count);
-
 		std::pair<unsigned int, unsigned long> files_lines_count = count_all_files_and_lines();
 		float file_count_percentage = (float) file_count / files_lines_count.first * 100;
 		float line_count_percentage = (float) line_count / files_lines_count.second * 100;
@@ -401,6 +408,8 @@ static void read_graph_file (const char *filename)
 			basic_block bb;
 			bb.blockno = gcov_read_unsigned ();
 
+			printf_verbose(ADDITIONAL_INFORMATION, "gcno_read: ");
+
 			while (true)
 			{
 				const char *source = nullptr;
@@ -415,26 +424,30 @@ static void read_graph_file (const char *filename)
 
 				if (lineno)
 				{
-					printf("%d\n", lineno);
+					if (!bb.source_lines.back().lines.empty())
+						printf_verbose(ADDITIONAL_INFORMATION, ",");
+					printf_verbose(ADDITIONAL_INFORMATION, "%d", lineno);
 					bb.source_lines.back().lines.push_back(lineno);
 				}
 				else
 				{
-					printf("source: %s\n", source);
+					if (!bb.source_lines.empty())
+						printf_verbose(ADDITIONAL_INFORMATION, "; ", source);
+					printf_verbose(ADDITIONAL_INFORMATION, "source=%s lines=", source);
 					source_line bb_source_line;
 					bb_source_line.filename = source;
 					bb.source_lines.push_back(bb_source_line);
 				}
 			}
-			printf("_________________________________________\n");
+			printf_verbose(ADDITIONAL_INFORMATION, "\n");
+
+			bb_read_count++;
 
 			std::string source_name = file_prefix + bb.get_filename();
 			if (fn->basic_blocks.count(bb) > 0) {
 				printf_verbose(COMMON_FAILURE,
-							   "Basic block in %s and start_line %d is already in basic_blocks_map.\n",
+							   "bb in %s and start_line %d is already in basic_blocks_map.\n",
 							   source_name.c_str(), bb.get_start_line());
-				print_basic_block(&bb);
-				printf("____");
 				bb_is_already_in_bb_map_count++;
 				continue;
 			}
@@ -513,16 +526,17 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	auto search_addr = basic_blocks_addr_map.find(bb_addr);
 	if (search_addr != basic_blocks_addr_map.end())
 	{
+		printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, found again\n",
+					   bb_addr, search_addr->second.get_filename().c_str(), search_addr->second.get_start_line());
 		return &search_addr->second;
 	}
 
 	// find the basis block through the functions in functions_map
 	BfdSearchCtx bfdSearchCtx = addr_to_line(bb_addr);
-	printf_verbose(ADDITIONAL_INFORMATION, "addr2line: file: %s line: %d fn: %s\n", bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 	// a rare error and not really investigated
 	if (bfdSearchCtx.file == nullptr)
 	{
-		printf_verbose(RARE_FAILURE, "file from addr2line was null for basic block address: %lx\n", bb_addr);
+		printf_verbose(RARE_FAILURE, "file from addr2line was null for bb addr: %lx\n", bb_addr);
 		file_is_null_in_addr2line_count++;
 		return nullptr;
 	}
@@ -544,20 +558,24 @@ basic_block* get_basic_block(unsigned long bb_addr)
 			if (search_bb->get_start_line() != bfdSearchCtx.line)
 			{
 				printf_verbose(ADDITIONAL_INFORMATION,
-						"basic block addr %lx is not the start line of the basic block: file: %s; start line: %u\n",
+						"bb addr %lx is not the start line of bb: file=%s, start line=%u\n",
 						bb_addr, bfdSearchCtx.file, search_bb->get_start_line());
 				addr_not_start_line_count++;
 			}
 			basic_blocks_addr_map[bb_addr] = *search_bb;
+			printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, found\n",
+						   bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 			return &basic_blocks_addr_map[bb_addr];
 		}
 		else
 		{
-			printf_verbose(RARE_FAILURE, "file %s was found, but not the line %d for basic block address %lx\n",
+			printf_verbose(RARE_FAILURE, "file %s was found, but not the line %d for bb addr %lx\n",
 						   bfdSearchCtx.file, bfdSearchCtx.fn, bfdSearchCtx.line, bb_addr);
 			file_found_line_not_found_count++;
 		}
 	}
+	printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
+			bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 	return nullptr;
 }
 
