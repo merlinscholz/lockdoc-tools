@@ -1,3 +1,12 @@
+How to start?
+=============
+
+1. Set up a VM, see section 'VM' or consult the respective OS manual in manuals/vm-*-32/
+2. Set up FAIL* as described below in section 'Fail'
+3. See sections 'Post Processing' for details on how to process the trace
+
+--------------------------------------------------------------------------------------
+
 Kernel
 ======
 - Branches: lockdebugging-{3-16,4-10}, lockdoc-5-4
@@ -39,8 +48,19 @@ The following benchmarks are available:
 Databases
 ===========
 
-- LockDoc needs one database for each processed run
+- LockDoc needs one database for each processed trace
 - We recommend the following scheme for the database name: lockdoc_<os>_<benchmark>_<bernel version>
+- For a starter, I recommend using the mixed-fs (or lockdoc-test) benchmark. It produces a small and handy trace that doesn't
+  take too much time to be processed.
+- For all other benchmarks, especially the ltp-* ons, I recommend using a *large* ssd/hdd to store your PostgreSQL databases on.
+  Refer to the PostgreSQL on how to move the databases to another drive.
+  It is also recommended to configure a second spare harddrive for the database. This one should be configured as temp
+  tablespace for your databases.
+  Some details on that could be found here:
+	+ https://www.postgresql.org/docs/10/runtime-config-client.html#GUC-TEMP-TABLESPACES
+	+ https://www.postgresql.org/docs/10/manage-ag-tablespaces.html
+  Our experiments showed that the ltp-syscall benchmark, for example, uses several hunderts of GBs for the database.
+  One of the post processing query can take up to 300GB of spare space while processing.
 
 Fail
 ====
@@ -100,7 +120,7 @@ Post Processing
 - For the PostgreSQL cmdline tool to work properly, create '.pgpass' in your home directory, and add the following line:
 IP address of the PostgreSQL host:5432:*:username:passwort
   Ensure it is only writeable by your user (-> chmod 0600 .pgpass)
-- Do not forget to create the database, and grant your user the proper permissions
+- Do not forget to create the database, and grant your user the proper permissions. For more information, have a look at the 'Database' section.
 - Create a directory for the results of the post processing
 - Change into that directory
 - Create the config file 'convert.conf':
