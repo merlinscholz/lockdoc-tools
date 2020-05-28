@@ -408,7 +408,7 @@ static void read_graph_file (const char *filename)
 			basic_block bb;
 			bb.blockno = gcov_read_unsigned ();
 
-			printf_verbose(ADDITIONAL_INFORMATION, "gcno_read: ");
+			printf_verbose(ADDITIONAL_INFORMATION, "gcno_read: bb_no=%d ", bb.blockno);
 
 			while (true)
 			{
