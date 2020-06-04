@@ -2,8 +2,8 @@ How to start?
 =============
 
 1. Set up a VM, see section 'VM' or consult the respective OS manual in manuals/vm-*-32/
-2. Set up FAIL* as described below in section 'Fail'
-3. See sections 'Post Processing' for details on how to process the trace
+2. Set up FAIL* as described below in section 'Fail'. On your host (outside the VM).
+3. See sections 'Post Processing' for details on how to process the trace. On your host (outside the VM).
 
 --------------------------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ Fail
 - FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.2 or the nightly build
   Both are available at http://aspectc.org/Download.php.
 - Checkout the FAIL* repo from our project, and use branch lock-debugging
-- Building FAIL*
+- Building FAIL* on your host (outside the VM)
 	+ mkdir build
 	+ cd build
 	+ cmake ..
