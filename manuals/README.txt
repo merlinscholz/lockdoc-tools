@@ -65,7 +65,8 @@ Databases
 Fail
 ====
 
-- For a detailed guide on how to build FAIL*, pls look at the respective README in the FAIL* repository.
+- For a detailed guide on how to build FAIL*, pls look at the respective manual (doc/how-to-build.txt) in the FAIL* repository.
+  It should be sufficient to follow the instructions below.
 - FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.2 or the nightly build
   Both are available at http://aspectc.org/Download.php.
 - Checkout the FAIL* repo from our project, and use branch lock-debugging
