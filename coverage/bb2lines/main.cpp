@@ -121,8 +121,10 @@ unsigned bb_is_already_in_bb_map_count = 0;
 unsigned bb_at_addr_not_found_count = 0;
 unsigned file_is_null_in_addr2line_count = 0;
 unsigned file_found_line_not_found_count = 0;
+unsigned fs_not_in_bb_map_count = 0;
 
 unsigned input_addr_count = 0;
+unsigned unique_input_addr_count = 0;
 unsigned bb_read_count = 0;
 
 int printf_verbose(int verbosity, const char * format, ...)
@@ -272,15 +274,17 @@ void determine_coverage()
 	// failure summary
 	fprintf(stderr, "Failure summary:\n");
 	fprintf(stderr, "Address resolves not the start line of a basic block: %d/%d\n",
-			addr_not_start_line_count, input_addr_count);
+			addr_not_start_line_count, unique_input_addr_count);
 	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
 			bb_is_already_in_bb_map_count, bb_read_count);
 	fprintf(stderr, "Basic block not found in .gcno files: %d/%d\n",
-			bb_at_addr_not_found_count, input_addr_count);
+			bb_at_addr_not_found_count, unique_input_addr_count);
 	fprintf(stderr, "addr2line returns null for file: %d/%d\n",
-			file_is_null_in_addr2line_count, input_addr_count);
-	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n\n",
-			file_found_line_not_found_count, input_addr_count);
+			file_is_null_in_addr2line_count, unique_input_addr_count);
+	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n",
+			file_found_line_not_found_count, unique_input_addr_count);
+	fprintf(stderr, "bb with fs in name is not in internal data structure: %d/%d\n\n",
+			fs_not_in_bb_map_count, unique_input_addr_count);
 
 	if (statistic_information)
 	{
@@ -444,13 +448,6 @@ static void read_graph_file (const char *filename)
 			bb_read_count++;
 
 			std::string source_name = file_prefix + bb.get_filename();
-			if (fn->basic_blocks.count(bb) > 0) {
-				printf_verbose(COMMON_FAILURE,
-							   "bb in %s and start_line %d is already in basic_blocks_map.\n",
-							   source_name.c_str(), bb.get_start_line());
-				bb_is_already_in_bb_map_count++;
-				continue;
-			}
 
 			// create empty entries for the source names in covered_lines and add all lines of bb to coverable_lines
 			for (auto &bb_source_line: bb.source_lines)
@@ -465,7 +462,26 @@ static void read_graph_file (const char *filename)
 				}
 			}
 
-			fn->basic_blocks.insert(bb);
+			auto search_basic_blocks = basic_blocks_map.find(source_name);
+			if (search_basic_blocks != basic_blocks_map.end() && !search_basic_blocks->second.empty())
+			{
+				auto search_bb = search_basic_blocks->second.find(bb);
+				if (search_bb != search_basic_blocks->second.end())
+				{
+					printf_verbose(COMMON_FAILURE,
+								   "bb in %s and start_line %d is already in basic_blocks_map. Merge with existing bb.\n",
+								   source_name.c_str(), bb.get_start_line());
+
+					for (auto& sl: search_bb->source_lines)
+					{
+						bb.source_lines.push_back(sl);
+					}
+					basic_blocks_map[source_name].erase(search_bb);
+					bb_is_already_in_bb_map_count++;
+				}
+			}
+
+			// fn->basic_blocks.insert(bb);
 
 			basic_blocks_map[source_name].insert(bb);
 		}
@@ -531,6 +547,8 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		return &search_addr->second;
 	}
 
+	unique_input_addr_count++;
+
 	// find the basis block through the functions in functions_map
 	BfdSearchCtx bfdSearchCtx = addr_to_line(bb_addr);
 	// a rare error and not really investigated
@@ -576,6 +594,9 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	}
 	printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
 			bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
+	if (std::string(bfdSearchCtx.file).find("/fs/") != std::string::npos) {
+		fs_not_in_bb_map_count++;
+	}
 	return nullptr;
 }
 
