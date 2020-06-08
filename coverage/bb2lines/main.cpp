@@ -529,6 +529,35 @@ unsigned long count_all_lines_in_file(std::string& filename)
 	return count_lines;
 }
 
+bool is_line_and_file_in_bb(unsigned line, std::string& filename, const basic_block& bb)
+{
+	for (auto& sl: bb.source_lines)
+	{
+		if (sl.filename == filename && std::find(sl.lines.begin(), sl.lines.end(), line) != sl.lines.end())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+basic_block find_line_and_file_in_bb_map(unsigned line, std::string& filename)
+{
+	for (auto& bbs_in_file: basic_blocks_map)
+	{
+		for (auto& bb: bbs_in_file.second)
+		{
+			if (is_line_and_file_in_bb(line, filename, bb))
+			{
+				return bb;
+			}
+		}
+	}
+	basic_block invalid_bb;
+	invalid_bb.is_valid = false;
+	return invalid_bb;
+}
+
 /**
  * Get for a basis block address the corresponding basis block.
  * The line determined by bb_addr is smaller than the start line of the returned basic block
@@ -601,7 +630,22 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	}
 	printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
 			bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
-	if (std::string(bfdSearchCtx.file).find("/fs/") != std::string::npos) {
+	// searches harder for lines in a file detected in /fs/
+	std::string addr2line_filename = bfdSearchCtx.file;
+	if (addr2line_filename.find("/fs/") != std::string::npos)
+	{
+		basic_block search_bb = find_line_and_file_in_bb_map(bfdSearchCtx.line, addr2line_filename);
+		if (search_bb.is_valid)
+		{
+			printf_verbose(ADDITIONAL_INFORMATION,
+						   "bb addr %lx is not the start line of bb: file=%s, start line=%u\n",
+						   bb_addr, bfdSearchCtx.file, search_bb.get_start_line());
+			addr_not_start_line_count++;
+			basic_blocks_addr_map[bb_addr] = search_bb;
+			printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, found\n",
+						   bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
+			return &basic_blocks_addr_map[bb_addr];
+		}
 		printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
 					   bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 		fs_not_in_bb_map_count++;
@@ -609,8 +653,6 @@ basic_block* get_basic_block(unsigned long bb_addr)
 
 	basic_block invalid_bb;
 	invalid_bb.is_valid = false;
-//	invalid_bb.blockno = 0;
-//	invalid_bb.source_lines.push_back({std::string(bfdSearchCtx.file), {bfdSearchCtx.line}});
 
 	basic_blocks_addr_map[bb_addr] = invalid_bb;
 
