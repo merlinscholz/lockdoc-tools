@@ -248,7 +248,6 @@ void determine_coverage()
 		basic_block *bb = get_basic_block(block_start_address);
 		if (bb == nullptr)
 		{
-			bb_at_addr_not_found_count++;
 			continue;
 		}
 		for (auto &bb_source_line: bb->source_lines)
@@ -563,6 +562,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	{
 		printf_verbose(RARE_FAILURE, "file from addr2line was null for bb addr: %lx\n", bb_addr);
 		file_is_null_in_addr2line_count++;
+		bb_at_addr_not_found_count++;
 		return nullptr;
 	}
 	// search functions with source file name from addr2line
@@ -614,7 +614,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 
 	basic_blocks_addr_map[bb_addr] = invalid_bb;
 
-
+	bb_at_addr_not_found_count++;
 	return nullptr;
 }
 
