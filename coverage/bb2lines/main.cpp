@@ -44,6 +44,7 @@ struct basic_block
 {
 	unsigned blockno;
 	std::vector<source_line> source_lines;
+	bool is_valid = true;
 
 	const unsigned get_start_line() const
 	{
@@ -542,9 +543,15 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	auto search_addr = basic_blocks_addr_map.find(bb_addr);
 	if (search_addr != basic_blocks_addr_map.end())
 	{
-		printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, found again\n",
-					   bb_addr, search_addr->second.get_filename().c_str(), search_addr->second.get_start_line());
-		return &search_addr->second;
+		if (search_addr->second.is_valid)
+		{
+			printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, found again\n",
+						   bb_addr, search_addr->second.get_filename().c_str(), search_addr->second.get_start_line());
+			return &search_addr->second;
+		}
+		printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, found not again!\n",
+					   bb_addr);
+		return nullptr;
 	}
 
 	unique_input_addr_count++;
@@ -595,8 +602,19 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
 			bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 	if (std::string(bfdSearchCtx.file).find("/fs/") != std::string::npos) {
+		printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, not found!\n",
+					   bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 		fs_not_in_bb_map_count++;
 	}
+
+	basic_block invalid_bb;
+	invalid_bb.is_valid = false;
+//	invalid_bb.blockno = 0;
+//	invalid_bb.source_lines.push_back({std::string(bfdSearchCtx.file), {bfdSearchCtx.line}});
+
+	basic_blocks_addr_map[bb_addr] = invalid_bb;
+
+
 	return nullptr;
 }
 
