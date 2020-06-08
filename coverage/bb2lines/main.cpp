@@ -533,7 +533,7 @@ bool is_line_and_file_in_bb(unsigned line, std::string& filename, const basic_bl
 {
 	for (auto& sl: bb.source_lines)
 	{
-		if (sl.filename == filename && std::find(sl.lines.begin(), sl.lines.end(), line) != sl.lines.end())
+		if (file_prefix + sl.filename == filename && std::find(sl.lines.begin(), sl.lines.end(), line) != sl.lines.end())
 		{
 			return true;
 		}
