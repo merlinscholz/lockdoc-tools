@@ -273,7 +273,7 @@ void determine_coverage()
 
 	// failure summary
 	fprintf(stderr, "Failure summary:\n");
-	fprintf(stderr, "Address resolves not the start line of a basic block: %d/%d\n",
+	fprintf(stderr, "Address resolves not to the start line of a basic block: %d/%d\n",
 			addr_not_start_line_count, unique_input_addr_count);
 	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
 			bb_is_already_in_bb_map_count, bb_read_count);
@@ -623,8 +623,21 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		}
 		else
 		{
+			std::string addr2line_filename = bfdSearchCtx.file;
+			basic_block search_bb = find_line_and_file_in_bb_map(bfdSearchCtx.line, addr2line_filename);
+			if (search_bb.is_valid)
+			{
+				printf_verbose(ADDITIONAL_INFORMATION,
+							   "bb addr %lx is not the start line of bb: file=%s, start line=%u\n",
+							   bb_addr, bfdSearchCtx.file, search_bb.get_start_line());
+				addr_not_start_line_count++;
+				basic_blocks_addr_map[bb_addr] = search_bb;
+				printf_verbose(COMMON_FAILURE, "bb_read: addr=%lx, file=%s, start_line=%u, fn=%s, found\n",
+							   bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
+				return &basic_blocks_addr_map[bb_addr];
+			}
 			printf_verbose(RARE_FAILURE, "file %s was found, but not the line %d for bb addr %lx\n",
-						   bfdSearchCtx.file, bfdSearchCtx.fn, bfdSearchCtx.line, bb_addr);
+						   bfdSearchCtx.file, bfdSearchCtx.line, bb_addr);
 			file_found_line_not_found_count++;
 		}
 	}
