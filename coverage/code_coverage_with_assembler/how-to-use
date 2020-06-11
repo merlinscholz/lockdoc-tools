@@ -1,0 +1,22 @@
+Code-Überdeckung mit Instruction-Pointers und Python-Skripte bestimmen (mit bsp Parametern):
+Vorverarbeitung:
+  write_objdump_to_dict.py --objdump /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/vmlinux-text.txt
+                           --output-instr-order /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_order.pickle
+                           --output-instr-jmps /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_jmps.pickle
+
+  write_addr2line_to_dict.py --linux-kernel /fs/scratch/thunig/linux-kernel/vmlinux
+                             --instr-order /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_order.pickle
+                             --output-instr-lines /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_lines.pickle
+
+  determine_all_lines_linux_kernel.py --instr-order /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_order.pickle
+                                      --instr-lines /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_lines.pickle
+                                      --file-filter /fs
+                                      --output /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/all_lines_fs
+
+Überdeckung bestimmen:
+  determine_covered_lines.py --instr-ptrs /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/workdir/instruction_pointers
+                             --instr-order /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_order.pickle
+                             --instr-jmps /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_jmps.pickle
+                             --instr-lines /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/instr_lines.pickle
+                             --all-coverable-lines /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/objdump/all_lines_fs
+                             --output /fs/scratch/thunig/gopath/src/github.com/google/syzkaller/workdir/covered_lines
