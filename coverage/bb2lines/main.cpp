@@ -102,7 +102,10 @@ std::unordered_map<std::string, std::set<basic_block>> basic_blocks_map;
 // file prefix for the source file names of basic blocks and functions from the .gcno file
 // addr2line has the absolute path with filename by default
 char *file_prefix;
+// path of the binary
 char *binary;
+// if this pattern is not found in basic_block_map for a specific bb addr a more sophisticated search mechanism is used
+std::regex re_search_pattern;
 
 enum verbosity_level
 {
@@ -149,6 +152,7 @@ static const struct option options[] =
 				{ "statistic-information", no_argument,       nullptr, 's' },
 				{ "file-prefix",           required_argument, nullptr, 'p' },
 				{ "binary",                required_argument, nullptr, 'b' },
+				{ "regex",                 required_argument, nullptr, 'e' },
 				{ 0, 0, 0, 0 }
 		};
 
@@ -157,7 +161,7 @@ int main (int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt_long (argc, argv, "hvspb", options, nullptr)) != -1)
+	while ((opt = getopt_long (argc, argv, "hvspbe", options, nullptr)) != -1)
 	{
 		switch (opt)
 		{
@@ -175,6 +179,9 @@ int main (int argc, char **argv)
 				break;
 			case 'b':
 				binary = argv[optind++];
+				break;
+			case 'e':
+				re_search_pattern = argv[optind++];
 				break;
 			default:
 				fprintf(stderr, "unknown flag `%c'\n", opt);
@@ -231,6 +238,7 @@ static void print_usage ()
 	printf ("  -s, --statistic-information    Print additional statistics and covered lines\n");
 	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
 	printf ("  -b, --binary                   Path of the binary\n");
+	printf ("  -e, --regex                    If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
 }
 
 
@@ -657,7 +665,8 @@ basic_block* get_basic_block(unsigned long bb_addr)
 			bb_addr, bfdSearchCtx.file, bfdSearchCtx.line, bfdSearchCtx.fn);
 	// searches harder for lines in a file detected in /fs/
 	std::string addr2line_filename = bfdSearchCtx.file;
-	if (addr2line_filename.find("/fs/") != std::string::npos)
+	std::smatch matches;
+	if (std::regex_match(addr2line_filename, matches, re_search_pattern))
 	{
 		basic_block search_bb = find_line_and_file_in_bb_map(bfdSearchCtx.line, addr2line_filename);
 		if (search_bb.is_valid)
