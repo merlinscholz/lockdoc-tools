@@ -94,8 +94,9 @@ std::unordered_map<unsigned long, basic_block> basic_blocks_addr_map;
 std::unordered_map<std::string, std::set<unsigned>> covered_lines;
 std::unordered_map<std::string, std::set<unsigned>> coverable_lines;
 // key: name of source file; value: map of functions in file with the function name as key
+// currently not used
 std::unordered_map<std::string, std::unordered_map<std::string, function_info*>> functions_map;
-
+// key: name of source file; value: set of bbs in this file
 std::unordered_map<std::string, std::set<basic_block>> basic_blocks_map;
 
 // file prefix for the source file names of basic blocks and functions from the .gcno file
@@ -234,7 +235,7 @@ static void print_usage ()
 
 
 /**
- * Determine the coverage with basic block addresses after functions_map is filled with the data from the .gcno files.
+ * Determine the coverage with basic block addresses after basic_blocks_map is filled with the data from the .gcno files.
  * The statistics of the coverage is printed as csv to stdout.
  */
 void determine_coverage()
@@ -502,7 +503,7 @@ static void read_graph_file (const char *filename)
 }
 
 /**
- * @return count of all coverable files and functions
+ * @return count of all coverable files and lines
  */
 std::pair<unsigned, unsigned long> count_all_files_and_lines()
 {
@@ -529,6 +530,12 @@ unsigned long count_all_lines_in_file(std::string& filename)
 	return count_lines;
 }
 
+/**
+ * @param line to be searched
+ * @param filename of source file in which the given line is searched
+ * @param bb in which the searched line and file is search
+ * @return true if searched line and file is found in given bb
+ */
 bool is_line_and_file_in_bb(unsigned line, std::string& filename, const basic_block& bb)
 {
 	for (auto& sl: bb.source_lines)
@@ -541,6 +548,11 @@ bool is_line_and_file_in_bb(unsigned line, std::string& filename, const basic_bl
 	return false;
 }
 
+/**
+ * @param line to be searched
+ * @param filename of source file in which the given line is searched
+ * @return found bb
+ */
 basic_block find_line_and_file_in_bb_map(unsigned line, std::string& filename)
 {
 	for (auto& bbs_in_file: basic_blocks_map)
@@ -567,7 +579,7 @@ basic_block find_line_and_file_in_bb_map(unsigned line, std::string& filename)
  */
 basic_block* get_basic_block(unsigned long bb_addr)
 {
-	// first try to find basis block direct in basic_blocks_addr_map
+	// first try to find basis block directly in basic_blocks_addr_map
 	auto search_addr = basic_blocks_addr_map.find(bb_addr);
 	if (search_addr != basic_blocks_addr_map.end())
 	{
@@ -584,7 +596,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 
 	unique_input_addr_count++;
 
-	// find the basis block through the functions in functions_map
+	// find the basis block through the source name and line no in basic_blocks_map
 	BfdSearchCtx bfdSearchCtx = addr_to_line(bb_addr);
 	// a rare error and not really investigated
 	if (bfdSearchCtx.file == nullptr)
@@ -594,7 +606,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 		bb_at_addr_not_found_count++;
 		return nullptr;
 	}
-	// search functions with source file name from addr2line
+	// search basic blocks with source file name from addr2line
 	auto search_basic_blocks = basic_blocks_map.find(bfdSearchCtx.file);
 	if (search_basic_blocks != basic_blocks_map.end() && !search_basic_blocks->second.empty())
 	{
