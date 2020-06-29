@@ -181,8 +181,11 @@ int main (int argc, char **argv)
 				binary = argv[optind++];
 				break;
 			case 'e':
-				re_search_pattern = argv[optind++];
+			{
+				char *re_search_pattern_ = argv[optind++];
+				re_search_pattern = re_search_pattern_;
 				break;
+			}
 			default:
 				fprintf(stderr, "unknown flag `%c'\n", opt);
 		}
@@ -666,7 +669,7 @@ basic_block* get_basic_block(unsigned long bb_addr)
 	// searches harder for lines in a file detected in /fs/
 	std::string addr2line_filename = bfdSearchCtx.file;
 	std::smatch matches;
-	if (std::regex_match(addr2line_filename, matches, re_search_pattern))
+	if (std::regex_search(addr2line_filename, matches, re_search_pattern))
 	{
 		basic_block search_bb = find_line_and_file_in_bb_map(bfdSearchCtx.line, addr2line_filename);
 		if (search_bb.is_valid)
