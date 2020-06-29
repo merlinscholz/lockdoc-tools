@@ -181,11 +181,8 @@ int main (int argc, char **argv)
 				binary = argv[optind++];
 				break;
 			case 'e':
-			{
-				char *re_search_pattern_ = argv[optind++];
-				re_search_pattern = re_search_pattern_;
+				re_search_pattern = argv[optind++];
 				break;
-			}
 			default:
 				fprintf(stderr, "unknown flag `%c'\n", opt);
 		}
