@@ -16,3 +16,4 @@ lockref
 qstr
 buffer_head
 lockdoc_ring_buffer
+ext4_sb_info

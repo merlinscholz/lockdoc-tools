@@ -29,4 +29,9 @@ block_device;bd_fsfreeze_mutex
 pipe_inode_info;mutex
 bdi_writeback;list_lock
 bdi_writeback;work_lock
-dentry;d_lockref.lock
+dentry;d_lockref.anonymous_0.lock
+ext4_sb_info;s_orphan_lock
+ext4_sb_info;s_ext_stats_lock
+ext4_sb_info;s_md_lock
+ext4_sb_info;s_es_lock
+ext4_sb_info;s_writepages_rwsem
