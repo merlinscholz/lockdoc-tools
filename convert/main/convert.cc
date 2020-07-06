@@ -638,15 +638,15 @@ int main(int argc, char *argv[]) {
 		try {
 			action = lineElems.at(1).at(0);
 			switch (action) {
-			case 'a':
-			case 'f':
+			case LOCKDOC_ALLOC:
+			case LOCKDOC_FREE:
 				{
 					typeStr = lineElems.at(6);
 					baseAddress = std::stoull(lineElems.at(3),NULL,16);
 					size = std::stoull(lineElems.at(4));
 					break;
 				}
-			case 'l':
+			case LOCKDOC_LOCK_OP:
 				{
 					int temp;
 					lockMember = lineElems.at(7);
@@ -703,8 +703,8 @@ int main(int argc, char *argv[]) {
 					}
 					break;
 				}
-			case 'r':
-			case 'w':
+			case LOCKDOC_READ:
+			case LOCKDOC_WRITE:
 				{
 					address = std::stoull(lineElems.at(3),NULL,16);
 					size = std::stoull(lineElems.at(4));
@@ -725,7 +725,7 @@ int main(int argc, char *argv[]) {
 
 		writeMemAccesses(action, address, &accessOFile, &lastMemAccesses);
 		switch (action) {
-		case 'a':
+		case LOCKDOC_ALLOC:
 				{
 				if (activeAllocs.find(baseAddress) != activeAllocs.end()) {
 					PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase,"Found active allocation at address.");
@@ -796,7 +796,7 @@ int main(int argc, char *argv[]) {
 				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size,"Added allocation");
 				break;
 				}
-		case 'f':
+		case LOCKDOC_FREE:
 				{
 				itAlloc = activeAllocs.find(baseAddress);
 				if (itAlloc == activeAllocs.end()) {
@@ -812,12 +812,12 @@ int main(int argc, char *argv[]) {
 				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size, "Removed allocation");
 				break;
 				}
-		case 'l':
+		case LOCKDOC_LOCK_OP:
 			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
 				preemptCount, irqSync, flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
 			break;
-		case 'w':
-		case 'r':
+		case LOCKDOC_READ:
+		case LOCKDOC_WRITE:
 				{
 				itAlloc = activeAllocs.find(baseAddress);
 				if (itAlloc == activeAllocs.end()) {
