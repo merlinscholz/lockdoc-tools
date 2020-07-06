@@ -31,7 +31,7 @@ struct LockManager {
 	 * A stack of currently active, nested TXNs.  Implemented as a deque for mass
 	 * insert() in finishTXN().
 	 */
-	std::deque<TXN> m_activeTXNs;
+	std::map<long, std::deque<TXN>> m_activeTXNs;
 	/**
 	 * The next id for a new TXN.
 	 */
@@ -46,9 +46,9 @@ struct LockManager {
 	std::map<unsigned long long,RWLock*> m_locks;
 	std::ofstream& m_txnsOFile;
 	std::ofstream& m_locksHeldOFile;
-	void startTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock);
-	bool finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader);
-	long findTXN(RWLock *lck, enum SUB_LOCK subLock);
+	void startTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, long ctx);
+	bool finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, long ctx);
+	long findTXN(RWLock *lck, enum SUB_LOCK subLock, long ctx);
 	public:
 	friend struct RWLock;
 	LockManager(std::ofstream& txnsOFile, std::ofstream& locksHeldOFile) : m_nextTXNID(1), m_nextLockID(1), m_txnsOFile(txnsOFile), m_locksHeldOFile(locksHeldOFile) {
@@ -62,8 +62,8 @@ struct LockManager {
 	/**
 	 * Get top (= current active) TXN
 	 */
-	struct TXN& getActiveTXN(void);
-	bool hasActiveTXN(void);
+	struct TXN& getActiveTXN(long ctx);
+	bool hasActiveTXN(long ctx);
 	void closeAllTXNs(unsigned long long ts);
 	RWLock* findLock(unsigned long long address);
 	void deleteLockByArea(unsigned long long address, unsigned long long size);

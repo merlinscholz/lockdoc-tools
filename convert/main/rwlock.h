@@ -231,11 +231,12 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir) {
+	const char *kernelDir,
+	long ctx) {
 		if (lockOP == P_WRITE || lockOP == V_WRITE) {
-			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir);
+			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
 		} else if (lockOP == P_READ || lockOP == V_READ) {
-			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir);
+			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
 		} else {
 			stringstream ss;
 			ss << "Invalid op(" << lockOP << "," << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << ts << endl;
@@ -259,7 +260,8 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir);
+	const char *kernelDir,
+	long ctx);
 
 	/**
 	 * Perform the lock operation {@param lockOP} on the read sub lock.
@@ -276,7 +278,8 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir);
+	const char *kernelDir,
+	long ctx);
 
 	virtual void writeWriterLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << write_id << delimiter << lockAddress;

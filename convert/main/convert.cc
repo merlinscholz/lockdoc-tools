@@ -76,6 +76,7 @@ struct MemAccess {
 	int size;													// Size of memory access
 	unsigned long long address;									// Accessed address
 	unsigned long long stacktrace_id;								// Stack pointer
+	long ctx;
 };
 
 /**
@@ -194,7 +195,8 @@ static void handlePV(
 	ofstream& locksOFile,
 	ofstream& txnsOFile,
 	ofstream& locksHeldOFile,
-	const char *kernelBaseDir
+	const char *kernelBaseDir,
+	long ctx
 	)
 {
 	RWLock *tempLock = lockManager->findLock(lockAddress);
@@ -242,7 +244,7 @@ static void handlePV(
 		// Write the lock to disk (aka locks.csv)
 		tempLock->writeLock(locksOFile, delimiter);
 	}
-	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelBaseDir);
+	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelBaseDir, ctx);
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
@@ -289,21 +291,19 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	// heuristic.
 
 	// write memory accesses to disk and associate them with the current TXN
-	unsigned accessCount = 0;
 	for (auto&& tempAccess : *pMemAccesses) {
 		*pMemAccessOFile << dec << tempAccess.id << delimiter << tempAccess.alloc_id;
-		*pMemAccessOFile << delimiter << (lockManager->hasActiveTXN() ? std::to_string(lockManager->getActiveTXN().id) : "\\N");
+		*pMemAccessOFile << delimiter << (lockManager->hasActiveTXN(tempAccess.ctx) ? std::to_string(lockManager->getActiveTXN(tempAccess.ctx).id) : "\\N");
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
 		*pMemAccessOFile << "\n";
-		++accessCount;
+		// count memory accesses for the current TXN if there's one active
+		if (lockManager->hasActiveTXN(tempAccess.ctx)) {
+			lockManager->getActiveTXN(tempAccess.ctx).memAccessCounter += 1;
+		}
 	}
 
-	// count memory accesses for the current TXN if there's one active
-	if (lockManager->hasActiveTXN()) {
-		lockManager->getActiveTXN().memAccessCounter += accessCount;
-	}
 
 	// We'll record the TXN and which locks were held while it ran when it
 	// finishes (with the final V()).
@@ -412,6 +412,7 @@ int main(int argc, char *argv[]) {
 	bool processSeqlock = false, includeAllLocks = false;
 	enum IRQ_SYNC irqSync = LOCK_NONE;
 	enum LOCK_OP lockOP = P_WRITE;
+	long ctx = 0;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
 	while ((param = getopt(argc,argv,"k:b:m:t:svhd:upg:")) != -1) {
@@ -658,6 +659,7 @@ int main(int argc, char *argv[]) {
 					preemptCount = std::stoull(lineElems.at(12),NULL,16);
 					temp = std::stoi(lineElems.at(13),NULL,10);
 					flags = std::stoi(lineElems.at(15),NULL,10);
+					ctx = std::stoul(lineElems.at(16),NULL,10);
 					switch(temp) {
 						case LOCK_NONE:
 							irqSync = LOCK_NONE;
@@ -712,6 +714,7 @@ int main(int argc, char *argv[]) {
 					instrPtr = std::stoull(lineElems.at(11),NULL,16);
 					stacktrace = lineElems.at(14);
 					preemptCount = -1;
+					ctx = std::stoul(lineElems.at(16),NULL,10);
 					break;
 				}
 			}
@@ -814,7 +817,7 @@ int main(int argc, char *argv[]) {
 				}
 		case LOCKDOC_LOCK_OP:
 			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
-				preemptCount, irqSync, flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir);
+				preemptCount, irqSync, flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir, ctx);
 			break;
 		case LOCKDOC_READ:
 		case LOCKDOC_WRITE:
@@ -839,6 +842,7 @@ int main(int argc, char *argv[]) {
 				tempAccess.action = action;
 				tempAccess.size = size;
 				tempAccess.address = address;
+				tempAccess.ctx = ctx;
 				tempAccess.stacktrace_id = addStacktrace(kernelBaseDir, stacktracesOFile, delimiter, instrPtr, stacktrace);
 				break;
 				}

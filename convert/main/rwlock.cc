@@ -18,7 +18,9 @@ void RWLock::writeTransition(
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir) {
+	const char *kernelDir,
+	long ctx) {
+	long ctxOld = ctx;
 
 	this->updateFlags(flags);
 	switch (lockOP) {
@@ -29,7 +31,7 @@ void RWLock::writeTransition(
 					// Flush all reader
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts,  READER_LOCK, true)) {
+					if (lockManager->finishTXN(this, ts,  READER_LOCK, true, ctx)) {
 						// finishTXN has cleaned up all all TXNs. We must now deconstruct der last pos stack.
 						while (!lastNPos.empty()) {
 							this->reader_count--;
@@ -52,7 +54,7 @@ void RWLock::writeTransition(
 						// the corresponding V()
 						// For more information about using the return value of finishTXN(), and why it is important,
 						// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-						if (lockManager->finishTXN(this, ts, WRITER_LOCK, false)) {
+						if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx)) {
 							// forget locking position because this kind of
 							// lock can officially only be held once
 							this->lastNPos.pop();
@@ -86,7 +88,7 @@ void RWLock::writeTransition(
 				tempLockPos.lastIRQSync = irqSync;
 
 				// a P() suspends the current TXN and creates a new one
-				lockManager->startTXN(this, ts, WRITER_LOCK);
+				lockManager->startTXN(this, ts, WRITER_LOCK, ctx);
 				break;
 			}
 
@@ -96,12 +98,19 @@ void RWLock::writeTransition(
 					// a V() finishes the current TXN (even if it does
 					// not match its starting P()!) and continues the
 					// enclosing one
-					if (!lockManager->hasActiveTXN()) {
-						PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts),"TXN: V() but no running TXN!");
+					if (!lockManager->hasActiveTXN(ctx) ||
+					    !(lockManager->getActiveTXN(ctx).lock == this &&
+					      lockManager->getActiveTXN(ctx).subLock == WRITER_LOCK)) {
+						ctx = lockManager->findTXN(this, WRITER_LOCK, ctx);
+						if (ctx == ctxOld && !lockManager->hasActiveTXN(ctx)) {
+							PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");
+						} else if (ctx != ctxOld && lockManager->hasActiveTXN(ctx)) {
+							PRINT_DEBUG(this->toString(WRITER_LOCK, lockOP, ts), "TXN: V() no running TXN in ctx " << ctxOld << ", stealing from " << ctx);
+						}
 					}
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts, WRITER_LOCK, false)) {
+					if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx)) {
 						this->lastNPos.pop();
 					}
 				} else {
@@ -139,7 +148,9 @@ void RWLock::readTransition(
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir) {
+	const char *kernelDir,
+	long ctx) {
+	long ctxOld = ctx;
 
 	this->updateFlags(flags);
 	switch (lockOP) {
@@ -161,7 +172,7 @@ void RWLock::readTransition(
 					// Flush all writer
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts, WRITER_LOCK, true)) {
+					if (lockManager->finishTXN(this, ts, WRITER_LOCK, true, ctx)) {
 						// finishTXN has cleaned up all all TXNs. We must now deconstruct der last pos stack.
 						while (!lastNPos.empty()) {
 							this->writer_count--;
@@ -202,7 +213,7 @@ void RWLock::readTransition(
 				tempLockPos.lastIRQSync = irqSync;
 
 				// a P() suspends the current TXN and creates a new one
-				lockManager->startTXN(this, ts, READER_LOCK);
+				lockManager->startTXN(this, ts, READER_LOCK, ctx);
 				break;
 			}
 
@@ -212,14 +223,21 @@ void RWLock::readTransition(
 					// a V() finishes the current TXN (even if it does
 					// not match its starting P()!) and continues the
 					// enclosing one
-					if (!lockManager->hasActiveTXN()) {
-						PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");
+					if (!lockManager->hasActiveTXN(ctx) ||
+					    !(lockManager->getActiveTXN(ctx).lock == this &&
+					      lockManager->getActiveTXN(ctx).subLock == READER_LOCK)) {
+						ctx = lockManager->findTXN(this, READER_LOCK, ctx);
+						if (ctx == ctxOld && !lockManager->hasActiveTXN(ctx)) {
+							PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");
+						} else if (ctx == ctxOld && lockManager->hasActiveTXN(ctx)) {
+							PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "TXN: V() no running TXN in ctx " << ctxOld << ", stealing from " << ctx);
+						}
 					}
 					// The lockAddress as well as the subLock must match for a txn to be removed from the stack.
 					// In rare corner cases where the trace does *not* contain a valid sequence of P()s and V()s
 					// finishTXN() might fail. If so, we are *not* allowed to remove top element of lastNPos.
 					// Otherwise, lastNPos and activeTXNs get out-of-sync.
-					if (lockManager->finishTXN(this, ts, READER_LOCK, false)) {
+					if (lockManager->finishTXN(this, ts, READER_LOCK, false, ctx)) {
 						this->lastNPos.pop();
 					}
 				} else {

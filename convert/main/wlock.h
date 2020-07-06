@@ -42,8 +42,9 @@ struct WLock : public RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	const char *kernelDir) {
-		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir);
+	const char *kernelDir,
+	long ctx) {
+		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
 	}
 };
 
