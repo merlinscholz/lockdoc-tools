@@ -42,7 +42,7 @@ struct WLock : public RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
+	std::deque<TXN>& activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir) {

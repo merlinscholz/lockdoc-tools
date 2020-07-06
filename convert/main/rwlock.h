@@ -41,11 +41,13 @@ struct LockPos {
  * Note that a TXN does not necessarily end with a V() on the same lock as it
  * started with using a P().
  */
+struct RWLock;
 struct TXN {
 	unsigned long long id;										// ID
 	unsigned long long start;									// Timestamp when this TXN started
 	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
-	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
+//	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
+	RWLock *lock;
 	enum SUB_LOCK subLock;
 	
 };
@@ -248,7 +250,7 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
+	std::deque<TXN>& activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir) {
@@ -262,6 +264,8 @@ struct RWLock {
 			throw logic_error(ss.str());
 		}
 	}
+
+	bool finishTXN(unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile, std::deque<TXN>& activeTXNs);
 
 	/**
 	 * Create and init an instance of 
@@ -285,7 +289,7 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
+	std::deque<TXN>& activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir);
@@ -305,10 +309,11 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
+	std::deque<TXN>& activeTXNs,
 	std::ofstream& txnsOFile,
 	std::ofstream& locksHeldOFile,
 	const char *kernelDir);
+	void startTXN(unsigned long long ts, enum SUB_LOCK subLock, std::deque<TXN>& activeTXNs);
 
 	virtual void writeWriterLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << write_id << delimiter << lockAddress;
@@ -325,6 +330,4 @@ struct RWLock {
 	}
 };
 
-void startTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK subLock);
-bool finishTXN(unsigned long long ts, unsigned long long lockPtr, enum SUB_LOCK subLock, bool removeReader, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile);
 #endif // __RWLOCK_H__
