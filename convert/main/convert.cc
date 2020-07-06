@@ -19,8 +19,7 @@
 #include "lockdoc_event.h"
 #include "git_version.h"
 #include "rwlock.h"
-#include "rlock.h"
-#include "wlock.h"
+#include "lockmanager.h"
 
 #include "binaryread.h"
 #include "gzstream/gzstream.h"
@@ -84,10 +83,7 @@ struct MemAccess {
  */
 static const char *kernelBaseDir = "/opt/kernel/linux-32-lockdebugging-4-10/";
 
-/**
- * Contains all known locks. The ptr of a lock is used as an index.
- */
-static map<unsigned long long,RWLock*> lockPrimKey;
+static LockManager *lockManager;
 /**
  * Contains all active allocations. The ptr to the memory area is used as an index.
  */
@@ -104,11 +100,6 @@ static std::vector<Subclass> subclasses;
  * The list of the LOOK_BEHIND_WINDOW last memory accesses.
  */
 static vector<MemAccess> lastMemAccesses;
-/**
- * A stack of currently active, nested TXNs.  Implemented as a deque for mass
- * insert() in finishTXN().
- */
-static std::deque<TXN> activeTXNs;
 /**
  * A map of all member names found in all data types.
  * The key is the name, and the value is a name's global id.
@@ -130,10 +121,6 @@ static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
  * The next id for a new data type.
  */
 static unsigned long long curTypeID = 1;
-/**
- * The next id for a new lock.
- */
-static unsigned long long curLockID = 1;
 /**
  * The next id for a new allocation.
  */
@@ -210,12 +197,8 @@ static void handlePV(
 	const char *kernelBaseDir
 	)
 {
-	RWLock *tempLock;
-
-	auto itLock = lockPrimKey.find(lockAddress);
-	if (itLock != lockPrimKey.end()) {
-		tempLock = itLock->second;
-	} else {
+	RWLock *tempLock = lockManager->findLock(lockAddress);
+	if (tempLock == NULL) {
 		// categorize currently unknown lock
 		unsigned allocation_id = 0;
 		const char *lockVarName = NULL;
@@ -254,22 +237,12 @@ static void handlePV(
 			return;
 		}
 		// Instantiate the corresponding class ...
-		tempLock = RWLock::allocLock(lockAddress, allocation_id, lockType, lockVarName, flags);
-		// ... , and assign ids to the sub locks
-		tempLock->initIDs(curLockID);
+		tempLock = lockManager->allocLock(lockAddress, allocation_id, lockType, lockVarName, flags);
 		PRINT_DEBUG("", "Created lock: " << tempLock);
-		// Store the lock in our global map
-		pair<map<unsigned long long,RWLock*>::iterator,bool> retLock;
-		retLock = lockPrimKey.insert(pair<unsigned long long,RWLock*>(lockAddress, tempLock));
-		if (!retLock.second) {
-			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot insert lock into map.");
-			// This is a severe error. Abort immediately!
-			exit(1);
-		}
 		// Write the lock to disk (aka locks.csv)
 		tempLock->writeLock(locksOFile, delimiter);
 	}
-	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelBaseDir);
+	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelBaseDir);
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
@@ -319,7 +292,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	unsigned accessCount = 0;
 	for (auto&& tempAccess : *pMemAccesses) {
 		*pMemAccessOFile << dec << tempAccess.id << delimiter << tempAccess.alloc_id;
-		*pMemAccessOFile << delimiter << (activeTXNs.empty() ? "\\N" : std::to_string(activeTXNs.back().id));
+		*pMemAccessOFile << delimiter << (lockManager->hasActiveTXN() ? std::to_string(lockManager->getActiveTXN().id) : "\\N");
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
@@ -328,8 +301,8 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 	}
 
 	// count memory accesses for the current TXN if there's one active
-	if (!activeTXNs.empty()) {
-		activeTXNs.back().memAccessCounter += accessCount;
+	if (lockManager->hasActiveTXN()) {
+		lockManager->getActiveTXN().memAccessCounter += accessCount;
 	}
 
 	// We'll record the TXN and which locks were held while it ran when it
@@ -433,7 +406,6 @@ int main(int argc, char *argv[]) {
 	string inputLine, token, typeStr, file, fn, lockType, stacktrace, lockMember;
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
-	map<unsigned long long,RWLock*>::iterator itLock, itTemp;
 	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
 	int lineCounter, isGZ, param;
 	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
@@ -607,6 +579,8 @@ int main(int argc, char *argv[]) {
 	stacktracesOFile << "instruction_ptr_prev" << delimiter << "function" << delimiter << "line" << delimiter << "file" << endl;
 
 	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
+
+	lockManager = new LockManager(txnsOFile, locksHeldOFile);
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
@@ -832,21 +806,7 @@ int main(int argc, char *argv[]) {
 				Allocation& tempAlloc = itAlloc->second;
 				// An allocations datatype is
 				allocOFile << tempAlloc.id << delimiter << subclasses[tempAlloc.subclass_idx].id << delimiter << baseAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
-				// Iterate through the set of locks, and delete any lock that resided in the freed memory area
-				for (itLock = lockPrimKey.begin(); itLock != lockPrimKey.end();) {
-					if (itLock->second->lockAddress >= itAlloc->first && itLock->second->lockAddress < (itAlloc->first + tempAlloc.size)) {
-						// Lock should not be held anymore
-						if (itLock->second->isHeld()) {
-							PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << baseAddress << noshowbase, "Lock at " << itLock->second->lockAddress << "is being freed but held!");
-						}
-						// Since the iterator will be invalid as soon as we delete the element, we have to advance the iterator to the next element, and remember the current one.
-						itTemp = itLock;
-						itLock++;
-						lockPrimKey.erase(itTemp);
-					} else {
-						itLock++;
-					}
-				}
+				lockManager->deleteLockByArea(itAlloc->first, tempAlloc.size);
 
 				activeAllocs.erase(itAlloc);
 				PRINT_DEBUG("baseAddress=" << showbase << hex << baseAddress << noshowbase << dec << ",type=" << typeStr << ",size=" << size, "Removed allocation");
@@ -899,14 +859,7 @@ int main(int argc, char *argv[]) {
 
 	// Flush memory writes by pretending there's a final V()
 	writeMemAccesses('v', 0, &accessOFile, &lastMemAccesses);
-
-	// Flush TXNs if there are still open ones
-	while (!activeTXNs.empty()) {
-		cerr << "TXN: There are still " << activeTXNs.size() << " TXNs active, flushing the topmost one." << endl;
-		// pretend there's a V() matching the top-most TXN's starting (P())
-		// lock at the last seen timestamp
-		activeTXNs.back().lock->finishTXN(ts, activeTXNs.back().subLock, false, txnsOFile, locksHeldOFile, activeTXNs);
-	}
+	lockManager->closeAllTXNs(ts);
 
 	if (isGZ) {
 		delete gzinfile;

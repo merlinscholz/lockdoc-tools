@@ -30,27 +30,6 @@ struct LockPos {
 	enum IRQ_SYNC lastIRQSync;									// IRQ synchronization used
 };
 
-/**
- * Represents a Transaction (TXN).
- *
- * A TXN starts with a P or V, and ends with a P or V -- i.e., with a change in
- * the set of currently acquired locks.  If no lock is held, no TXN is active.
- * Hence, each TXN is associated with a set of held locks, which can be ordered
- * by looking at their start timestamp.
- *
- * Note that a TXN does not necessarily end with a V() on the same lock as it
- * started with using a P().
- */
-struct RWLock;
-struct TXN {
-	unsigned long long id;										// ID
-	unsigned long long start;									// Timestamp when this TXN started
-	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
-//	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
-	RWLock *lock;
-	enum SUB_LOCK subLock;
-	
-};
 
 // Must be definied here, because the lock subclasses need it.
 // returns stringified var if cond is false, or "NULL" if cond is true
@@ -86,6 +65,7 @@ inline std::string sql_null_if<std::string>(std::string var, bool cond)
  * It internally consists of two so-called sub locks, a writer and a reader sub lock.
  * The subclasses RLock and WLock only use the respective sub locks.
  */
+struct LockManager;
 struct RWLock {
 	static const char DELIMITER = ',';
 	unsigned long long read_id;									// A unique id which describes a particular lock within our dataset
@@ -98,10 +78,11 @@ struct RWLock {
 	std::string lockType;										// Describes the lock type
 	std::string lockVarName;									// The variable name of the lock, e.g., console_sem, if static (allocation_id == 0)
 	std::stack<LockPos> lastNPos;								// Last N takes of this lock, max. one element besides for recursive locks (such as RCU)
+	LockManager *lockManager;
 	
-	RWLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : 
+	RWLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags, LockManager *_lockManager) : 
 		lockAddress(_lockAddress), flags(_flags), reader_count(0), writer_count(0), 
-		allocation_id(_allocID), lockType(_lockType) {
+		allocation_id(_allocID), lockType(_lockType), lockManager(_lockManager) {
 		if (_lockVarName) {
 			lockVarName = string(_lockVarName);
 		}
@@ -250,28 +231,17 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN>& activeTXNs,
-	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile,
 	const char *kernelDir) {
 		if (lockOP == P_WRITE || lockOP == V_WRITE) {
-			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir);
 		} else if (lockOP == P_READ || lockOP == V_READ) {
-			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir);
 		} else {
 			stringstream ss;
 			ss << "Invalid op(" << lockOP << "," << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << ts << endl;
 			throw logic_error(ss.str());
 		}
 	}
-
-	bool finishTXN(unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, std::ofstream& txnsOFile, std::ofstream& locksHeldOFile, std::deque<TXN>& activeTXNs);
-
-	/**
-	 * Create and init an instance of 
-	 * 
-	 */
-	static RWLock* allocLock(unsigned long long lockAddress, unsigned allocID, string lockType, const char *lockVarName, unsigned flags);
 
 	protected:
 	/**
@@ -289,9 +259,6 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN>& activeTXNs,
-	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile,
 	const char *kernelDir);
 
 	/**
@@ -309,11 +276,7 @@ struct RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN>& activeTXNs,
-	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile,
 	const char *kernelDir);
-	void startTXN(unsigned long long ts, enum SUB_LOCK subLock, std::deque<TXN>& activeTXNs);
 
 	virtual void writeWriterLock(std::ofstream &oFile, char delimiter) {
 		oFile << dec << write_id << delimiter << lockAddress;
