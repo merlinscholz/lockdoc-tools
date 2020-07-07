@@ -229,8 +229,8 @@ void RWLock::readTransition(
 						ctx = lockManager->findTXN(this, READER_LOCK, ctx);
 						if (ctx == ctxOld && !lockManager->hasActiveTXN(ctx)) {
 							PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");
-						} else if (ctx == ctxOld && lockManager->hasActiveTXN(ctx)) {
 							PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "TXN: V() no running TXN in ctx " << ctxOld << ", stealing from " << ctx);
+						} else if (ctx != ctxOld && lockManager->hasActiveTXN(ctx)) {
 						}
 					}
 					// The lockAddress as well as the subLock must match for a txn to be removed from the stack.
