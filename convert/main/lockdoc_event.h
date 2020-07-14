@@ -24,14 +24,15 @@
  * has to be copied to the according fail experiment
  * as well as to convert!
  */
-static const char LOCKDOC_ALLOC		= 'a';
-static const char LOCKDOC_FREE		= 'f';
-static const char LOCKDOC_LOCK_OP	= 'l';
-static const char LOCKDOC_CURRENT_TASK	= 't';
-static const char LOCKDOC_PREEMPT_COUNT	= 'p';
-static const char LOCKDOC_PID_OFFSET	= 'o';
-static const char LOCKDOC_READ		= 'r';
-static const char LOCKDOC_WRITE		= 'w';
+enum LOCKDOC_OP {
+	LOCKDOC_ALLOC = 0,
+	LOCKDOC_FREE,
+	LOCKDOC_LOCK_OP,
+	LOCKDOC_CURRENT_TASK,
+	LOCKDOC_PREEMPT_COUNT,
+	LOCKDOC_PID_OFFSET,
+	LOCKDOC_KERNEL_VERSION
+};
 
 enum LOCK_OP {
 	P_READ = 0,

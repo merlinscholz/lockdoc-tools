@@ -20,7 +20,6 @@ struct TXN {
 	unsigned long long id;										// ID
 	unsigned long long start;									// Timestamp when this TXN started
 	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
-//	unsigned long long lockPtr;									// Ptr of the lock that started this TXN
 	RWLock *lock;
 	enum SUB_LOCK subLock;	
 };
@@ -30,6 +29,10 @@ struct LockManager {
 	/**
 	 * A stack of currently active, nested TXNs.  Implemented as a deque for mass
 	 * insert() in finishTXN().
+	 * We maintain one stack per context. In Linux terms, a context
+	 * is irq, softirq, or a task.
+	 * A context's id corresponds to a task's tid. For irq and softirq,
+	 * we use the artifical ids -2 and -1, respectively.
 	 */
 	std::map<long, std::deque<TXN>> m_activeTXNs;
 	/**

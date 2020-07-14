@@ -117,7 +117,12 @@ static map<unsigned long long, map<string,unsigned long long> > stacktraces;
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
 static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
-
+/**
+ * Enable context tracing?
+ * Enabled via cmdline argument -c. Disabled by default.
+ * If disabled, a default context is used. 0 for example.
+ */
+static int ctxTracing = 0;
 /**
  * The next id for a new data type.
  */
@@ -415,8 +420,11 @@ int main(int argc, char *argv[]) {
 	long ctx = 0;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:upg:")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:upg:c")) != -1) {
 		switch (param) {
+		case 'c':
+			ctxTracing = 1;
+			break;
 		case 'k':
 			vmlinuxName = optarg;
 			break;
@@ -659,7 +667,11 @@ int main(int argc, char *argv[]) {
 					preemptCount = std::stoull(lineElems.at(12),NULL,16);
 					temp = std::stoi(lineElems.at(13),NULL,10);
 					flags = std::stoi(lineElems.at(15),NULL,10);
-					ctx = std::stoul(lineElems.at(16),NULL,10);
+					if (ctxTracing) {
+						ctx = std::stoul(lineElems.at(16),NULL,10);
+					} else {
+						ctx = 0;
+					}
 					switch(temp) {
 						case LOCK_NONE:
 							irqSync = LOCK_NONE;
@@ -714,7 +726,11 @@ int main(int argc, char *argv[]) {
 					instrPtr = std::stoull(lineElems.at(11),NULL,16);
 					stacktrace = lineElems.at(14);
 					preemptCount = -1;
-					ctx = std::stoul(lineElems.at(16),NULL,10);
+					if (ctxTracing) {
+						ctx = std::stoul(lineElems.at(16),NULL,10);
+					} else {
+						ctx = 0;
+					}
 					break;
 				}
 			}

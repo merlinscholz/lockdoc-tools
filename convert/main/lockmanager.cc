@@ -53,6 +53,7 @@ void LockManager::deleteLockByArea(unsigned long long address, unsigned long lon
 }
 
 void LockManager::closeAllTXNs(unsigned long long ts) {
+	// Close every open TXN for every context
 	for (auto& kv : m_activeTXNs) { 
 		// Flush TXNs if there are still open ones
 		while (this->hasActiveTXN(kv.first)) {
