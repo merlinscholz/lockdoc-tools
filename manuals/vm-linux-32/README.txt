@@ -3,7 +3,7 @@
 	+ Install the following packages (incomplete list): lcov libncurses5-dev git-core build-essential bison flex libssl-dev libgmp-dev libmpfr-dev libmpc-dev bc
 	+ We recommend 2 cores, 2GB of RAM and 40GB of hdd space for the VM.
 - Build your own kernel
-	+ Checkout kernel in /opt/kernel/XXX, for the moment use branch lockdebugging-4-10
+	+ Checkout kernel in /opt/kernel/XXX, for the moment use branch lockdoc-4-10
 	+ We recommend using GCC 7.X. GCC 8.x has issues resolving instruction pointers that point to a leaf in the callgraph correctly.
 		# git clone git://gcc.gnu.org/git/gcc.git /opt/kernel/gcc/src
 		# cd /opt/kernel/gcc/src/
@@ -18,7 +18,7 @@
 		# make install
 	+ Building the kernel:
 		# If you have choosen to build your own gcc, make it sure it is used: export PATH=/opt/kernel/gcc/installed/bin/:$PATH
-		# cp config-lockdebugging .config
+		# cp lockdoc.config .config
 		# make oldconfig
 		# make -j X
 		# make install
