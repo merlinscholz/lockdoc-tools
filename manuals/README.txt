@@ -69,14 +69,14 @@ Fail
   It should be sufficient to follow the instructions below.
 - FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.2 or the nightly build
   Both are available at http://aspectc.org/Download.php.
-- Checkout the FAIL* repo from our project, and use branch lock-debugging
+- Checkout the FAIL* repo from our project, and use branch lockdoc
 - Building FAIL* on your host (outside the VM)
 	+ mkdir build
 	+ cd build
 	+ cmake ..
 	+ ccmake .
 		# Select: BUILD_BOCHS, BUILD_DUMP_TRACE
-		# Set EXPERIMENTS_ACTIVATED to lock-debugging
+		# Set EXPERIMENTS_ACTIVATED to lockdoc
 		# Set PLUGINS_ACTIVATED to tracing
 		# Press c
 		# Press g
@@ -152,16 +152,16 @@ ACCEPT_THRESHOLD=99.0
 Behind the scenes
 =================
 
-- FAIL* runs our experiment called lock-debugging. Src is located in fail/src/experiments/lock-debugging/.
+- FAIL* runs our experiment called lockdoc. Src is located in fail/src/experiments/lockdoc/.
 - FAIL* uses BOCHS for running a VM. Hence, it has access to the guest memory.
 - FAIL* experiment and guest exchange information via a shared buffer in the guest memory.
 - The experiment reads the address of the buffer on expertiment startup from the vmlinux. It uses the embedded ELF information for that.
 - Instead of starting the OS-specific init program, it launches our script: /lockdoc/run-bench.sh (--> manuals/vm-linux-32/scripts/run-bench.sh)
 - First, it asks the running kernel for its version string. On linux: /proc/version-git, on FreeBSD: /dev/lockdoc/version. 
   The version string is send to the experiment via the first serial console. The experiments intercepts the serial console by listening to the respective IO port(s).
-  See handleIOConsole() in fail/src/experiments/lock-debugging/experiment.cc
+  See handleIOConsole() in fail/src/experiments/lockdoc/experiment.cc
 - The script asks the experiment via the first serial console for the benchmark to run.
-- The experiment responds via the second serial console (TCP socket in serialSentThreadWork() in fail/src/experiments/lock-debugging/experiment.cc).
+- The experiment responds via the second serial console (TCP socket in serialSentThreadWork() in fail/src/experiments/lockdoc/experiment.cc).
 - run-bench.sh then starts the selected benchmark
 - When the instrumented kernel reaches an instrumented lock operation, an alloc, or a free, it gathers all needed information.
   These happens from the moment the guest kernel is alive. This is mostly way before run-bench.sh is executed.
@@ -169,7 +169,7 @@ Behind the scenes
 - Those information are then written into the aforementioned buffer.
 - The guest OS sends a 'P' via the IO port at adress 0xe9.
 - At this moment, the FAIL* experiment takes over, and the guest OS is suspended. This happens for every event an experiment has registered for.
-  See handleKernelConsole() in fail/src/experiments/lock-debugging/experiment.cc
+  See handleKernelConsole() in fail/src/experiments/lockdoc/experiment.cc
 - The experiment copies the content from the shared buffer (guest memory) to its own memory.
 - Based on the value of the member 'action' it performs certain actions:
 	* If it is a memory operation, it starts/ends observing a certain memory area for memory accesses.
