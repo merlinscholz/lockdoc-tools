@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # A.Lochmann 2018
 # This script takes the ground-truth.csv and the output of the hypothesizer as input.
-# The hypothesizer has to be run with cutoff threshold set to 0.0, and report mode to csv.
+# The hypothesizer has to be run with cut-off threshold set to 0.0, and report mode to csv.
 # It counts how many of the locking rules found in ground-truth.csv have
 # a) 100% support, b) <100% support but are accepted, or c) <100% support and not accepted.
 # A detailed descript of what is counted can be found in line 108 ff.
-# ./processing/verify-groundtruth.py ground-truth.csv all_txns_members_locks_hypo_nostack.csv
+# Question answered: 'What is the support of the documented locking rules?'
+# ./processing/locking-rule-doc-verify.py ground-truth.csv all_txns_members_locks_hypo_nostack.csv
 from __future__ import print_function
 import sys
 import csv
