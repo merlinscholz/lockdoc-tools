@@ -184,7 +184,8 @@ int main (int argc, char **argv)
 				re_search_pattern = argv[optind++];
 				break;
 			default:
-				fprintf(stderr, "unknown flag `%c'\n", opt);
+				print_usage();
+				return 1;
 		}
 	}
 
@@ -192,6 +193,12 @@ int main (int argc, char **argv)
 
 	while (argv[optind])
 		dirname = argv[optind++];
+
+	if (!strcmp(dirname, ""))
+	{
+		print_usage();
+		return 2;
+	}
 
 	binaryread_init(binary);
 
@@ -231,7 +238,7 @@ int main (int argc, char **argv)
 
 static void print_usage ()
 {
-	printf ("Usage: gcov-dump-modified [OPTION] ... gcovfiles-directory\n");
+	printf ("Usage: bb2lines [OPTION] ... gcovfiles-directory\n");
 	printf ("Print coverage file contents\n");
 	printf ("  -h, --help                     Print this help\n");
 	printf ("  -v, --verbose                  Print in a verbose form\n");
