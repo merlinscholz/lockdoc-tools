@@ -106,6 +106,7 @@ char *file_prefix;
 char *binary;
 // if this pattern is not found in basic_block_map for a specific bb addr a more sophisticated search mechanism is used
 std::regex re_search_pattern;
+char *re_search_pattern_string;
 
 enum verbosity_level
 {
@@ -181,7 +182,8 @@ int main (int argc, char **argv)
 				binary = argv[optind++];
 				break;
 			case 'e':
-				re_search_pattern = argv[optind++];
+				re_search_pattern_string = argv[optind++];
+				re_search_pattern = re_search_pattern_string;
 				break;
 			default:
 				print_usage();
@@ -299,8 +301,8 @@ void determine_coverage()
 			file_is_null_in_addr2line_count, unique_input_addr_count);
 	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n",
 			file_found_line_not_found_count, unique_input_addr_count);
-	fprintf(stderr, "bb with fs in name is not in internal data structure: %d/%d\n\n",
-			fs_not_in_bb_map_count, unique_input_addr_count);
+	fprintf(stderr, "bb with %s in name is not in internal data structure: %d/%d\n\n",
+			re_search_pattern_string, fs_not_in_bb_map_count, unique_input_addr_count);
 
 	if (statistic_information)
 	{
