@@ -84,12 +84,12 @@ static void print_usage();
 std::pair<unsigned int, unsigned long> count_all_files_and_lines();
 unsigned long count_all_lines_in_file(std::string& filename);
 std::vector<std::string> get_all_files_in_dir(const std::string &dirPath);
-basic_block* get_basic_block(unsigned long);
+basic_block* get_basic_block(uint64_t);
 void print_basic_block(const basic_block*);
 extern int main (int, char **);
 
 //key: addr of basic block; value: basic block
-std::unordered_map<unsigned long, basic_block> basic_blocks_addr_map;
+std::unordered_map<uint64_t, basic_block> basic_blocks_addr_map;
 // key: name of source file; value: set of covered lines in a source file
 std::unordered_map<std::string, std::set<unsigned>> covered_lines;
 std::unordered_map<std::string, std::set<unsigned>> coverable_lines;
@@ -262,7 +262,7 @@ void determine_coverage()
 	for (std::string line; std::getline(std::cin, line);)
 	{
 		input_addr_count++;
-		unsigned long block_start_address = std::stoul(line, nullptr, 16);
+		uint64_t block_start_address = std::stoull(line, nullptr, 16);
 		basic_block *bb = get_basic_block(block_start_address);
 		if (bb == nullptr)
 		{
@@ -594,7 +594,7 @@ basic_block find_line_and_file_in_bb_map(unsigned line, std::string& filename)
  * @param bb_addr : Basis block address to be searched
  * @return with the basis block address found basis block and nullptr if there is no basic block found
  */
-basic_block* get_basic_block(unsigned long bb_addr)
+basic_block* get_basic_block(uint64_t bb_addr)
 {
 	// first try to find basis block directly in basic_blocks_addr_map
 	auto search_addr = basic_blocks_addr_map.find(bb_addr);
