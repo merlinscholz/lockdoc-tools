@@ -79,6 +79,7 @@ struct function_info
 };
 
 void determine_coverage();
+void convert_basic_blocks();
 static void read_graph_file (const char *);
 static void print_usage();
 std::pair<unsigned int, unsigned long> count_all_files_and_lines();
@@ -107,6 +108,7 @@ char *binary;
 // if this pattern is not found in basic_block_map for a specific bb addr a more sophisticated search mechanism is used
 std::regex re_search_pattern;
 char *re_search_pattern_string;
+bool convert = false;
 
 enum verbosity_level
 {
@@ -154,6 +156,7 @@ static const struct option options[] =
 				{ "file-prefix",           required_argument, nullptr, 'p' },
 				{ "binary",                required_argument, nullptr, 'b' },
 				{ "regex",                 required_argument, nullptr, 'e' },
+				{ "convert",               no_argument,       nullptr, 'c' },
 				{ 0, 0, 0, 0 }
 		};
 
@@ -162,7 +165,7 @@ int main (int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt_long (argc, argv, "hvspbe", options, nullptr)) != -1)
+	while ((opt = getopt_long (argc, argv, "hvspbec", options, nullptr)) != -1)
 	{
 		switch (opt)
 		{
@@ -184,6 +187,9 @@ int main (int argc, char **argv)
 			case 'e':
 				re_search_pattern_string = argv[optind++];
 				re_search_pattern = re_search_pattern_string;
+				break;
+			case 'c':
+				convert = true;
 				break;
 			default:
 				print_usage();
@@ -233,7 +239,29 @@ int main (int argc, char **argv)
 //		}
 //	}
 
-	determine_coverage();
+	if (convert)
+	{
+		convert_basic_blocks();
+	}
+	else
+	{
+		determine_coverage();
+	}
+
+	// failure summary
+	fprintf(stderr, "Failure summary:\n");
+	fprintf(stderr, "Address resolves not to the start line of a basic block: %d/%d\n",
+			addr_not_start_line_count, unique_input_addr_count);
+	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
+			bb_is_already_in_bb_map_count, bb_read_count);
+	fprintf(stderr, "Basic block not found in .gcno files: %d/%d\n",
+			bb_at_addr_not_found_count, unique_input_addr_count);
+	fprintf(stderr, "addr2line returns null for file: %d/%d\n",
+			file_is_null_in_addr2line_count, unique_input_addr_count);
+	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n",
+			file_found_line_not_found_count, unique_input_addr_count);
+	fprintf(stderr, "bb with %s in name is not in internal data structure: %d/%d\n\n",
+			re_search_pattern_string, fs_not_in_bb_map_count, unique_input_addr_count);
 
 	return 0;
 }
@@ -252,6 +280,38 @@ static void print_usage ()
 	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
 	printf ("  -b, --binary                   Path of the vmlinux\n");
 	printf ("  -e, --regex                    If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
+	printf ("  -c, --convert		  Instead of determing the code coverage just convert all incomming\n");
+	printf ("				  basic blocks to source code lines. Example output: 0x42,foo.c,42\n");
+	printf ("				  Options -e and -s are useless here.\n");
+}
+
+
+/**
+ *
+ */
+void convert_basic_blocks()
+{
+	printf_verbose(ADDITIONAL_INFORMATION, "covered basic blocks:\n");
+	// get all covered basic blocks from the basic block addresses from stdin
+	printf("basic_block,file,line\n");
+	for (std::string line; std::getline(std::cin, line);)
+	{
+		input_addr_count++;
+		uint64_t block_start_address = std::stoull(line, nullptr, 16);
+		basic_block *bb = get_basic_block(block_start_address);
+		if (bb == nullptr)
+		{
+			continue;
+		}
+		for (auto &bb_source_line: bb->source_lines)
+		{
+			for (unsigned bb_line: bb_source_line.lines)
+			{
+				printf("0x%llx,%s,%d\n", block_start_address, bb_source_line.filename.c_str(), bb_line);
+			}
+		}
+	}
+	printf_verbose(ADDITIONAL_INFORMATION, "\n");
 }
 
 
@@ -292,21 +352,6 @@ void determine_coverage()
 			file_count++;
 		}
 	}
-
-	// failure summary
-	fprintf(stderr, "Failure summary:\n");
-	fprintf(stderr, "Address resolves not to the start line of a basic block: %d/%d\n",
-			addr_not_start_line_count, unique_input_addr_count);
-	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
-			bb_is_already_in_bb_map_count, bb_read_count);
-	fprintf(stderr, "Basic block not found in .gcno files: %d/%d\n",
-			bb_at_addr_not_found_count, unique_input_addr_count);
-	fprintf(stderr, "addr2line returns null for file: %d/%d\n",
-			file_is_null_in_addr2line_count, unique_input_addr_count);
-	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n",
-			file_found_line_not_found_count, unique_input_addr_count);
-	fprintf(stderr, "bb with %s in name is not in internal data structure: %d/%d\n\n",
-			re_search_pattern_string, fs_not_in_bb_map_count, unique_input_addr_count);
 
 	if (statistic_information)
 	{
