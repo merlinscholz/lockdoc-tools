@@ -196,7 +196,7 @@ int main (int argc, char **argv)
 	while (argv[optind])
 		dirname = argv[optind++];
 
-	if (!strcmp(dirname, ""))
+	if (!strcmp(dirname, "") || file_prefix == NULL || binary == NULL)
 	{
 		print_usage();
 		return 2;
@@ -243,7 +243,7 @@ static void print_usage ()
 	printf ("Usage: bb2lines [OPTION] -b <vmlinux> -p <path to source tree> <gcov-files-directory>\n");
 	printf ("Uses <gcov-files-directory> to determine all coverable source code lines.\n");
 	printf ("Reads a set of basic block adresses (hex format) from stdin,\n");
-	printf (", determines the corresponding source code lines, and \n");
+	printf ("determines the corresponding source code lines, and \n");
 	printf ("determines the amount of covered lines per file.");
 	printf ("example usage: ./bb2lines -b /opt/kernel/linux/vmlinux -p /opt/kernel/linux /opt/kernel/linux\n");
 	printf ("  -h, --help                     Print this help\n");
