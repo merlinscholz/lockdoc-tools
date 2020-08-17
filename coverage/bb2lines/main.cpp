@@ -314,13 +314,13 @@ void determine_coverage()
 	}
 
 	// print csv
-	printf("filename\tlines_covered\tlines\n");
+	printf("file,lines_covered,lines_total\n");
 	for (auto& it: covered_lines)
 	{
 		std::string filename = it.first;
 		std::set<unsigned> &lines = it.second;
 		unsigned long all_lines_count = count_all_lines_in_file(filename);
-		printf("%s\t%lu\t%lu\n", filename.c_str(), lines.size(), all_lines_count);
+		printf("%s,%lu,%lu\n", filename.c_str(), lines.size(), all_lines_count);
 #if 0
 		if (statistic_information) {
 			for (unsigned line: lines) {
