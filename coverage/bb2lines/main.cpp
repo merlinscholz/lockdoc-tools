@@ -309,7 +309,7 @@ void determine_coverage()
 		std::pair<unsigned int, unsigned long> files_lines_count = count_all_files_and_lines();
 		float file_count_percentage = (float) file_count / files_lines_count.first * 100;
 		float line_count_percentage = (float) line_count / files_lines_count.second * 100;
-		printf("total: file_count: %u/%u (%3.1f%%) line_count: %lu/%lu (%3.1f%%)\n\n",
+		fprintf(stderr, "total: file_count: %u/%u (%3.1f%%) line_count: %lu/%lu (%3.1f%%)\n\n",
 			   file_count, files_lines_count.first, file_count_percentage, line_count, files_lines_count.second,line_count_percentage);
 	}
 
@@ -321,12 +321,14 @@ void determine_coverage()
 		std::set<unsigned> &lines = it.second;
 		unsigned long all_lines_count = count_all_lines_in_file(filename);
 		printf("%s\t%lu\t%lu\n", filename.c_str(), lines.size(), all_lines_count);
+#if 0
 		if (statistic_information) {
 			for (unsigned line: lines) {
 				printf("%u\n", line);
 			}
 			printf("\n");
 		}
+#endif
 	}
 }
 
