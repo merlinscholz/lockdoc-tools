@@ -240,13 +240,17 @@ int main (int argc, char **argv)
 
 static void print_usage ()
 {
-	printf ("Usage: bb2lines [OPTION] ... gcovfiles-directory\n");
-	printf ("Print coverage file contents\n");
+	printf ("Usage: bb2lines [OPTION] -b <vmlinux> -p <path to source tree> <gcov-files-directory>\n");
+	printf ("Uses <gcov-files-directory> to determine all coverable source code lines.\n");
+	printf ("Reads a set of basic block adresses (hex format) from stdin,\n");
+	printf (", determines the corresponding source code lines, and \n");
+	printf ("determines the amount of covered lines per file.");
+	printf ("example usage: ./bb2lines -b /opt/kernel/linux/vmlinux -p /opt/kernel/linux /opt/kernel/linux\n");
 	printf ("  -h, --help                     Print this help\n");
 	printf ("  -v, --verbose                  Print in a verbose form\n");
-	printf ("  -s, --statistic-information    Print additional statistics and covered lines\n");
+	printf ("  -s, --statistic-information    Print additional statistics, and a total of all covered lines to stderr\n");
 	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
-	printf ("  -b, --binary                   Path of the binary\n");
+	printf ("  -b, --binary                   Path of the vmlinux\n");
 	printf ("  -e, --regex                    If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
 }
 
