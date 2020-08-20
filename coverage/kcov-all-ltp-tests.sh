@@ -28,7 +28,7 @@ function run_cmd() {
 	CMD="${KCOV_BINARY} ${1}"
 	if [ -z ${DUMP} ];
 	then
-		eval ${CMD} 2> >(sort -u > ${2})
+		eval ${CMD} 2> >(sort -u | sed -e s/^0x// > ${2})
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running: ${CMD}"
