@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ $# -ne 2 ]; then
+	echo "usage: $0 file1 file2" >&2
+	echo "Shows all lines in file1 that are not in file2.  Both input files must be sorted." >&2
+	exit 1
+fi
+exec comm -23 "$@"
