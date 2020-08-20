@@ -14,9 +14,10 @@ fi
 KCOV_BINARY=${1}; shift;
 
 export LTPROOT=${1}; shift;
+LTP_TEST_DIR=${LTPROOT}/runtest
 export PATH="$PATH:$LTPROOT/testcases/bin"
 export TMPDIR=`mktemp -d /tmp/kcov.XXX`
-LTP_TEST_DIR=${LTPROOT}/runtest
+chmod 0777 ${TMPDIR}
 
 OUT_DIR=${1}; shift;
 if [ ! -e ${OUT_DIR} ];
@@ -28,7 +29,7 @@ function run_cmd() {
 	CMD="${KCOV_BINARY} ${1}"
 	if [ -z ${DUMP} ];
 	then
-		eval ${CMD} 2> >(sort -u | sed -e s/^0x// > ${2})
+		eval ${CMD} 2> >(sort -u | sed -e 's/^0x//' > ${2})
 		if [ ${?} -ne 0 ];
 		then
 			echo "Error running: ${CMD}"
