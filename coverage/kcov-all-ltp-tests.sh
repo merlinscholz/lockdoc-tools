@@ -19,23 +19,42 @@ export PATH="$PATH:$LTPROOT/testcases/bin"
 export TMPDIR=`mktemp -d /tmp/kcov.XXX`
 chmod 0777 ${TMPDIR}
 
-OUT_DIR=${1}; shift;
+OUT_DIR=`readlink -f ${1}`; shift;
 if [ ! -e ${OUT_DIR} ];
 then
 	mkdir -p ${OUT_DIR}
 fi
 
 function run_cmd() {
-	CMD="${KCOV_BINARY} ${1}"
+	REDIRECT=${1}
+
+	OUTFILE=${3}
+	if [ ${REDIRECT} -eq 0 ];
+	then
+		CMD="KCOV_OUT=${OUTFILE}.cov LD_PRELOAD=${KCOV_BINARY} ${2}"
+	else
+		CMD="LD_PRELOAD=${KCOV_BINARY} ${2}"
+	fi
 	if [ -z ${DUMP} ];
 	then
-		eval ${CMD} 2> >(sort -u | sed -e 's/^0x//' > ${2})
-		if [ ${?} -ne 0 ];
+		if [ ${REDIRECT} -eq 0 ];
 		then
-			echo "Error running: ${CMD}"
+			eval ${CMD}
+			if [ ${?} -ne 0 ];
+			then
+				echo "Error running: ${CMD}"
+				return
+			fi
+			sort -u ${OUTFILE}.cov | sed -e 's/^0x//' > ${OUTFILE}.map
+		else
+			eval ${CMD} 2> >(sort -u | sed -e 's/^0x//' > ${OUTFILE}.map)
+			if [ ${?} -ne 0 ];
+			then
+				echo "Error running: ${CMD}"
+			fi
 		fi
 	else
-		echo "${CMD} 2> ${2}"
+		echo "${CMD} 2> ${OUTFILE}"
 	fi
 }
 
@@ -75,18 +94,18 @@ do
 		if [[ ${TEST_CMD} =~ [\"\'\;|\<\>\$\\]+ ]];
 		then
 			echo "Using bash"
-			run_cmd "/bin/bash -c \"${TEST_CMD}\"" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}.cov
+			run_cmd 1 "/bin/bash -c \"${TEST_CMD}\"" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 		else
 			if [ -z ${TEST_PARAMS} ];
 			then
-				run_cmd "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}.cov
+				run_cmd 1 "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 			else
-				run_cmd "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}.cov
+				run_cmd 1 "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 			fi
 		fi
 	done < ${TEST_SUITE_FILE}
 	echo "Running testsuite '${TEST_SUITE}'"
-	run_cmd "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}.cov
+	run_cmd 0 "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}
 done
 #echo "Running ltp"
 #run_cmd "${LTPROOT}/runltp -q" ${OUT_DIR}/ltp.cov
