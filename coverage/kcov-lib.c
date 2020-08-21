@@ -25,13 +25,19 @@
 //#define DEBUG
 #define WRITE_FILE
 
+#ifdef KERNEL64
 #define KCOV_INIT_TRACE _IOR('c', 1, uint64_t)
+#define KCOV_ENTRY_SIZE sizeof(uint64_t)
+typedef uint64_t cover_t;
+#else
+#define KCOV_INIT_TRACE _IOR('c', 1, uint32_t)
+#define KCOV_ENTRY_SIZE sizeof(uint32_t)
+typedef uint32_t cover_t;
+#endif
 #define KCOV_ENABLE _IO('c', 100)
 #define KCOV_DISABLE _IO('c', 101)
-#define KCOV_ENTRY_SIZE sizeof(uint64_t)
 #define KCOV_PATH "/sys/kernel/debug/kcov"
 #define KCOV_TRACE_PC 0
-typedef uint64_t cover_t;
 #define COVER_SIZE (16 << 20)
 #define MAX_PATH_NAME 100
 
