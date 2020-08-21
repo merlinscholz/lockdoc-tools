@@ -100,8 +100,8 @@ static void __attribute__((constructor)) start_kcov(void) {
 		kcov_out = temp;
 	}
 	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_TRUNC, 0755);
-	if (out_fd == -1) {
 #ifdef DEBUG
+	if (out_fd == -1) {
 		perror("open out_fd");
 		fprintf(stderr, "Cannot open '%s'. Falling back to stderr \n", kcov_out);
 	} else {
