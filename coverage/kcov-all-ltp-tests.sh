@@ -104,8 +104,8 @@ do
 			fi
 		fi
 	done < ${TEST_SUITE_FILE}
-	echo "Running testsuite '${TEST_SUITE}'"
-	run_cmd 0 "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}
+	#echo "Running testsuite '${TEST_SUITE}'"
+	#run_cmd 0 "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}
 done
 #echo "Running ltp"
 #run_cmd "${LTPROOT}/runltp -q" ${OUT_DIR}/ltp.cov
