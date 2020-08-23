@@ -117,7 +117,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		snprintf(temp, MAX_PATH_NAME, "%s.cov", basename(program_invocation_name));
 		kcov_out = temp;
 	}
-	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_TRUNC, 0755);
+	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
 #ifdef DEBUG
 	if (out_fd == -1) {
 		perror("open out_fd");
