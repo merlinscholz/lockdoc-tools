@@ -1,5 +1,5 @@
 /*
- * Compile: gcc  -Wall -fPIC -shared -o kcov.so kcov-lib.c
+ * Compile: gcc  -Wall -fPIC -shared -o kcov.so kcov-lib.c -ldl
  * For debug output compile with -DDEBUG.
  * Usage: KCOV_OUT={stderr,progname,FILE} LD_PRELOAD=./kcov.so sleep 2
  * stderr: Writes bbs to stderr. Same as empty KCOV_OUT or not set.
@@ -7,6 +7,7 @@
  * FILE: Any arbitrary file name
  */
 #define _GNU_SOURCE
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -176,4 +177,24 @@ static void __attribute__((destructor)) finish_kcov(void) {
 	if (out_fd > 0) {
 		close(out_fd);
 	}
+}
+
+int execve(const char* filename, char* const argv[], char* const envp[]) {
+	int (*old_execve)(const char* filename, char* const argv[], char* const envp[]);
+	if (kcov_fd > 0) {
+		/*
+		 * If a program performs more than one execve() call,
+		 * KCOV will be enabled twice which leads to an error.
+		 * Hence, we disable it before the execve.
+		 * Since we use the constructor attribute,
+		 * KCOV will be enabled right after the start of 'filename'.
+		 */
+#ifdef DEBUG
+		fprintf(stderr, "execve(%s,...) on the traced process '%s'(%d). Disabling KCOV for now\n",
+			filename, basename(program_invocation_name), getpid());
+#endif
+		finish_kcov();
+	}
+	old_execve = dlsym(RTLD_NEXT, "execve");
+	return old_execve(filename, argv, envp);
 }
