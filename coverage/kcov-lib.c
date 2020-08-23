@@ -52,6 +52,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef WRITE_FILE
 	const char *kcov_out = NULL;
 #endif
+#ifdef DEBUG
+	fprintf(stderr, "Tracing '%s'(%d)\n", basename(program_invocation_name), getpid());
+#endif
 	/*
 	 * Duplicate the fd for stderr
 	 * Some programs such as cat or touch close stderr
