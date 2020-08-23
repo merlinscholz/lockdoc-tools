@@ -52,6 +52,12 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef WRITE_FILE
 	const char *kcov_out = NULL;
 #endif
+	/*
+	 * Duplicate the fd for stderr
+	 * Some programs such as cat or touch close stderr
+	 * before we reach finish_kcov().
+	 * This way stderr remains open until we have dumped all pcs.
+	 */
 	err_fd = dup(STDERR_FILENO);
 	if (err_fd == -1) {
 #ifdef DEBUG
@@ -68,7 +74,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	}
 	if (ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE)) {
 #ifdef DEBUG
-		perror("ioctl");
+		perror("ioctl init");
 #endif
 		close(kcov_fd);
 		kcov_fd = -1;
@@ -86,7 +92,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	}
 	if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC)){
 #ifdef DEBUG
-		perror("ioctl2");
+		perror("ioctl enable");
 #endif
 		munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
 		close(kcov_fd);
@@ -127,6 +133,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 #endif
 		return;
 	}
+	// Open output file wins over stderr
 	if (out_fd > 0) {
 		fd = out_fd;
 	} else {
