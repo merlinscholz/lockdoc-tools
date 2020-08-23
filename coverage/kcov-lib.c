@@ -162,6 +162,14 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		out_fd, isatty(out_fd));
 #endif
 
+	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
+#ifdef DEBUG
+		perror("ioctl disable");
+#endif
+		close(kcov_fd);
+		kcov_fd = -1;
+		return;
+	}
 	munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
 	close(kcov_fd);
 	close(err_fd);
