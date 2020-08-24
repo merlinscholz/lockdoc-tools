@@ -304,14 +304,11 @@ void determine_coverage()
 	fprintf(stderr, "bb with %s in name is not in internal data structure: %d/%d\n\n",
 			re_search_pattern_string, fs_not_in_bb_map_count, unique_input_addr_count);
 
-	if (statistic_information)
-	{
-		std::pair<unsigned int, unsigned long> files_lines_count = count_all_files_and_lines();
-		float file_count_percentage = (float) file_count / files_lines_count.first * 100;
-		float line_count_percentage = (float) line_count / files_lines_count.second * 100;
-		printf("total: file_count: %u/%u (%3.1f%%) line_count: %lu/%lu (%3.1f%%)\n\n",
-			   file_count, files_lines_count.first, file_count_percentage, line_count, files_lines_count.second,line_count_percentage);
-	}
+	std::pair<unsigned int, unsigned long> files_lines_count = count_all_files_and_lines();
+	float file_count_percentage = (float) file_count / files_lines_count.first * 100;
+	float line_count_percentage = (float) line_count / files_lines_count.second * 100;
+	fprintf(stderr, "total: file_count: %u/%u (%3.1f%%) line_count: %lu/%lu (%3.1f%%)\n\n",
+		   file_count, files_lines_count.first, file_count_percentage, line_count, files_lines_count.second,line_count_percentage);
 
 	// print csv
 	printf("filename\tlines_covered\tlines\n");
