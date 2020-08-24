@@ -12,7 +12,7 @@ def main():
     argv = sys.argv[1:]
     parser = argparse.ArgumentParser(prog='aggregate-bb2lines')
     parser.add_argument('--filter-pattern', help="Aggregates all filenames with regex pattern in name.")
-    parser.add_argument('--aggregate-dir', action="store_true", default=False, help="Aggregates to dirnames")
+    parser.add_argument('--aggregate-dir', action="store_true", help="Aggregates to dirnames")
     parse_out = parser.parse_args(argv)
     filter_pattern = parse_out.filter_pattern
     if filter_pattern is None:
