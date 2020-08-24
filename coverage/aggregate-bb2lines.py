@@ -24,15 +24,15 @@ def main():
                 break
             process_csv_line(line, filter_pattern_regex)
 
-    print("filter-pattern\tlines-covered\tlines")
-    print("{}\t{}\t{}".format(filter_pattern, aggregation["lines_covered"], aggregation["lines"]))
+    print("filter-pattern,lines-covered,lines")
+    print("{},{},{}".format(filter_pattern, aggregation["lines_covered"], aggregation["lines"]))
 
 
 def process_csv_line(line, filter_pattern):
     if line == '\n':
         return
     trimmed_line = line[:-1]
-    parsed_line = trimmed_line.split("\t")
+    parsed_line = trimmed_line.split(",")
     if len(parsed_line) != 3:
         return
     try:
