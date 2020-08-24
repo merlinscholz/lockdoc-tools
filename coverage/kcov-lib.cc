@@ -165,7 +165,8 @@ static void __attribute__((destructor)) finish_kcov(void) {
 	}
 #endif
 #ifdef DEBUG
-	dprintf(err_fd, "Done dumping bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+	dprintf(err_fd, "Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)COVER_SIZE,
 		program_invocation_name, getpid(), 
 		err_fd, isatty(err_fd),
 		out_fd, isatty(out_fd));
