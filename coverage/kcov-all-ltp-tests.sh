@@ -57,7 +57,7 @@ function run_cmd() {
 			fi
 			sed -e 's/^0x//' ${OUTFILE}.cov |  ${SORTUNIQ} > ${OUTFILE}.map
 		else
-			eval ${CMD} 2> >(sed -e 's/^0x//'| ${SORTUNIQ} > ${OUTFILE}.cov)
+			eval ${CMD} 2> >(sed -e 's/^0x//'| ${SORTUNIQ} > ${OUTFILE}.map)
 			if [ ${?} -ne 0 ];
 			then
 				echo "Error running: ${CMD}"
