@@ -26,6 +26,7 @@
 #include <string>
 #include <set>
 #include <cstdint>
+#include <signal.h>
 
 //#define DEBUG
 #define WRITE_FILE
@@ -53,6 +54,21 @@ static std::set<cover_t> sortuniq_cover;
 static char temp[MAX_PATH_NAME];
 #endif
 extern char *program_invocation_name;
+struct sigaction new_action, old_action;
+static void finish_kcov(void);
+
+static void signal_handler(int signum) {
+	if (signum == SIGSEGV) {
+#ifdef DEBUG
+		fprintf(stderr, "Caught SIGSEV on '%s'(%d)\n", basename(program_invocation_name), getpid());
+#endif
+		finish_kcov();
+	}
+	if (old_action.sa_handler) {
+		old_action.sa_handler(signum);
+	}
+	exit(0);
+}
 
 static void __attribute__((constructor)) start_kcov(void) {
 #ifdef WRITE_FILE
@@ -112,6 +128,15 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	}
 	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
+
+	new_action.sa_handler = signal_handler;
+	sigemptyset (&new_action.sa_mask);
+	new_action.sa_flags = 0;
+	if (sigaction (SIGSEGV, &new_action, &old_action) == -1) {
+#ifdef DEBUG
+		perror("sigaction");
+#endif
+	}
 
 #ifdef WRITE_FILE
 	kcov_out = getenv("KCOV_OUT");
