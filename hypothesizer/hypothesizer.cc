@@ -886,8 +886,10 @@ int main(int argc, char **argv)
 {
 	// === Command-line parsing ===
 	// skip program name argv[0] if present
-	argc -= (argc > 0);
-	argv += (argc > 0);
+	if (argc > 0) {
+		argc--;
+		argv++;
+	}
 
 	option::Stats stats(usage, argc, argv);
 	std::vector<option::Option> options(stats.options_max);
