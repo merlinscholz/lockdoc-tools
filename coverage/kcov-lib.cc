@@ -1,12 +1,12 @@
 /*
- * Compile: gcc  -Wall -fPIC -shared -o kcov.so kcov-lib.c -ldl
+ * Compile: g++  -Wall -fPIC -shared -o kcov.so kcov-lib.c -ldl
  * For debug output compile with -DDEBUG.
  * Usage: KCOV_OUT={stderr,progname,FILE} LD_PRELOAD=./kcov.so sleep 2
- * stderr: Writes bbs to stderr. Same as empty KCOV_OUT or not set.
- * progname: Writes bbs to PROGNAME.cov using basename(program_invocation_name).
+ * Determines basic block coverages, and outputs a list of unique and sorted bbs.
+ * stderr: Writes to stderr. Same as empty KCOV_OUT or not set.
+ * progname: Writes to PROGNAME.cov using basename(program_invocation_name).
  * FILE: Any arbitrary file name
  */
-#define _GNU_SOURCE
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stddef.h>
@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <libgen.h>
 #include <string.h>
+#include <iostream>
+#include <string>
+#include <set>
+#include <cstdint>
 
 //#define DEBUG
 #define WRITE_FILE
@@ -44,6 +48,7 @@ typedef uint32_t cover_t;
 
 static int kcov_fd, err_fd, out_fd;
 static cover_t *cover;
+static std::set<cover_t> sortuniq_cover;
 #ifdef WRITE_FILE
 static char temp[MAX_PATH_NAME];
 #endif
@@ -153,7 +158,10 @@ static void __attribute__((destructor)) finish_kcov(void) {
 	n = __atomic_load_n(&cover[0], __ATOMIC_RELAXED);
 #if 1
 	for (i = 0; i < n; i++) {
-		dprintf(fd, "0x%jx\n", (uintmax_t)cover[i + 1]);
+		sortuniq_cover.insert(cover[i + 1]);
+	}
+	for (auto elem : sortuniq_cover) {
+		dprintf(fd, "0x%jx\n", (uintmax_t)elem);
 	}
 #endif
 #ifdef DEBUG
@@ -179,8 +187,9 @@ static void __attribute__((destructor)) finish_kcov(void) {
 	}
 }
 
-int execve(const char* filename, char* const argv[], char* const envp[]) {
-	int (*old_execve)(const char* filename, char* const argv[], char* const envp[]);
+typedef int (*execve_fn_ptr)(const char* filename, char* const argv[], char* const envp[]);
+extern "C" int execve(const char* filename, char* const argv[], char* const envp[]) {
+	execve_fn_ptr old_execve;
 	if (kcov_fd > 0) {
 		/*
 		 * If a program performs more than one execve() call,
@@ -195,6 +204,6 @@ int execve(const char* filename, char* const argv[], char* const envp[]) {
 #endif
 		finish_kcov();
 	}
-	old_execve = dlsym(RTLD_NEXT, "execve");
+	old_execve = (execve_fn_ptr)dlsym(RTLD_NEXT, "execve");
 	return old_execve(filename, argv, envp);
 }
