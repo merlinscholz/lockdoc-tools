@@ -5,10 +5,15 @@ if [ $# -ne 3 ]; then
 	exit 1
 fi
 
-addr2line -a -e "$1" < "$2" | \
-while read ADDR; do
-	read LINE
-	if [[ $LINE =~ $3 ]]; then
-		echo ${ADDR#0x} # strip leading "0x"
+LASTADDR=NONE
+
+addr2line -a --inlines -e "$1" < "$2" | \
+while read LINE; do
+	if [[ $LINE == 0x* ]]; then
+		LASTADDR=${LINE#0x} # strip leading "0x"
+	elif [[ $LINE =~ $3 && $LASTADDR != NONE ]]; then
+		echo $LASTADDR
+		# make sure we output each address only once
+		LASTADDR=NONE
 	fi
 done
