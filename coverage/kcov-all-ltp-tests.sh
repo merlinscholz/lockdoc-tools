@@ -49,9 +49,9 @@ function run_cmd() {
 				echo "Error running: ${CMD}"
 				return
 			fi
-			sort -u ${OUTFILE}.cov | sed -e 's/^0x//' > ${OUTFILE}.map
+			sed -i -e 's/^0x//' > ${OUTFILE}.cov
 		else
-			eval ${CMD} 2> >(sort -u | sed -e 's/^0x//' > ${OUTFILE}.map)
+			eval ${CMD} 2> >(sed -e 's/^0x//' > ${OUTFILE}.cov)
 			if [ ${?} -ne 0 ];
 			then
 				echo "Error running: ${CMD}"
