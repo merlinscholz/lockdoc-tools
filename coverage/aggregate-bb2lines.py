@@ -19,10 +19,9 @@ def main():
         filter_pattern_regex = re.compile(filter_pattern)
 
     for i, line in enumerate(sys.stdin):
-        if i > 1:
-            if line == '':  # If empty string is read then stop the loop
-                break
-            process_csv_line(line, filter_pattern_regex)
+        if line == '':  # If empty string is read then stop the loop
+            break
+        process_csv_line(line, filter_pattern_regex)
 
     print("filter-pattern,lines-covered,lines")
     print("{},{},{}".format(filter_pattern, aggregation["lines_covered"], aggregation["lines"]))
