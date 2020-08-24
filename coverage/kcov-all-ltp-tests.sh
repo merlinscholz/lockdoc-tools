@@ -19,7 +19,7 @@ export LTP_DEV_FS_TYPE=ext4
 export LTP_BIG_DEV=${DEVICE}
 export LTP_BIG_DEV_FS_TYPE=ext4
 LTP_TEST_DIR=${LTPROOT}/runtest
-export PATH="$PATH:$LTPROOT/testcases/bin"
+export PATH="$PATH:$LTPROOT/testcases/bin:${LTPROOT}/bin"
 export TMPDIR=`mktemp -d /tmp/kcov.XXX`
 chmod 0777 ${TMPDIR}
 
@@ -69,6 +69,12 @@ else
 	TESTS_TO_RUN=${TESTS}
 	IFS=","
 fi
+
+echo "LTPROOT="${LTPROOT}
+echo "LTP_DEV="${LTP_DEV}
+echo "LTP_DEV_FS_TYPE="${LTP_DEV_FS_TYPE}
+echo "LTP_BIG_DEV="${LTP_BIG_DEV}
+echo "LTP_BIG_DEV_FS_TYPE="${LTP_BIG_DEV_FS_TYPE}
 
 for i in ${TESTS_TO_RUN};
 do
