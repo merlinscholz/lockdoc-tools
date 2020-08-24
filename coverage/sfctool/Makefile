@@ -1,5 +1,5 @@
-#CXXFLAGS += -O2
-CXXFLAGS += -g
+CXXFLAGS += -O2
+#CXXFLAGS += -g
 CXXFLAGS += -std=c++17 -Wall -Wextra $(shell libpng-config --cflags)
 
 LDFLAGS += $(shell libpng-config --ldflags)
