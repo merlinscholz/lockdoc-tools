@@ -121,7 +121,7 @@ enum verbosity_level
 int verbose = FATAL_FAILURE;
 
 // let print all covered lines and a summary of the total coverage
-int statistic_information;
+int covered_lines_information;
 
 // failure summary
 unsigned addr_not_start_line_count = 0;
@@ -150,13 +150,13 @@ int printf_verbose(int verbosity, const char * format, ...)
 
 static const struct option options[] =
 		{
-				{ "help",                  no_argument,       nullptr, 'h' },
-				{ "verbose",               required_argument, nullptr, 'v' },
-				{ "statistic-information", no_argument,       nullptr, 's' },
-				{ "file-prefix",           required_argument, nullptr, 'p' },
-				{ "binary",                required_argument, nullptr, 'b' },
-				{ "regex",                 required_argument, nullptr, 'e' },
-				{ "convert",               no_argument,       nullptr, 'c' },
+				{ "help",                      no_argument,       nullptr, 'h' },
+				{ "verbose",                   required_argument, nullptr, 'v' },
+				{ "covered-lines-information", no_argument,       nullptr, 'l' },
+				{ "file-prefix",               required_argument, nullptr, 'p' },
+				{ "binary",                    required_argument, nullptr, 'b' },
+				{ "regex",                     required_argument, nullptr, 'e' },
+				{ "convert",                   no_argument,       nullptr, 'c' },
 				{ 0, 0, 0, 0 }
 		};
 
@@ -165,7 +165,7 @@ int main (int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt_long (argc, argv, "hvspbec", options, nullptr)) != -1)
+	while ((opt = getopt_long (argc, argv, "hvlpbec", options, nullptr)) != -1)
 	{
 		switch (opt)
 		{
@@ -175,8 +175,8 @@ int main (int argc, char **argv)
 			case 'h':
 				print_usage();
 				return 0;
-			case 's':
-				statistic_information = 1;
+			case 'l':
+				covered_lines_information = 1;
 				break;
 			case 'p':
 				file_prefix = argv[optind++];
@@ -274,12 +274,12 @@ static void print_usage ()
 	printf ("determines the corresponding source code lines, and \n");
 	printf ("determines the amount of covered lines per file.");
 	printf ("example usage: ./bb2lines -b /opt/kernel/linux/vmlinux -p /opt/kernel/linux /opt/kernel/linux\n");
-	printf ("  -h, --help                     Print this help\n");
-	printf ("  -v, --verbose                  Print in a verbose form\n");
-	printf ("  -s, --statistic-information    Print additional statistics, and a total of all covered lines to stderr\n");
-	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
-	printf ("  -b, --binary                   Path of the vmlinux\n");
-	printf ("  -e, --regex                    If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
+	printf ("  -h, --help                      Print this help\n");
+	printf ("  -v, --verbose                   Print in a verbose form\n");
+	printf ("  -l, --covered-lines-information Print specific covered lines to csv\n");
+	printf ("  -p, --file-prefix               Absolut path prefix of the source files\n");
+	printf ("  -b, --binary                    Path of the vmlinux\n");
+	printf ("  -e, --regex                     If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
 	printf ("  -c, --convert		  Instead of determing the code coverage just convert all incomming\n");
 	printf ("				  basic blocks to source code lines. Example output: 0x42,foo.c,42\n");
 	printf ("				  Options -e and -s are useless here.\n");
@@ -382,14 +382,12 @@ void determine_coverage()
 		std::set<unsigned> &lines = it.second;
 		unsigned long all_lines_count = count_all_lines_in_file(filename);
 		printf("%s,%lu,%lu\n", filename.c_str(), lines.size(), all_lines_count);
-#if 0
-		if (statistic_information) {
+		if (covered_lines_information) {
 			for (unsigned line: lines) {
 				printf("%u\n", line);
 			}
 			printf("\n");
 		}
-#endif
 	}
 }
 
