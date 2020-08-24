@@ -14,6 +14,10 @@ fi
 KCOV_BINARY=${1}; shift;
 
 export LTPROOT=${1}; shift;
+export LTP_DEV=${DEVICE}
+export LTP_DEV_FS_TYPE=ext4
+export LTP_BIG_DEV=${DEVICE}
+export LTP_BIG_DEV_FS_TYPE=ext4
 LTP_TEST_DIR=${LTPROOT}/runtest
 export PATH="$PATH:$LTPROOT/testcases/bin"
 export TMPDIR=`mktemp -d /tmp/kcov.XXX`
