@@ -79,17 +79,18 @@ struct function_info
 };
 
 void determine_coverage();
+void convert_basic_blocks();
 static void read_graph_file (const char *);
 static void print_usage();
 std::pair<unsigned int, unsigned long> count_all_files_and_lines();
 unsigned long count_all_lines_in_file(std::string& filename);
 std::vector<std::string> get_all_files_in_dir(const std::string &dirPath);
-basic_block* get_basic_block(unsigned long);
+basic_block* get_basic_block(uint64_t);
 void print_basic_block(const basic_block*);
 extern int main (int, char **);
 
 //key: addr of basic block; value: basic block
-std::unordered_map<unsigned long, basic_block> basic_blocks_addr_map;
+std::unordered_map<uint64_t, basic_block> basic_blocks_addr_map;
 // key: name of source file; value: set of covered lines in a source file
 std::unordered_map<std::string, std::set<unsigned>> covered_lines;
 std::unordered_map<std::string, std::set<unsigned>> coverable_lines;
@@ -107,6 +108,7 @@ char *binary;
 // if this pattern is not found in basic_block_map for a specific bb addr a more sophisticated search mechanism is used
 std::regex re_search_pattern;
 char *re_search_pattern_string;
+bool convert = false;
 
 enum verbosity_level
 {
@@ -154,6 +156,7 @@ static const struct option options[] =
 				{ "file-prefix",           required_argument, nullptr, 'p' },
 				{ "binary",                required_argument, nullptr, 'b' },
 				{ "regex",                 required_argument, nullptr, 'e' },
+				{ "convert",               no_argument,       nullptr, 'c' },
 				{ 0, 0, 0, 0 }
 		};
 
@@ -162,7 +165,7 @@ int main (int argc, char **argv)
 {
 	int opt;
 
-	while ((opt = getopt_long (argc, argv, "hvspbe", options, nullptr)) != -1)
+	while ((opt = getopt_long (argc, argv, "hvspbec", options, nullptr)) != -1)
 	{
 		switch (opt)
 		{
@@ -185,6 +188,9 @@ int main (int argc, char **argv)
 				re_search_pattern_string = argv[optind++];
 				re_search_pattern = re_search_pattern_string;
 				break;
+			case 'c':
+				convert = true;
+				break;
 			default:
 				print_usage();
 				return 1;
@@ -196,7 +202,7 @@ int main (int argc, char **argv)
 	while (argv[optind])
 		dirname = argv[optind++];
 
-	if (!strcmp(dirname, ""))
+	if (!strcmp(dirname, "") || file_prefix == NULL || binary == NULL)
 	{
 		print_usage();
 		return 2;
@@ -233,21 +239,79 @@ int main (int argc, char **argv)
 //		}
 //	}
 
-	determine_coverage();
+	if (convert)
+	{
+		convert_basic_blocks();
+	}
+	else
+	{
+		determine_coverage();
+	}
+
+	// failure summary
+	fprintf(stderr, "Failure summary:\n");
+	fprintf(stderr, "Address resolves not to the start line of a basic block: %d/%d\n",
+			addr_not_start_line_count, unique_input_addr_count);
+	fprintf(stderr, "Basic block was already read from the .gcno files: %d/%d\n",
+			bb_is_already_in_bb_map_count, bb_read_count);
+	fprintf(stderr, "Basic block not found in .gcno files: %d/%d\n",
+			bb_at_addr_not_found_count, unique_input_addr_count);
+	fprintf(stderr, "addr2line returns null for file: %d/%d\n",
+			file_is_null_in_addr2line_count, unique_input_addr_count);
+	fprintf(stderr, "File from addr2line was found in .gcno files, but not the line: %d/%d\n",
+			file_found_line_not_found_count, unique_input_addr_count);
+	fprintf(stderr, "bb with %s in name is not in internal data structure: %d/%d\n\n",
+			re_search_pattern_string, fs_not_in_bb_map_count, unique_input_addr_count);
 
 	return 0;
 }
 
 static void print_usage ()
 {
-	printf ("Usage: bb2lines [OPTION] ... gcovfiles-directory\n");
-	printf ("Print coverage file contents\n");
+	printf ("Usage: bb2lines [OPTION] -b <vmlinux> -p <path to source tree> <gcov-files-directory>\n");
+	printf ("Uses <gcov-files-directory> to determine all coverable source code lines.\n");
+	printf ("Reads a set of basic block adresses (hex format) from stdin,\n");
+	printf ("determines the corresponding source code lines, and \n");
+	printf ("determines the amount of covered lines per file.");
+	printf ("example usage: ./bb2lines -b /opt/kernel/linux/vmlinux -p /opt/kernel/linux /opt/kernel/linux\n");
 	printf ("  -h, --help                     Print this help\n");
 	printf ("  -v, --verbose                  Print in a verbose form\n");
-	printf ("  -s, --statistic-information    Print additional statistics and covered lines\n");
+	printf ("  -s, --statistic-information    Print additional statistics, and a total of all covered lines to stderr\n");
 	printf ("  -p, --file-prefix              Absolut path prefix of the source files\n");
-	printf ("  -b, --binary                   Path of the binary\n");
+	printf ("  -b, --binary                   Path of the vmlinux\n");
 	printf ("  -e, --regex                    If this regex search pattern is not found directly for a specific bb addr a more sophisticated search mechanism is used\n");
+	printf ("  -c, --convert		  Instead of determing the code coverage just convert all incomming\n");
+	printf ("				  basic blocks to source code lines. Example output: 0x42,foo.c,42\n");
+	printf ("				  Options -e and -s are useless here.\n");
+}
+
+
+/**
+ *
+ */
+void convert_basic_blocks()
+{
+	printf_verbose(ADDITIONAL_INFORMATION, "covered basic blocks:\n");
+	// get all covered basic blocks from the basic block addresses from stdin
+	printf("basic_block,file,line\n");
+	for (std::string line; std::getline(std::cin, line);)
+	{
+		input_addr_count++;
+		uint64_t block_start_address = std::stoull(line, nullptr, 16);
+		basic_block *bb = get_basic_block(block_start_address);
+		if (bb == nullptr)
+		{
+			continue;
+		}
+		for (auto &bb_source_line: bb->source_lines)
+		{
+			for (unsigned bb_line: bb_source_line.lines)
+			{
+				printf("0x%llx,%s,%d\n", block_start_address, bb_source_line.filename.c_str(), bb_line);
+			}
+		}
+	}
+	printf_verbose(ADDITIONAL_INFORMATION, "\n");
 }
 
 
@@ -262,7 +326,7 @@ void determine_coverage()
 	for (std::string line; std::getline(std::cin, line);)
 	{
 		input_addr_count++;
-		unsigned long block_start_address = std::stoul(line, nullptr, 16);
+		uint64_t block_start_address = std::stoull(line, nullptr, 16);
 		basic_block *bb = get_basic_block(block_start_address);
 		if (bb == nullptr)
 		{
@@ -311,19 +375,21 @@ void determine_coverage()
 		   file_count, files_lines_count.first, file_count_percentage, line_count, files_lines_count.second,line_count_percentage);
 
 	// print csv
-	printf("filename\tlines_covered\tlines\n");
+	printf("file,lines_covered,lines_total\n");
 	for (auto& it: covered_lines)
 	{
 		std::string filename = it.first;
 		std::set<unsigned> &lines = it.second;
 		unsigned long all_lines_count = count_all_lines_in_file(filename);
-		printf("%s\t%lu\t%lu\n", filename.c_str(), lines.size(), all_lines_count);
+		printf("%s,%lu,%lu\n", filename.c_str(), lines.size(), all_lines_count);
+#if 0
 		if (statistic_information) {
 			for (unsigned line: lines) {
 				printf("%u\n", line);
 			}
 			printf("\n");
 		}
+#endif
 	}
 }
 
@@ -591,7 +657,7 @@ basic_block find_line_and_file_in_bb_map(unsigned line, std::string& filename)
  * @param bb_addr : Basis block address to be searched
  * @return with the basis block address found basis block and nullptr if there is no basic block found
  */
-basic_block* get_basic_block(unsigned long bb_addr)
+basic_block* get_basic_block(uint64_t bb_addr)
 {
 	// first try to find basis block directly in basic_blocks_addr_map
 	auto search_addr = basic_blocks_addr_map.find(bb_addr);

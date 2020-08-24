@@ -34,6 +34,6 @@ static asymbol **bfdSyms;
 static long bfdSymcount;
 
 int binaryread_init(const char *filename);
-BfdSearchCtx addr_to_line(unsigned long addr);
+BfdSearchCtx addr_to_line(uint64_t addr);
 
 #endif //MODIFIED_GCOV_BINARYREAD_H

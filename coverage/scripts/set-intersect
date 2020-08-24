@@ -1,0 +1,9 @@
+#!/bin/bash
+if [ $# -ne 2 ]; then
+	echo "usage: $0 file1 file2" >&2
+	echo "Both input files must be sorted." >&2
+	exit 1
+fi
+exec join "$@"
+
+# alternative: comm -12 f1 f2

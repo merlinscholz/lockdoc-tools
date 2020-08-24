@@ -105,7 +105,7 @@ int binaryread_init(const char *filename)
 	return 0;
 }
 
-BfdSearchCtx addr_to_line(unsigned long addr)
+BfdSearchCtx addr_to_line(uint64_t addr)
 {
 	BfdSearchCtx bfdSearchCtx;
 	memset(&bfdSearchCtx, 0, sizeof(bfdSearchCtx));
