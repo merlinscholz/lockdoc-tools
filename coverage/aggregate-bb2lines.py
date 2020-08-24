@@ -38,7 +38,7 @@ def process_csv_line(line, filter_pattern):
     try:
         parsed_line_dict = {"file_name": parsed_line[0], "lines_covered": int(parsed_line[1]), "lines": int(parsed_line[2])}
         aggregate_line(parsed_line_dict, filter_pattern)
-        print(parsed_line)
+        # print(parsed_line)
     except ValueError:
         return
 
