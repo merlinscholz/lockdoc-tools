@@ -50,10 +50,20 @@ cp $ALLFS $SFC_ORDERING
 set-minus $ALLBBS $ALLFS >> $SFC_ORDERING
 
 rm -f "$CSV"
-echo "current_cov current_fscov aggregate_cov aggregate_fscov" >> $CSV
+echo "hash time current_cov current_fscov aggregate_cov aggregate_fscov" >> $CSV
 
+STARTTIME=UNSET
 for f in "$SYZKALLER_DIR"/*; do
 	echo processing $f ...
+
+	BASE=$(basename $f)
+	TIME=${BASE%%-*}
+	HASH=${BASE##*-}
+
+	if [ $STARTTIME = UNSET ]; then
+		STARTTIME=$TIME
+	fi
+	TIME=$( echo -e "scale=3\n($TIME - $STARTTIME) / 10^9" | bc -l )
 
 	# determine newly covered BBs
 	set-minus $f $AGGREGATE > $NEWBBS
@@ -73,9 +83,10 @@ for f in "$SYZKALLER_DIR"/*; do
 		--on-map $ALLBBS --color 3333ff \
 		--on-map $ALLFS --color ff3333 \
 		--on-map $NEWBBS --color ff00ff \
-		$SFC_ORDERING $f "$PNGDIR"/$(basename $f).png
+		$SFC_ORDERING $f "$PNGDIR"/$BASE.png
 
 	# statistics
+	echo -n "$HASH $TIME " >> $CSV
 	echo -n $(wc -l < $f)" " >> $CSV
 	echo -n $(set-intersect $f $ALLFS | wc -l)" " >> $CSV
 	echo -n $(wc -l < $AGGREGATE)" " >> $CSV
