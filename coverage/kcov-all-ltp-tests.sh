@@ -37,13 +37,16 @@ fi
 
 function run_cmd() {
 	REDIRECT=${1}
-
 	OUTFILE=${3}
 	if [ ${REDIRECT} -eq 0 ];
 	then
 		CMD="KCOV_OUT=${OUTFILE}.cov LD_PRELOAD=${KCOV_BINARY} ${2}"
 	else
-		CMD="LD_PRELOAD=${KCOV_BINARY} ${2}"
+		MAX_FD=`ulimit -Sn`
+		OUT_FD=`echo  ${MAX_FD} - 1 | bc`
+		FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
+		eval $FOO
+		CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${2}"
 	fi
 	if [ -z ${DUMP} ];
 	then
@@ -55,13 +58,15 @@ function run_cmd() {
 				echo "Error running: ${CMD}"
 				return
 			fi
-			cat ${OUTFILE}.cov | ${SORTUNIQ} | sed -e 's/^0x//' ${OUTFILE}.map
+			cat ${OUTFILE}.cov | ${SORTUNIQ} | sed -e 's/^0x//' > ${OUTFILE}.map
 		else
-			eval ${CMD} 2> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)
+			eval ${CMD}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Error running: ${CMD}"
 			fi
+			FOO="exec ${OUT_FD}>&-"
+			eval ${FOO}
 		fi
 	else
 		echo "${CMD} 2> ${OUTFILE}"
