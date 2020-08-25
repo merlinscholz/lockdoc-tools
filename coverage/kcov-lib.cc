@@ -27,6 +27,8 @@
 #include <set>
 #include <cstdint>
 #include <signal.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 //#define DEBUG
 #define WRITE_FILE
@@ -46,8 +48,13 @@ typedef uint32_t cover_t;
 #define KCOV_TRACE_PC 0
 #define COVER_SIZE (16 << 20)
 #define MAX_PATH_NAME 100
+#define KCOV_ENV_CTL_FD "KCOV_CTL_FD"
+#define KCOV_ENV_ERR_FD "KCOV_ERR_FD"
+#define KCOV_ENV_OUT_FD "KCOV_OUT_FD"
+#define KCOV_ENV_AREA "KCOV_AREA"
+#define KCOV_ENV_OUT "KCOV_OUT"
 
-static int kcov_fd, err_fd, out_fd;
+static int kcov_fd, err_fd, out_fd, foreign_fd;
 static cover_t *cover;
 static std::set<cover_t> sortuniq_cover;
 #ifdef WRITE_FILE
@@ -57,10 +64,29 @@ extern char *program_invocation_name;
 struct sigaction new_action, old_action;
 static void finish_kcov(void);
 
+static void cleanup_kcov(void) {
+	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
+#ifdef DEBUG
+		perror("ioctl disable");
+#endif
+	}
+	munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
+	close(kcov_fd);
+	close(err_fd);
+	if (out_fd > 0 && !foreign_fd) {
+		close(out_fd);
+	}
+	foreign_fd = kcov_fd = err_fd = out_fd = 0;
+	unsetenv(KCOV_ENV_CTL_FD);
+	unsetenv(KCOV_ENV_ERR_FD);
+	unsetenv(KCOV_ENV_OUT_FD);
+	unsetenv(KCOV_ENV_AREA);
+}
+
 static void signal_handler(int signum) {
 	if (signum == SIGSEGV) {
 #ifdef DEBUG
-		fprintf(stderr, "Caught SIGSEV on '%s'(%d)\n", basename(program_invocation_name), getpid());
+		dprintf(err_fd, "Caught SIGSEV on '%s'(%d)\n", basename(program_invocation_name), getpid());
 #endif
 		finish_kcov();
 	}
@@ -71,6 +97,8 @@ static void signal_handler(int signum) {
 }
 
 static void __attribute__((constructor)) start_kcov(void) {
+	char buff[30], *env;
+	struct rlimit max_ofiles;
 #ifdef WRITE_FILE
 	const char *kcov_out = NULL;
 #endif
@@ -79,6 +107,59 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	if (kcov_fd > 0) {
 		return;
+	}
+	new_action.sa_handler = signal_handler;
+	sigemptyset (&new_action.sa_mask);
+	new_action.sa_flags = 0;
+	if (sigaction (SIGSEGV, &new_action, &old_action) == -1) {
+#ifdef DEBUG
+		perror("sigaction");
+#endif
+	}
+
+	env = getenv(KCOV_ENV_CTL_FD);
+	if (env != NULL) {
+#ifdef DEBUG
+		fprintf(stderr, "Found active KCOV.\n");
+#endif
+		kcov_fd = strtol(env, NULL, 10);
+		if (fcntl(kcov_fd, F_GETFD)) {
+#ifdef DEBUG
+			perror("fcntl kcov_fd");
+#endif
+			kcov_fd = err_fd = out_fd = -1;
+			return;
+		}
+		env = getenv(KCOV_ENV_ERR_FD);
+		err_fd = strtol(env, NULL, 10);
+		if (fcntl(err_fd, F_GETFD)) {
+#ifdef DEBUG
+			perror("fcntl err_fd");
+#endif
+			kcov_fd = err_fd = out_fd = -1;
+			return;
+		}
+		env = getenv(KCOV_ENV_OUT_FD);
+		if (env != NULL) {
+			out_fd = strtol(env, NULL, 10);
+			if (fcntl(out_fd, F_GETFD)) {
+#ifdef DEBUG
+				perror("fcntl out_fd");
+#endif
+				kcov_fd = err_fd = out_fd = -1;
+				return;
+			}
+		}
+		env = getenv(KCOV_ENV_AREA);
+#ifdef KERNEL64
+		cover = (cover_t*)std::stoull(env, NULL, 16);
+#else
+		cover = (cover_t*)std::stoul(env, NULL, 16);
+#endif 
+#ifdef DEBUG
+		dprintf(err_fd, "Active KCOV disabled. Restarting...\n");
+#endif
+		cleanup_kcov();
 	}
 	/*
 	 * Duplicate the fd for stderr
@@ -91,7 +172,6 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef DEBUG
 		perror("dup");
 #endif
-		return;
 	}
 	kcov_fd = open(KCOV_PATH, O_RDWR);
 	if (kcov_fd == -1) {
@@ -109,7 +189,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	}
 	cover = (cover_t*)mmap(NULL, COVER_SIZE * KCOV_ENTRY_SIZE,
-				     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
+			     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
 	if ((void*)cover == MAP_FAILED) {
 #ifdef DEBUG
 		perror("mmap");
@@ -127,16 +207,17 @@ static void __attribute__((constructor)) start_kcov(void) {
 		kcov_fd = -1;
 		return;
 	}
-	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
-
-	new_action.sa_handler = signal_handler;
-	sigemptyset (&new_action.sa_mask);
-	new_action.sa_flags = 0;
-	if (sigaction (SIGSEGV, &new_action, &old_action) == -1) {
+	snprintf(buff, sizeof(buff), "%d", kcov_fd);
+	setenv(KCOV_ENV_CTL_FD, buff, 1);
+	snprintf(buff, sizeof(buff), "%d", err_fd);
+	setenv(KCOV_ENV_ERR_FD, buff, 1);
+	snprintf(buff, sizeof(buff), "%p", cover);
+	setenv(KCOV_ENV_AREA, buff, 1);
 #ifdef DEBUG
-		perror("sigaction");
+	dprintf(err_fd, "Wrote settings to env variables: kcov_fd = %s, err_fd = %s, cover = %s\n", getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD), getenv(KCOV_ENV_AREA));
 #endif
-	}
+
+	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
 
 #ifdef WRITE_FILE
 	kcov_out = getenv("KCOV_OUT");
@@ -144,18 +225,41 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	} else if (strcmp(kcov_out, "stderr") == 0) {
 		return;
+	} else if (strcmp(kcov_out, "fd") == 0) {
+		if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
+#ifdef DEBUG
+			perror("getrlimit");
+#endif
+		}
+		out_fd = max_ofiles.rlim_cur - 1;
+#ifdef DEBUG
+		dprintf(err_fd, "Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", out_fd);
+#endif
+		if (fcntl(out_fd, F_GETFD)) {
+#ifdef DEBUG
+			perror("fcntl err_fd start");
+#endif
+			return;
+		}
+		foreign_fd = 1;
+		return;
 	} else if (strcmp(kcov_out, "progname") == 0) {
-		snprintf(temp, MAX_PATH_NAME, "%s.cov", basename(program_invocation_name));
+		snprintf(temp, MAX_PATH_NAME, "%s.map", basename(program_invocation_name));
 		kcov_out = temp;
 	}
 	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
 #ifdef DEBUG
 	if (out_fd == -1) {
 		perror("open out_fd");
-		fprintf(stderr, "Cannot open '%s'. Falling back to stderr \n", kcov_out);
+		dprintf(err_fd, "Cannot open '%s'. Falling back to stderr \n", kcov_out);
 	} else {
-		fprintf(stderr, "Writing bbs to %s (%d)\n", kcov_out, out_fd);
+		dprintf(err_fd, "Writing bbs to %s (%d)\n", kcov_out, out_fd);
 	}
+#endif
+	snprintf(buff, sizeof(buff), "%d", out_fd);
+	setenv(KCOV_ENV_OUT_FD, buff, 1);
+#ifdef DEBUG
+	dprintf(err_fd, "Wrote setting to env variable: out_fd = %s\n", getenv(KCOV_ENV_OUT_FD));
 #endif
 #endif
 }
@@ -166,7 +270,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 
 	if (kcov_fd < 1 || err_fd < 1) {
 #ifdef DEBUG
-		fprintf(stderr, "No KCOV fd or no fd for stderr present\n");
+		dprintf(err_fd, "No KCOV fd or no fd for stderr present\n");
 #endif
 		return;
 	}
@@ -177,7 +281,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		fd = err_fd;
 	}
 #ifdef DEBUG
-	dprintf(err_fd, "out_fd = %d\n", out_fd);
+	dprintf(err_fd, "%d: out_fd = %d\n", getpid(), out_fd);
 #endif
 
 	n = __atomic_load_n(&cover[0], __ATOMIC_RELAXED);
@@ -196,40 +300,29 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		err_fd, isatty(err_fd),
 		out_fd, isatty(out_fd));
 #endif
-
-	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
-#ifdef DEBUG
-		perror("ioctl disable");
-#endif
-		close(kcov_fd);
-		kcov_fd = -1;
-		return;
-	}
-	munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
-	close(kcov_fd);
-	close(err_fd);
-	if (out_fd > 0) {
-		close(out_fd);
-	}
+	cleanup_kcov();
 }
 
-typedef int (*execve_fn_ptr)(const char* filename, char* const argv[], char* const envp[]);
-extern "C" int execve(const char* filename, char* const argv[], char* const envp[]) {
-	execve_fn_ptr old_execve;
-	if (kcov_fd > 0) {
-		/*
-		 * If a program performs more than one execve() call,
-		 * KCOV will be enabled twice which leads to an error.
-		 * Hence, we disable it before the execve.
-		 * Since we use the constructor attribute,
-		 * KCOV will be enabled right after the start of 'filename'.
-		 */
-#ifdef DEBUG
-		fprintf(stderr, "execve(%s,...) on the traced process '%s'(%d). Disabling KCOV for now\n",
-			filename, basename(program_invocation_name), getpid());
-#endif
-		finish_kcov();
+typedef pid_t (*fork_fn_ptr)(void);
+extern "C" pid_t fork(void) {
+	fork_fn_ptr old_fork;
+	pid_t ret;
+
+	old_fork = (fork_fn_ptr)dlsym(RTLD_NEXT, "fork");
+	ret = old_fork();
+	if (ret != 0) {
+		return ret;
 	}
-	old_execve = (execve_fn_ptr)dlsym(RTLD_NEXT, "execve");
-	return old_execve(filename, argv, envp);
+	if (kcov_fd > 0 ) {
+#ifdef DEBUG
+		dprintf(err_fd, "fork() on the traced process '%s'(%d). Disabling KCOV for child %d.\n",
+			basename(program_invocation_name), getppid(), getpid());
+#endif
+		cleanup_kcov();
+#ifdef DEBUG
+		dprintf(err_fd, "Re-enabling KCOV for child %d.\n",getpid());
+#endif
+		start_kcov();
+	}
+	return ret;
 }
