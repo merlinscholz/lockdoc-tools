@@ -12,6 +12,12 @@ fi
 
 #DUMP=${DUMP:-0}
 KCOV_BINARY=${1}; shift;
+SORTUNIQ=`dirname ${0}`"/sortuniq"
+if [ ! -e ${SORTUNIQ} ];
+then
+	echo "${SORTUNIQ} does not exist" >&2
+	exit 1
+fi
 
 export LTPROOT=${1}; shift;
 export LTP_DEV=${DEVICE}
@@ -49,9 +55,9 @@ function run_cmd() {
 				echo "Error running: ${CMD}"
 				return
 			fi
-			sed -i -e 's/^0x//' ${OUTFILE}.map
+			cat ${OUTFILE}.cov | ${SORTUNIQ} | sed -e 's/^0x//' ${OUTFILE}.map
 		else
-			eval ${CMD} 2> >(sed -e 's/^0x//'> ${OUTFILE}.map)
+			eval ${CMD} 2> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)
 			if [ ${?} -ne 0 ];
 			then
 				echo "Error running: ${CMD}"
