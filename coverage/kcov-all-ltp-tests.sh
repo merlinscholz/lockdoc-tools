@@ -11,6 +11,7 @@ then
 fi
 
 #DUMP=${DUMP:-0}
+USE_SORTUNIQ=${USE_SORTUNIQ:-1}
 KCOV_BINARY=${1}; shift;
 SORTUNIQ=`dirname ${0}`"/kcov/sortuniq"
 if [ ! -e ${SORTUNIQ} ];
@@ -39,7 +40,12 @@ function run_cmd() {
 	OUTFILE=${2}
 	MAX_FD=`ulimit -Sn`
 	OUT_FD=`echo  ${MAX_FD} - 1 | bc`
-	FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
+	if [ ${USE_SORTUNIQ} -eq 0 ];
+	then
+		FOO="exec ${OUT_FD}>${OUTFILE}.map"
+	else
+		FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
+	fi
 	eval $FOO
 	CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${1}"
 	if [ -z ${DUMP} ];
