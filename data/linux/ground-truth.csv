@@ -1,188 +1,102 @@
 datatype;member;accesstype;rule;comment;origin
-journal_t;j_flags;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_flags;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_errno;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_errno;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_barrier_count;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_barrier_count;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_running_transaction;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_running_transaction;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_committing_transaction;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_committing_transaction;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_checkpoint_transactions;r;EMBSAME\(journal_t.j_list_lock\);;include/linux/jbd2.h:795
-journal_t;j_checkpoint_transactions;w;EMBSAME\(journal_t.j_list_lock\);;include/linux/jbd2.h:795
-journal_t;j_chkpt_bhs;r;EMBSAME\(journal_t.j_checkpoint_mutex\);;include/linux/jbd2.h:795
-journal_t;j_chkpt_bhs;w;EMBSAME\(journal_t.j_checkpoint_mutex\);;include/linux/jbd2.h:795
-journal_t;j_head;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_head;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_tail;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_tail;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_free;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_free;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_first;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_first;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_last;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_last;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_tail_sequence;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_tail_sequence;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_transaction_sequence;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_transaction_sequence;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_commit_sequence;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_commit_sequence;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_commit_request;r;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_commit_request;w;EMBSAME\(journal_t.j_state_lock\);;include/linux/jbd2.h:795
-journal_t;j_revoke;r;\(no locks held\);;include/linux/jbd2.h:795
-journal_t;j_revoke;w;\(no locks held\);;include/linux/jbd2.h:795
-journal_t;j_average_commit_time;r;EMBSAME\(journal_t.j_revoke_lock\);;include/linux/jbd2.h:795
-journal_t;j_average_commit_time;w;EMBSAME\(journal_t.j_revoke_lock\);;include/linux/jbd2.h:795
-journal_t;j_stats;r;EMBSAME\(journal_t.j_history_lock\);;include/linux/jbd2.h:795
-journal_t;j_task;r;\(no locks held\);;include/linux/jbd2.h:795
-journal_t;j_task;w;\(no locks held\);;include/linux/jbd2.h:795
-journal_t;j_stats;w;EMBSAME\(journal_t.j_history_lock\);;include/linux/jbd2.h:795
-journal_t;j_superblock;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_superblock;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_sb_buffer;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_sb_buffer;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_format_version;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_format_version;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_dev;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_dev;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_blocksize;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_blocksize;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_blk_offset;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_blk_offset;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_devname;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_fs_dev;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_fs_dev;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_maxlen;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_maxlen;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_inode;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_inode;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_uuid;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_uuid;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_proc_entry;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_proc_entry;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_private;r;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_private;w;\(no locks held\);ro-member;include/linux/jbd2.h:795
-journal_t;j_wait_transaction_locked;r;EMBSAME\(journal_t.j_wait_transaction_locked\);;include/linux/jbd2.h:795
-journal_t;j_wait_transaction_locked;w;EMBSAME\(journal_t.j_wait_transaction_locked\);;include/linux/jbd2.h:795
-journal_t;j_wait_done_commit;r;EMBSAME\(journal_t.j_wait_done_commit\);;include/linux/jbd2.h:795
-journal_t;j_wait_done_commit;w;EMBSAME\(journal_t.j_wait_done_commit\);;include/linux/jbd2.h:795
-journal_t;j_wait_commit;r;EMBSAME\(journal_t.j_wait_commit\);;include/linux/jbd2.h:795
-journal_t;j_wait_updates;r;EMBSAME\(journal_t.j_wait_updates\);;include/linux/jbd2.h:795
-journal_t;j_wait_updates;w;EMBSAME\(journal_t.j_wait_updates\);;include/linux/jbd2.h:795
-journal_t;j_wait_reserved;r;EMBSAME\(journal_t.j_wait_reserved\);;include/linux/jbd2.h:795
-journal_t;j_wait_reserved;w;EMBSAME\(journal_t.j_wait_reserved\);;include/linux/jbd2.h:795
+journal_t;j_flags;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_flags;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_errno;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_errno;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_barrier_count;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_barrier_count;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_running_transaction;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_running_transaction;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_committing_transaction;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_committing_transaction;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_checkpoint_transactions;r;EMBSAME\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_checkpoint_transactions;w;EMBSAME\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_chkpt_bhs;r;EMBSAME\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_chkpt_bhs;w;EMBSAME\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_head;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_head;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_tail;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_tail;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_free;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_free;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_first;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_first;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_last;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_last;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_tail_sequence;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_tail_sequence;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_transaction_sequence;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_transaction_sequence;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_commit_sequence;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_commit_sequence;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_commit_request;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_commit_request;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_revoke;r;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_revoke;w;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_revoke_table;r;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_revoke_table;w;EMBSAME\(journal_t.j_revoke_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_average_commit_time;r;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
+journal_t;j_average_commit_time;w;EMBSAME\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:795
 transaction_t;t_journal;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_journal;w;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_tid;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_tid;w;\(no locks held\);;include/linux/jbd2.h:543
-transaction_t;t_state;r;EMBOTHER\(journal_t.j_state_lock\);;include/linux/jbd2.h:543
-transaction_t;t_state;w;EMBOTHER\(journal_t.j_state_lock\);;include/linux/jbd2.h:543
+transaction_t;t_state;r;EMBOTHER\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_state;w;EMBOTHER\(journal_t.j_state_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_log_start;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_log_start;w;\(no locks held\);;include/linux/jbd2.h:543
-transaction_t;t_nr_buffers;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_nr_buffers;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_reserved_list;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_reserved_list;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_buffers;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_buffers;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_forget;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_forget;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_checkpoint_list;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_checkpoint_list;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_checkpoint_io_list;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_checkpoint_io_list;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_shadow_list;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_shadow_list;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_inode_list;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_inode_list;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_chp_stats;r;EMBOTHER\(journal_t.j_checkpoint_sem\);;include/linux/jbd2.h:543
-transaction_t;t_chp_stats;w;EMBOTHER\(journal_t.j_checkpoint_sem\);;include/linux/jbd2.h:543
-transaction_t;t_updates;r;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
-transaction_t;t_updates;w;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
-transaction_t;t_outstanding_credits;r;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
-transaction_t;t_outstanding_credits;w;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
-transaction_t;t_cpnext;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_cpnext;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_cpprev;r;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
-transaction_t;t_cpprev;w;EMBOTHER\(journal_t.j_list_lock\);;include/linux/jbd2.h:543
+transaction_t;t_nr_buffers;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_nr_buffers;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_reserved_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_reserved_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_buffers;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_buffers;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_forget;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_forget;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_checkpoint_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_checkpoint_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_checkpoint_io_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_checkpoint_io_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_shadow_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_shadow_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_inode_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_inode_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_chp_stats;r;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_chp_stats;w;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_updates;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_updates;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_outstanding_credits;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_outstanding_credits;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_cpnext;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_cpnext;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_cpprev;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_cpprev;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_expires;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_expires;w;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_start_time;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_start_time;w;\(no locks held\);;include/linux/jbd2.h:543
-transaction_t;t_handle_count;r;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
-transaction_t;t_handle_count;w;EMBSAME\(transaction_t.t_handle_lock\);;include/linux/jbd2.h:543
+transaction_t;t_handle_count;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
+transaction_t;t_handle_count;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_need_data_flush;r;\(no locks held\);;include/linux/jbd2.h:543
 transaction_t;t_need_data_flush;w;\(no locks held\);;include/linux/jbd2.h:543
-transaction_t;t_journal;r;\(no locks held\);ro-member;include/linux/jbd2.h:543
-transaction_t;t_journal;w;\(no locks held\);ro-member;include/linux/jbd2.h:543
-transaction_t;t_private_list;r;\(no locks held\);;include/linux/jbd2.h:543
-transaction_t;t_private_list;w;\(no locks held\);;include/linux/jbd2.h:543
-super_block;s_op;r;\(no locks held\);ro-member;
-super_block;s_op;w;\(no locks held\);ro-member;
-super_block;s_umount;r;\(no locks held\);ro-member;
-super_block;s_umount;w;\(no locks held\);ro-member;
-super_block;s_type;r;\(no locks held\);ro-member;
-super_block;s_type;w;\(no locks held\);ro-member;
-super_block;dq_op;r;\(no locks held\);ro-member;
-super_block;dq_op;w;\(no locks held\);ro-member;
-super_block;s_qcop;r;\(no locks held\);ro-member;
-super_block;s_qcop;w;\(no locks held\);ro-member;
-super_block;s_export_op;r;\(no locks held\);ro-member;
-super_block;s_export_op;w;\(no locks held\);ro-member;
-super_block;s_fs_info;r;\(no locks held\);ro-member;
-super_block;s_fs_info;w;\(no locks held\);ro-member;
-backing_dev_info;ra_pages;r;\(no locks held\);ro-member;
-backing_dev_info;ra_pages;w;\(no locks held\);ro-member;
-backing_dev_info;name;r;\(no locks held\);ro-member;
-backing_dev_info;name;w;\(no locks held\);ro-member;
-backing_dev_info;dev;r;\(no locks held\);ro-member;
-backing_dev_info;dev;w;\(no locks held\);ro-member;
-backing_dev_info;wb_waitq;r;EMBSAME(wb_waitq);;
-backing_dev_info;wb_waitq;w;EMBSAME(wb_waitq);;
-block_device;bd_dev;r;\(no locks held\);ro-member;
-block_device;bd_dev;w;\(no locks held\);ro-member;
-block_device;bd_inode;r;\(no locks held\);ro-member;
-block_device;bd_inode;w;\(no locks held\);ro-member;
-block_device;bd_super;r;\(no locks held\);ro-member;
-block_device;bd_super;w;\(no locks held\);ro-member;
-block_device;bd_private;r;\(no locks held\);ro-member;
-block_device;bd_private;w;\(no locks held\);ro-member;
-cdev;ops;r;\(no locks held\);ro-member;
-cdev;ops;w;\(no locks held\);ro-member;
-bdi_writeback;bdi;r;\(no locks held\);ro-member;
-bdi_writeback;bdi;w;\(no locks held\);ro-member;
-inode;i_blocks;r;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
-inode;i_blocks;w;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
-inode;i_bytes;r;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
-inode;i_bytes;w;EMBSAME\(inode.i_lock\);;include/linux/fs.h:591,fs/stack.c:460
-inode;i_state;r;EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_state;w;EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_hash;r;([a-zA-Z0-9_]*:)[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_hash;w;([a-zA-Z0-9_]*:)[0-9]*\(raw_spinlock_t\) -> EMBSAME\(inode.i_lock\);;fs/inode.c:27
-inode;i_count;r;EMBSAME\(inode.i_lock\);;fs/inode.c:1535
-inode;i_count;w;EMBSAME\(inode.i_lock\);;fs/inode.c:1535
-inode;i_lru;r;EMBSAME\(inode.i_lock\);;fs/inode.c:413,fs/inode.c:27
-inode;i_lru;w;EMBSAME\(inode.i_lock\);;fs/inode.c:413,fs/inode.c:27
-inode;i_size;r;\(no locks held\);;include/linux/fs.h:765,include/linux/fs.h:591
-inode;i_size;w;EMBSAME\(inode.i_rwsem\);core-read,uncertain;include/linux/fs.h:765,include/linux/fs.h:591
-inode;i_mode;r;\(no locks held\);;code-read
-inode;i_mode;w;EMBSAME\(inode.i_rwsem\);;fs/open.c:538,fs/open.c:63
-inode;i_private;r;\(no locks held\);ro-member;
-inode;i_private;w;\(no locks held\);ro-member;
-inode;i_data.private_data;r;\(no locks held\);ro-member;
-inode;i_data.private_data;w;\(no locks held\);ro-member;
-inode;i_data.private_list;r;\(no locks held\);ro-member;
-inode;i_data.private_list;w;\(no locks held\);ro-member;
-inode;i_opflags;w;EMBSAME\(inode.i_lock\);code-read;fs/namei.c:387
-inode;i_opflags;r;\(no locks held\);code-read;fs/namei.c:387
-inode;i_uid;r;\(no locks held\);code-read;
-inode;i_uid;r;EMBSAME\(inode.i_rwsem\);code-read;
+inode;i_blocks;r;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_blocks;w;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_bytes;r;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_bytes;w;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_size;r;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_size;w;EMBSAME\(inode.i_lock\[[rw]\]\);;include/linux/fs.h:591
+inode;i_state;r;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:27
+inode;i_state;w;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:27
+inode;i_hash;r;([a-zA-Z0-9_]*:)*[0-9]*\(raw_spinlock_t\[[rw]\]\) -> EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:27
+inode;i_hash;w;([a-zA-Z0-9_]*:)*[0-9]*\(raw_spinlock_t\[[rw]\]\) -> EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:27
+inode;i_count;r;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:1535
+inode;i_count;w;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:1535
+inode;i_lru;r;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:413,fs/inode.c:27
+inode;i_lru;w;EMBSAME\(inode.i_lock\[[rw]\]\);;fs/inode.c:413,fs/inode.c:27
 dentry;d_flags;r;EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
 dentry;d_flags;w;EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:85
-dentry;d_u.d_alias;r;EMBOTHER\(inode.i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
-dentry;d_u.d_alias;w;EMBOTHER\(inode.i_lock\[[rw]\]\) -> EMBSAME\(dentry:d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
+dentry;d_u.d_alias;r;EMBOTHER\(inode.i_lock\[[rw]\]\) -> EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
+dentry;d_u.d_alias;w;EMBOTHER\(inode.i_lock\[[rw]\]\) -> EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;fs/dcache.c:49
 dentry;d_name.name;r;EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_name.name;w;EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_name.hash_len;r;EMBSAME\(dentry.d_lockref.lock\[[rw]\]\);;include/linux/dcache.h:56

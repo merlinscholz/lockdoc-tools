@@ -45,12 +45,10 @@ then
 	SUBCLASS=`echo ${COMBINED_DATATYPE} | cut -d ":" -f2`
 	SUBCLASS_FILTER=" AND sc.name = '${SUBCLASS}'"
 	SUBCLASS_FILTER_SUB=" AND s_sc.name = '${SUBCLASS}'"
-	LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_dt.name ELSE CONCAT(lock_dt.name, ':', lock_sc.name) END)"
 else
 	DATATYPE=${COMBINED_DATATYPE}
 	SUBCLASS_FILTER=""
 	SUBCLASS_FILTER_SUB=""
-	LOCKNAME_FORMAT="lock_dt.name"
 fi
 
 ACCESSTYPE=${COMBINED_MEMBER:0:1}
@@ -62,6 +60,7 @@ if [ "$SANITYCHECK" != : ]; then
 	exit 1
 fi
 
+LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_dt.name ELSE CONCAT(lock_dt.name, ':', lock_sc.name) END)"
 EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(', ${LOCKNAME_FORMAT}, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
 if [ -n "${USE_EMBOTHER}" ];
 then

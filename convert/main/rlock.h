@@ -7,7 +7,7 @@
 using std::dec;
 
 struct RLock : public RWLock {
-	RLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags) {
+	RLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags, LockManager *_lockManager) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags, _lockManager) {
 			
 	}
 
@@ -45,11 +45,9 @@ struct RLock : public RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
-	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile,
-	const char *kernelDir) {
-		RWLock::readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+	const char *kernelDir,
+	long ctx) {
+		RWLock::readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
 	}
 };
 

@@ -4,7 +4,7 @@
 #include "rwlock.h"
 
 struct WLock : public RWLock {
-	WLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags) {
+	WLock (unsigned long long _lockAddress, unsigned _allocID, std::string _lockType, const char *_lockVarName, unsigned _flags, LockManager *_lockManager) : RWLock(_lockAddress, _allocID, _lockType, _lockVarName, _flags, _lockManager) {
 			
 	}
 
@@ -42,11 +42,9 @@ struct WLock : public RWLock {
 	unsigned long long preemptCount,
 	enum IRQ_SYNC irqSync,
 	unsigned flags,
-	std::deque<TXN> activeTXNs,
-	std::ofstream& txnsOFile,
-	std::ofstream& locksHeldOFile,
-	const char *kernelDir) {
-		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, activeTXNs, txnsOFile, locksHeldOFile, kernelDir);
+	const char *kernelDir,
+	long ctx) {
+		RWLock::writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
 	}
 };
 

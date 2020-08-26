@@ -7,7 +7,7 @@ function usage() {
 	exit 1
 }
 
-BASE_URL=${BASE_URL:-"https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdebug-v4.10-0.12"}
+BASE_URL=${BASE_URL:-"https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdebug-v4.10-0.14"}
 SKIP_QUERIES=${SKIP_QUERIES:-0}
 DISPLAY_VARIANT=${DISPLAY_VARIANT:-dynamic}
 

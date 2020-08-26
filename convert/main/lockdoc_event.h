@@ -1,7 +1,7 @@
 #ifndef __LOG_EVENT_H__
 #define __LOG_EVENT_H__
 
-#define LOG_CHAR_BUFFER_LEN 60
+#define LOG_CHAR_BUFFER_LEN 100
 #define PSEUDOLOCK_ADDR_RCU		0x42
 #define PSEUDOLOCK_ADDR_PREEMPT	0x43
 #define PSEUDOLOCK_ADDR_SOFTIRQ	0x45
@@ -24,6 +24,17 @@
  * has to be copied to the according fail experiment
  * as well as to convert!
  */
+enum LOCKDOC_OP {
+	LOCKDOC_ALLOC		= 'a',
+	LOCKDOC_FREE		= 'f',
+	LOCKDOC_LOCK_OP		= 'l',
+	LOCKDOC_CURRENT_TASK	= 't',
+	LOCKDOC_PREEMPT_COUNT	= 'p',
+	LOCKDOC_PID_OFFSET	= 'o',
+	LOCKDOC_KERNEL_VERSION	= 'v',
+	LOCKDOC_READ		= 'r',
+	LOCKDOC_WRITE		= 'w'
+};
 
 enum LOCK_OP {
 	P_READ = 0,

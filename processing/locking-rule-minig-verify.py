@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # A.Lochmann 2019
 # This scripts verifies the mined results against the existing documentation.
-# ./lockmining-verify.py <groundtruth csv> <winner hypotheses csv>
+# Question answered: 'How many winning hypotheses, predicted by LockDoc, match the documentation?'
+# ./locking-rule-mining-verify.py <groundtruth csv> <winner hypotheses csv>
 
 from __future__ import print_function
 import sys
@@ -20,7 +21,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
 	parser.add_argument('gtruthCSV', help='Input file containing the ground truth')
-	parser.add_argument('hypothesisCSV', help='Input file containing preditions made by the hypothesizer')
+	parser.add_argument('hypothesisCSV', help='Input file containing preditions made by the hypothesizer (winning hypotheses only)')
 	args = parser.parse_args()
 
 	groundtruthDict = dict()
