@@ -60,8 +60,7 @@ if [ -z ${TESTS} ];
 then
 	TESTS_TO_RUN=`find ${LTP_TEST_DIR}/ -type f -printf "%f\n"`
 else
-	TESTS_TO_RUN=${TESTS}
-	IFS=","
+	TESTS_TO_RUN=`echo ${TESTS} | tr "," "\n"`
 fi
 
 echo "LTPROOT="${LTPROOT}
