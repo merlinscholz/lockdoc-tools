@@ -105,7 +105,7 @@ do
 			echo "Using bash"
 			run_cmd "/bin/bash -c \"${TEST_CMD}\"" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 		else
-			if [ -z ${TEST_PARAMS} ];
+			if [ -z "${TEST_PARAMS}" ];
 			then
 				run_cmd "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 			else
