@@ -120,7 +120,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	env = getenv(KCOV_ENV_CTL_FD);
 	if (env != NULL) {
 #ifdef DEBUG
-		fprintf(stderr, "Found active KCOV.\n");
+		fprintf(stderr, "start_kcov() called, but found active KCOV. Possible exec*() detected.\n");
 #endif
 		kcov_fd = strtol(env, NULL, 10);
 		if (fcntl(kcov_fd, F_GETFD)) {
@@ -241,7 +241,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 		if (fcntl(out_fd, F_GETFD)) {
 #ifdef DEBUG
-			perror("fcntl err_fd start");
+			perror("fcntl out_fd start");
 #endif
 			cleanup_kcov(1);
 			return;
