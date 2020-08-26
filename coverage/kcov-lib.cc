@@ -51,7 +51,6 @@ typedef uint32_t cover_t;
 #define KCOV_ENV_CTL_FD "KCOV_CTL_FD"
 #define KCOV_ENV_ERR_FD "KCOV_ERR_FD"
 #define KCOV_ENV_OUT_FD "KCOV_OUT_FD"
-#define KCOV_ENV_AREA "KCOV_AREA"
 #define KCOV_ENV_OUT "KCOV_OUT"
 
 static int kcov_fd, err_fd, out_fd, foreign_fd;
@@ -64,13 +63,15 @@ extern char *program_invocation_name;
 struct sigaction new_action, old_action;
 static void finish_kcov(void);
 
-static void cleanup_kcov(void) {
+static void cleanup_kcov(int unmap) {
 	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
 #ifdef DEBUG
 		perror("ioctl disable");
 #endif
 	}
-	munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
+	if (unmap) {
+		munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
+	}
 	close(kcov_fd);
 	close(err_fd);
 	if (out_fd > 0 && !foreign_fd) {
@@ -80,7 +81,6 @@ static void cleanup_kcov(void) {
 	unsetenv(KCOV_ENV_CTL_FD);
 	unsetenv(KCOV_ENV_ERR_FD);
 	unsetenv(KCOV_ENV_OUT_FD);
-	unsetenv(KCOV_ENV_AREA);
 }
 
 static void signal_handler(int signum) {
@@ -150,16 +150,22 @@ static void __attribute__((constructor)) start_kcov(void) {
 				return;
 			}
 		}
-		env = getenv(KCOV_ENV_AREA);
-#ifdef KERNEL64
-		cover = (cover_t*)std::stoull(env, NULL, 16);
-#else
-		cover = (cover_t*)std::stoul(env, NULL, 16);
-#endif 
 #ifdef DEBUG
 		dprintf(err_fd, "Active KCOV disabled. Restarting...\n");
 #endif
-		cleanup_kcov();
+#if 1
+		cleanup_kcov(0);
+#else
+		cover = (cover_t*)mmap(NULL, COVER_SIZE * KCOV_ENTRY_SIZE,
+				     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
+		if ((void*)cover == MAP_FAILED) {
+#ifdef DEBUG
+			perror("mmap re-init");
+#endif
+			cleanup_kcov(0);
+		}
+		return;
+#endif
 	}
 	/*
 	 * Duplicate the fd for stderr
@@ -211,10 +217,8 @@ static void __attribute__((constructor)) start_kcov(void) {
 	setenv(KCOV_ENV_CTL_FD, buff, 1);
 	snprintf(buff, sizeof(buff), "%d", err_fd);
 	setenv(KCOV_ENV_ERR_FD, buff, 1);
-	snprintf(buff, sizeof(buff), "%p", cover);
-	setenv(KCOV_ENV_AREA, buff, 1);
 #ifdef DEBUG
-	dprintf(err_fd, "Wrote settings to env variables: kcov_fd = %s, err_fd = %s, cover = %s\n", getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD), getenv(KCOV_ENV_AREA));
+	dprintf(err_fd, "Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 #endif
 
 	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
@@ -239,6 +243,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef DEBUG
 			perror("fcntl err_fd start");
 #endif
+			cleanup_kcov(1);
 			return;
 		}
 		foreign_fd = 1;
@@ -300,7 +305,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		err_fd, isatty(err_fd),
 		out_fd, isatty(out_fd));
 #endif
-	cleanup_kcov();
+	cleanup_kcov(1);
 }
 
 typedef pid_t (*fork_fn_ptr)(void);
@@ -318,7 +323,7 @@ extern "C" pid_t fork(void) {
 		dprintf(err_fd, "fork() on the traced process '%s'(%d). Disabling KCOV for child %d.\n",
 			basename(program_invocation_name), getppid(), getpid());
 #endif
-		cleanup_kcov();
+		cleanup_kcov(1);
 #ifdef DEBUG
 		dprintf(err_fd, "Re-enabling KCOV for child %d.\n",getpid());
 #endif
