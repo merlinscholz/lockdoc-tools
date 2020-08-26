@@ -12,7 +12,7 @@ fi
 
 #DUMP=${DUMP:-0}
 KCOV_BINARY=${1}; shift;
-SORTUNIQ=`dirname ${0}`"/sortuniq"
+SORTUNIQ=`dirname ${0}`"/kcov/sortuniq"
 if [ ! -e ${SORTUNIQ} ];
 then
 	echo "${SORTUNIQ} does not exist" >&2
