@@ -231,6 +231,12 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
 
+	if (atexit(finish_kcov)) {
+#ifdef DEBUG
+		dprintf(err_fd, "error atexit()\n");
+#endif
+	}
+
 #ifdef WRITE_FILE
 	if (!kcov_out) {
 		return;
@@ -276,7 +282,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 }
 
-static void __attribute__((destructor)) finish_kcov(void) {
+static void finish_kcov(void) {
 	cover_t  n, i;
 	int fd;
 
