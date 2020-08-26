@@ -36,38 +36,22 @@ then
 fi
 
 function run_cmd() {
-	REDIRECT=${1}
-	OUTFILE=${3}
-	if [ ${REDIRECT} -eq 0 ];
-	then
-		CMD="KCOV_OUT=${OUTFILE}.cov LD_PRELOAD=${KCOV_BINARY} ${2}"
-	else
-		MAX_FD=`ulimit -Sn`
-		OUT_FD=`echo  ${MAX_FD} - 1 | bc`
-		FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
-		eval $FOO
-		CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${2}"
+	OUTFILE=${2}
+	MAX_FD=`ulimit -Sn`
+	OUT_FD=`echo  ${MAX_FD} - 1 | bc`
+	FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
+	eval $FOO
+	CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${1}"
 	fi
 	if [ -z ${DUMP} ];
 	then
-		if [ ${REDIRECT} -eq 0 ];
+		eval ${CMD}
+		if [ ${?} -ne 0 ];
 		then
-			eval ${CMD}
-			if [ ${?} -ne 0 ];
-			then
-				echo "Error running: ${CMD}"
-				return
-			fi
-			cat ${OUTFILE}.cov | ${SORTUNIQ} | sed -e 's/^0x//' > ${OUTFILE}.map
-		else
-			eval ${CMD}
-			if [ ${?} -ne 0 ];
-			then
-				echo "Error running: ${CMD}"
-			fi
-			FOO="exec ${OUT_FD}>&-"
-			eval ${FOO}
+			echo "Error running: ${CMD}"
 		fi
+		FOO="exec ${OUT_FD}>&-"
+		eval ${FOO}
 	else
 		echo "${CMD} 2> ${OUTFILE}"
 	fi
@@ -115,18 +99,18 @@ do
 		if [[ ${TEST_CMD} =~ [\"\'\;|\<\>\$\\]+ ]];
 		then
 			echo "Using bash"
-			run_cmd 1 "/bin/bash -c \"${TEST_CMD}\"" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+			run_cmd "/bin/bash -c \"${TEST_CMD}\"" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 		else
 			if [ -z ${TEST_PARAMS} ];
 			then
-				run_cmd 1 "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 			else
-				run_cmd 1 "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
 			fi
 		fi
 	done < ${TEST_SUITE_FILE}
 	#echo "Running testsuite '${TEST_SUITE}'"
-	#run_cmd 0 "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}
+	#run_cmd "${LTPROOT}/runltp -q -f ${TEST_SUITE}" ${OUT_DIR}/ltp-${TEST_SUITE}
 done
 #echo "Running ltp"
 #run_cmd "${LTPROOT}/runltp -q" ${OUT_DIR}/ltp.cov
