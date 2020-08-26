@@ -117,6 +117,15 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	}
 
+	/*
+	 * For some reasons, getenv() does not work
+	 * if bash is started for the first time,
+	 * and after setenv() has been called.
+	 * setenv() is used below to save the file descriptors.
+	 * Any subsequent execution of bash works perfectly fine.
+	 * We, therefore, look here for KCOV_OUT, and save a ptr to it.
+	 */
+	kcov_out = getenv(KCOV_ENV_OUT);
 	env = getenv(KCOV_ENV_CTL_FD);
 	if (env != NULL) {
 #ifdef DEBUG
@@ -220,11 +229,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef DEBUG
 	dprintf(err_fd, "Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 #endif
-
 	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
 
 #ifdef WRITE_FILE
-	kcov_out = getenv("KCOV_OUT");
 	if (!kcov_out) {
 		return;
 	} else if (strcmp(kcov_out, "stderr") == 0) {
