@@ -42,7 +42,6 @@ function run_cmd() {
 	FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
 	eval $FOO
 	CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${1}"
-	fi
 	if [ -z ${DUMP} ];
 	then
 		eval ${CMD}
