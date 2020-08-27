@@ -172,7 +172,7 @@ index 25c67afe0..6457ef4bc 100755
  echo ""
  echo "## Change mode again"
 diff --git a/testcases/kernel/fs/racer/fs_racer.sh b/testcases/kernel/fs/racer/fs_racer.sh
-index aa38e86db..e30ffac41 100755
+index aa38e86db..1d62a1691 100755
 --- a/testcases/kernel/fs/racer/fs_racer.sh
 +++ b/testcases/kernel/fs/racer/fs_racer.sh
 @@ -34,37 +34,37 @@ DIR="$TMPDIR/race"
@@ -237,3 +237,19 @@ index aa38e86db..e30ffac41 100755
  }
  
  
+@@ -78,14 +78,7 @@ usage()
+ call_exit()
+ {
+     echo \"Cleaning up\"
+-    killall fs_racer_file_create.sh
+-    killall fs_racer_dir_create.sh
+-    killall fs_racer_file_rm.sh
+-    killall fs_racer_file_rename.sh
+-    killall fs_racer_file_link.sh
+-    killall fs_racer_file_symlink.sh
+-    killall fs_racer_file_list.sh
+-    killall fs_racer_file_concat.sh
++    kill `pgrep fs_racer_`
+     rm -rf $DIR
+     exit 0
+ }
