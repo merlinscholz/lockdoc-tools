@@ -5,6 +5,7 @@ if [ $# -ne 5 -a $# -ne 7 ]; then
 	echo "" >&2
 	echo "syzkaller-dir contains the (sorted) syzkaller-generated BB map files." >&2
 	echo "If all.map (list of all kernel BBs) and all-fs.map (subset of all.map that belongs to the targeted kernel subsystem) are not provided on the command line, they will be generated." >&2
+	echo "Use /dev/null for output-png-dir to skip PNG generation (much faster)." >&2
 	exit 1
 fi
 
@@ -19,7 +20,7 @@ PNGDIR=$3
 CSV=$4
 LTP=$5
 
-mkdir -p "$PNGDIR"
+[ "$PNGDIR" != /dev/null ] && mkdir -p "$PNGDIR"
 
 # Do we have to generate all.map / all-fs.map?
 if [ $# -eq 7 ]; then
@@ -80,7 +81,7 @@ for f in "$SYZKALLER_DIR"/*; do
 	# determine FS subset of aggregate that's not covered by LTP already
 	FSCOV_NOTLTP=$( set-minus $TMP $LTP | wc -l )
 
-	false && $SFCTOOL -t spiral \
+	[ "$PNGDIR" != /dev/null ] && $SFCTOOL -t spiral \
 		--off-map $ALLBBS --color ffffff \
 		--off-map $ALLFS --color dddddd \
 		--off-map $AGGREGATE --color 9999ff \
