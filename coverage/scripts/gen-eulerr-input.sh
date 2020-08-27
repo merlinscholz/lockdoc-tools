@@ -8,6 +8,7 @@ set -e
 
 # some R
 cat <<EOT
+# prerequisite: R package "eulerr" (R console: install.packages("eulerr"))
 library(eulerr)
 fit <- euler(c(
 EOT
@@ -43,7 +44,7 @@ while [ $i -lt $powersize ]; do
 		EULERR_OVERLAP=$( $(dirname $0)/set-intersect ${subset[@]} | wc -l )
 	fi
 	# Frickel
-	EULERR_NAME=$( echo ${subset[@]} | sed -e 's@[a-z-]*/@@g' -e 's/\s/\&/g' -e 's/-all\.map//g' -e 's/all-fs.map/FS/g')
+	EULERR_NAME=$( echo ${subset[@]} | sed -e 's@[a-z-]*/@@g' -e 's/\s/\&/g' -e 's/-all\.map//g' -e 's/all-fs.map/VFS/g' -e s/syzkaller-continuous/syzkaller/g -e s/ltp/LTP/g)
 	echo "'$EULERR_NAME' = $EULERR_OVERLAP"
 
 	i=$(($i + 1))
@@ -52,7 +53,7 @@ done
 # some more R
 cat <<EOT
 ), shape = 'ellipse', input = 'union', control = list('extraopt' = FALSE))
-pdf(file = "euler.pdf", width = 5, height = 5, family = "Helvetica", title = "euler")
-plot(fit)
+pdf(file = "euler.pdf", width = 3, height = 3, family = "Helvetica", title = "euler")
+plot(fit, quantities = TRUE)
 dev.off()
 EOT
