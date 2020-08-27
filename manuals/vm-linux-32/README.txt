@@ -57,10 +57,10 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 	+ Create the following directories: /lockdoc and /lockdoc/bench-out
 	+ Copy 'run-bench.sh' and fork.c from manuals/vm-linux-32/scripts to /lockdoc
 	+ Get LTP
-		# git clone  https://github.com/linux-test-project/ltp.git /opt/kernel/ltp/src 
- 		# git checkout -b lockdoc-ltp 20190115
-		# Copy {syscalls,{syscalls,fs}-custom} from manuals/vm-linux-32/scripts/ to /opt/kernel/ltp/src/runtest/
-		# Apply lockdoc patch: patch -p1 < lockdoc-ltp.patch
+		# Clone our ltp repo to /opt/kernel/ltp/src 
+ 		# git checkout lockdoc
+		# Copy {syscalls,fs}-custom from manuals/vm-linux-32/scripts/ to /opt/kernel/ltp/src/runtest/
+		# Install the following packages: libaio-dev quota procps
 		# ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
 		# If configure does not exists, run 'make autotools' first.
 
