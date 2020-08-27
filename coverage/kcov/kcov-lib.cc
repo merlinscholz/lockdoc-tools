@@ -282,7 +282,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 }
 
-static void finish_kcov(void) {
+static void __attribute__((destructor)) finish_kcov(void) {
 	cover_t  n, i;
 	int fd;
 
