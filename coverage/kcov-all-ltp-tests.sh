@@ -42,7 +42,7 @@ function run_cmd() {
 	OUT_FD=`echo  ${MAX_FD} - 1 | bc`
 	if [ ${USE_SORTUNIQ} -eq 0 ];
 	then
-		FOO="exec ${OUT_FD}>${OUTFILE}.map"
+		FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' > ${OUTFILE}.map)"
 	else
 		FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' | ${SORTUNIQ} > ${OUTFILE}.map)"
 	fi
