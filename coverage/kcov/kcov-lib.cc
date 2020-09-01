@@ -101,7 +101,7 @@ static void signal_handler(int signum) {
 		if (old_sa[1].sa_handler) {
 			old_sa[1].sa_handler(signum);
 		}
-		exit(SIGTERM);
+		raise(SIGTERM);
 	}
 }
 
@@ -142,6 +142,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		dprintf(STDERR_FILENO, "%d: signal handler already set for SIGSEGV\n", getpid());
 #endif
 	}
+	new_sa.sa_flags = SA_RESETHAND;
 	// Signal handler already present for SIGTERM? (aka fork detection)
 	if (sigaction(SIGTERM, NULL, &temp_sa) == -1) {
 #ifdef DEBUG
