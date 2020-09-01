@@ -66,7 +66,7 @@ static void finish_kcov(void);
 static void cleanup_kcov(int unmap) {
 	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
 #ifdef DEBUG
-		perror("ioctl disable");
+		dprintf(err_fd, "%d: ioctl disable, %s\n", getpid(), strerror(errno));
 #endif
 	}
 	if (unmap) {
@@ -86,7 +86,7 @@ static void cleanup_kcov(int unmap) {
 static void signal_handler(int signum) {
 	if (signum == SIGSEGV) {
 #ifdef DEBUG
-		dprintf(err_fd, "Caught SIGSEV on '%s'(%d)\n", basename(program_invocation_name), getpid());
+		dprintf(err_fd, "%d: Caught SIGSEV on '%s'\n", getpid(), basename(program_invocation_name));
 #endif
 		finish_kcov();
 	}
@@ -103,7 +103,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	const char *kcov_out = NULL;
 #endif
 #ifdef DEBUG
-	fprintf(stderr, "Tracing '%s'(%d)\n", basename(program_invocation_name), getpid());
+	fprintf(stderr, "%d: Tracing '%s'\n", getpid(), basename(program_invocation_name));
 #endif
 	if (kcov_fd > 0) {
 		return;
@@ -113,7 +113,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	new_action.sa_flags = 0;
 	if (sigaction (SIGSEGV, &new_action, &old_action) == -1) {
 #ifdef DEBUG
-		perror("sigaction");
+		dprintf(STDERR_FILENO, "%d: sigaction SIGTERM, %s\n", getpid(), strerror(errno));
 #endif
 	}
 
@@ -134,7 +134,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		kcov_fd = strtol(env, NULL, 10);
 		if (fcntl(kcov_fd, F_GETFD)) {
 #ifdef DEBUG
-			perror("fcntl kcov_fd");
+			dprintf(STDERR_FILENO, "%d: fcntl kcov_fd, %s\n", getpid(), strerror(errno));
 #endif
 			kcov_fd = err_fd = out_fd = -1;
 			return;
@@ -143,7 +143,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		err_fd = strtol(env, NULL, 10);
 		if (fcntl(err_fd, F_GETFD)) {
 #ifdef DEBUG
-			perror("fcntl err_fd");
+			dprintf(STDERR_FILENO, "%d: fcntl err_fd, %s\n", getpid(), strerror(errno));
 #endif
 			kcov_fd = err_fd = out_fd = -1;
 			return;
@@ -153,14 +153,14 @@ static void __attribute__((constructor)) start_kcov(void) {
 			out_fd = strtol(env, NULL, 10);
 			if (fcntl(out_fd, F_GETFD)) {
 #ifdef DEBUG
-				perror("fcntl out_fd");
+				dprintf(STDERR_FILENO, "%d: fcntl out_fd, %s\n", getpid(), strerror(errno));
 #endif
 				kcov_fd = err_fd = out_fd = -1;
 				return;
 			}
 		}
 #ifdef DEBUG
-		dprintf(err_fd, "Active KCOV disabled. Restarting...\n");
+		dprintf(err_fd, "%d: Active KCOV disabled. Restarting...\n", getpid());
 #endif
 #if 1
 		cleanup_kcov(0);
@@ -169,7 +169,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 				     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
 		if ((void*)cover == MAP_FAILED) {
 #ifdef DEBUG
-			perror("mmap re-init");
+			dprintf(STDERR_FILENO, "%d: mmap re-init");
 #endif
 			cleanup_kcov(0);
 		}
@@ -185,19 +185,19 @@ static void __attribute__((constructor)) start_kcov(void) {
 	err_fd = dup(STDERR_FILENO);
 	if (err_fd == -1) {
 #ifdef DEBUG
-		perror("dup");
+		dprintf(STDERR_FILENO, "%d: dup, %s\n", getpid(), strerror(errno));
 #endif
 	}
 	kcov_fd = open(KCOV_PATH, O_RDWR);
 	if (kcov_fd == -1) {
 #ifdef DEBUG
-		perror("open");
+		dprintf(err_fd, "%d: open, %s\n", getpid(), strerror(errno));
 #endif
 		return;
 	}
 	if (ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE)) {
 #ifdef DEBUG
-		perror("ioctl init");
+		dprintf(err_fd, "%d: ioctl init, %s\n", getpid(), strerror(errno));
 #endif
 		close(kcov_fd);
 		kcov_fd = -1;
@@ -207,7 +207,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 			     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
 	if ((void*)cover == MAP_FAILED) {
 #ifdef DEBUG
-		perror("mmap");
+		dprintf(err_fd, "%d: mmap, %s\n", getpid(), strerror(errno));
 #endif
 		close(kcov_fd);
 		kcov_fd = -1;
@@ -215,7 +215,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	}
 	if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC)){
 #ifdef DEBUG
-		perror("ioctl enable");
+		dprintf(err_fd, "%d: ioctl enable, %s\n", getpid(), strerror(errno));
 #endif
 		munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
 		close(kcov_fd);
@@ -227,7 +227,8 @@ static void __attribute__((constructor)) start_kcov(void) {
 	snprintf(buff, sizeof(buff), "%d", err_fd);
 	setenv(KCOV_ENV_ERR_FD, buff, 1);
 #ifdef DEBUG
-	dprintf(err_fd, "Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
+	dprintf(err_fd, "%d: Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", 
+		getpid(), getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 #endif
 	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
 
@@ -245,16 +246,16 @@ static void __attribute__((constructor)) start_kcov(void) {
 	} else if (strcmp(kcov_out, "fd") == 0) {
 		if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
 #ifdef DEBUG
-			perror("getrlimit");
+			dprintf(err_fd, "%d: getrlimit, %s\n", getpid(), strerror(errno));
 #endif
 		}
 		out_fd = max_ofiles.rlim_cur - 1;
 #ifdef DEBUG
-		dprintf(err_fd, "Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", out_fd);
+		dprintf(err_fd, "%d: Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", getpid(), out_fd);
 #endif
 		if (fcntl(out_fd, F_GETFD)) {
 #ifdef DEBUG
-			perror("fcntl out_fd start");
+			dprintf(err_fd, "%d: fcntl out_fd start, %s\n", getpid(), strerror(errno));
 #endif
 			cleanup_kcov(1);
 			return;
@@ -268,16 +269,16 @@ static void __attribute__((constructor)) start_kcov(void) {
 	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
 #ifdef DEBUG
 	if (out_fd == -1) {
-		perror("open out_fd");
-		dprintf(err_fd, "Cannot open '%s'. Falling back to stderr \n", kcov_out);
+		dprintf(err_fd, "%d: open out_fd, %s\n", getpid(), strerror(errno));
+		dprintf(err_fd, "%d: Cannot open '%s'. Falling back to stderr \n", getpid(), kcov_out);
 	} else {
-		dprintf(err_fd, "Writing bbs to %s (%d)\n", kcov_out, out_fd);
+		dprintf(err_fd, "%d: Writing bbs to %s (%d)\n", getpid(), kcov_out, out_fd);
 	}
 #endif
 	snprintf(buff, sizeof(buff), "%d", out_fd);
 	setenv(KCOV_ENV_OUT_FD, buff, 1);
 #ifdef DEBUG
-	dprintf(err_fd, "Wrote setting to env variable: out_fd = %s\n", getenv(KCOV_ENV_OUT_FD));
+	dprintf(err_fd, "%d: Wrote setting to env variable: out_fd = %s\n", getpid(), getenv(KCOV_ENV_OUT_FD));
 #endif
 #endif
 }
@@ -288,7 +289,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 
 	if (kcov_fd < 1 || err_fd < 1) {
 #ifdef DEBUG
-		dprintf(err_fd, "No KCOV fd or no fd for stderr present\n");
+		dprintf(err_fd, "%d: No KCOV fd or no fd for stderr present\n", getpid());
 #endif
 		return;
 	}
@@ -312,7 +313,8 @@ static void __attribute__((destructor)) finish_kcov(void) {
 	}
 #endif
 #ifdef DEBUG
-	dprintf(err_fd, "Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+	dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		getpid(),
 		(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)COVER_SIZE,
 		program_invocation_name, getpid(), 
 		err_fd, isatty(err_fd),
@@ -333,12 +335,13 @@ extern "C" pid_t fork(void) {
 	}
 	if (kcov_fd > 0 ) {
 #ifdef DEBUG
-		dprintf(err_fd, "fork() on the traced process '%s'(%d). Disabling KCOV for child %d.\n",
+		dprintf(err_fd, "%d: fork() on the traced process '%s'(%d). Disabling KCOV for child %d.\n",
+			getpid(),
 			basename(program_invocation_name), getppid(), getpid());
 #endif
 		cleanup_kcov(1);
 #ifdef DEBUG
-		dprintf(err_fd, "Re-enabling KCOV for child %d.\n",getpid());
+		dprintf(err_fd, "%d: Re-enabling KCOV for child %d.\n", getpid(), getpid());
 #endif
 		start_kcov();
 	}
