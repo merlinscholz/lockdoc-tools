@@ -357,6 +357,9 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		dprintf(fd, "0x%jx\n", (uintmax_t)elem);
 	}
 #endif
+	if (n >= (COVER_SIZE - 1)) {
+		dprintf(err_fd, "%d: Possible buffer overrun detected!\n", getpid());
+	}
 #ifdef DEBUG
 	dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
 		getpid(),
