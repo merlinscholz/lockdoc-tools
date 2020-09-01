@@ -116,6 +116,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 	fprintf(stderr, "%d: Tracing '%s'\n", getpid(), basename(program_invocation_name));
 #endif
 	if (kcov_fd > 0) {
+#ifdef DEBUG
+		fprintf(stderr, "%d: KCOV already active\n", getpid());
+#endif
 		return;
 	}
 	new_sa.sa_handler = signal_handler;
