@@ -60,7 +60,7 @@ static std::set<cover_t> sortuniq_cover;
 static char temp[MAX_PATH_NAME];
 #endif
 extern char *program_invocation_name;
-struct sigaction new_action, old_action[2];
+struct sigaction new_sa, old_sa[2];
 static void finish_kcov(void);
 
 static void cleanup_kcov(int unmap) {
@@ -89,8 +89,8 @@ static void signal_handler(int signum) {
 		dprintf(err_fd, "%d: Caught SIGSEV on '%s'\n", getpid(), basename(program_invocation_name));
 #endif
 		finish_kcov();
-		if (old_action[0].sa_handler) {
-			old_action[0].sa_handler(signum);
+		if (old_sa[0].sa_handler) {
+			old_sa[0].sa_handler(signum);
 		}
 		exit(1);
 	} else if (signum == SIGTERM) {
@@ -98,8 +98,8 @@ static void signal_handler(int signum) {
 		dprintf(err_fd, "%d: Caught SIGTERM on '%s'\n", getpid(), basename(program_invocation_name));
 #endif
 		finish_kcov();
-		if (old_action[1].sa_handler) {
-			old_action[1].sa_handler(signum);
+		if (old_sa[1].sa_handler) {
+			old_sa[1].sa_handler(signum);
 		}
 		exit(SIGTERM);
 	}
@@ -108,7 +108,7 @@ static void signal_handler(int signum) {
 static void __attribute__((constructor)) start_kcov(void) {
 	char buff[30], *env;
 	struct rlimit max_ofiles;
-	struct sigaction temp_action;
+	struct sigaction temp_sa;
 #ifdef WRITE_FILE
 	const char *kcov_out = NULL;
 #endif
@@ -118,18 +118,18 @@ static void __attribute__((constructor)) start_kcov(void) {
 	if (kcov_fd > 0) {
 		return;
 	}
-	new_action.sa_handler = signal_handler;
-	sigemptyset (&new_action.sa_mask);
-	new_action.sa_flags = 0;
+	new_sa.sa_handler = signal_handler;
+	sigemptyset (&new_sa.sa_mask);
+	new_sa.sa_flags = 0;
 	// Signal handler already present for SIGSEGV? (aka fork detection)
-	if (sigaction(SIGSEGV, NULL, &temp_action) == -1) {
+	if (sigaction(SIGSEGV, NULL, &temp_sa) == -1) {
 #ifdef DEBUG
 		dprintf(STDERR_FILENO, "%d: sigaction old SIGSEGV, %s\n", getpid(), strerror(errno));
 #endif
 		return;
 	}
-	if (temp_action.sa_handler != signal_handler) {
-		if (sigaction(SIGSEGV, &new_action, &old_action[0]) == -1) {
+	if (temp_sa.sa_handler != signal_handler) {
+		if (sigaction(SIGSEGV, &new_sa, &old_sa[0]) == -1) {
 #ifdef DEBUG
 			dprintf(STDERR_FILENO, "%d: sigaction SIGSEGV, %s\n", getpid(), strerror(errno));
 #endif
@@ -140,14 +140,14 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	}
 	// Signal handler already present for SIGTERM? (aka fork detection)
-	if (sigaction(SIGTERM, NULL, &temp_action) == -1) {
+	if (sigaction(SIGTERM, NULL, &temp_sa) == -1) {
 #ifdef DEBUG
 		dprintf(STDERR_FILENO, "%d: sigaction old SIGTERM, %s\n", getpid(), strerror(errno));
 #endif
 		return;
 	}
-	if (temp_action.sa_handler != signal_handler) {
-		if (sigaction(SIGTERM, &new_action, &old_action[1]) == -1) {
+	if (temp_sa.sa_handler != signal_handler) {
+		if (sigaction(SIGTERM, &new_sa, &old_sa[1]) == -1) {
 #ifdef DEBUG
 			dprintf(STDERR_FILENO, "%d: sigaction SIGTERM, %s\n", getpid(), strerror(errno));
 #endif
