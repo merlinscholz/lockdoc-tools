@@ -36,26 +36,36 @@
 #ifdef KERNEL64
 #define KCOV_INIT_TRACE _IOR('c', 1, uint64_t)
 #define KCOV_ENTRY_SIZE sizeof(uint64_t)
-typedef uint64_t cover_t;
+#define KCOV_INIT_TRACE_UNIQUE          _IOR('c', 2, uint64_t)
+typedef uint64_t kernel_long;
+#define BITS_PER_LONG 64
 #else
 #define KCOV_INIT_TRACE _IOR('c', 1, uint32_t)
+#define KCOV_INIT_TRACE_UNIQUE          _IOR('c', 2, uint32_t)
 #define KCOV_ENTRY_SIZE sizeof(uint32_t)
-typedef uint32_t cover_t;
+typedef uint32_t kernel_long;
+#define BITS_PER_LONG 32
 #endif
 #define KCOV_ENABLE _IO('c', 100)
 #define KCOV_DISABLE _IO('c', 101)
 #define KCOV_PATH "/sys/kernel/debug/kcov"
-#define KCOV_TRACE_PC 0
 #define COVER_SIZE (16 << 20)
 #define MAX_PATH_NAME 100
 #define KCOV_ENV_CTL_FD "KCOV_CTL_FD"
 #define KCOV_ENV_ERR_FD "KCOV_ERR_FD"
 #define KCOV_ENV_OUT_FD "KCOV_OUT_FD"
 #define KCOV_ENV_OUT "KCOV_OUT"
+#define KCOV_ENV_MODE "KCOV_MODE"
 
+enum kcov_mode_t {
+	KCOV_TRACE_PC = 0,
+	KCOV_TRACE_UNIQUE_PC = 2,
+};
+
+static kcov_mode_t kcov_mode = KCOV_TRACE_UNIQUE_PC;
 static int kcov_fd, err_fd, out_fd, foreign_fd;
-static cover_t *cover;
-static std::set<cover_t> sortuniq_cover;
+static std::set<kernel_long> sortuniq_cover;
+static kernel_long *area, area_size, pcs_size;
 #ifdef WRITE_FILE
 static char temp[MAX_PATH_NAME];
 #endif
@@ -66,11 +76,11 @@ static void finish_kcov(void);
 static void cleanup_kcov(int unmap) {
 	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
 #ifdef DEBUG
-		dprintf(err_fd, "%d: ioctl disable, %s\n", getpid(), strerror(errno));
+		dprintf(err_fd, "%d: ioctl disable in %s: %s\n", getpid(), __func__, strerror(errno));
 #endif
 	}
 	if (unmap) {
-		munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
+		munmap(area, area_size);
 	}
 	close(kcov_fd);
 	close(err_fd);
@@ -109,6 +119,8 @@ static void __attribute__((constructor)) start_kcov(void) {
 	char buff[30], *env;
 	struct rlimit max_ofiles;
 	struct sigaction temp_sa;
+	int ret;
+	const char *kcov_mode_env = NULL;
 #ifdef WRITE_FILE
 	const char *kcov_out = NULL;
 #endif
@@ -171,6 +183,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 	 * We, therefore, look here for KCOV_OUT, and save a ptr to it.
 	 */
 	kcov_out = getenv(KCOV_ENV_OUT);
+	kcov_mode_env = getenv(KCOV_ENV_MODE);
 	env = getenv(KCOV_ENV_CTL_FD);
 	if (env != NULL) {
 #ifdef DEBUG
@@ -240,17 +253,53 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 		return;
 	}
-	if (ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE)) {
+	if (kcov_mode_env == NULL) {
+		kcov_mode = KCOV_TRACE_UNIQUE_PC;
+	} else if (strcmp(kcov_mode_env, "trace_order") == 0) {
+		kcov_mode = KCOV_TRACE_PC;
+	} else if (strcmp(kcov_mode_env, "trace_unique") == 0) {
+		kcov_mode = KCOV_TRACE_UNIQUE_PC;
+	} else {
 #ifdef DEBUG
-		dprintf(err_fd, "%d: ioctl init, %s\n", getpid(), strerror(errno));
+		dprintf(err_fd, "%d: Unknown tracing mode: %s\n", getpid(), kcov_mode_env);
 #endif
 		close(kcov_fd);
 		kcov_fd = -1;
 		return;
 	}
-	cover = (cover_t*)mmap(NULL, COVER_SIZE * KCOV_ENTRY_SIZE,
+#ifdef DEBUG
+		dprintf(err_fd, "%d: Using tracing mode '%s'\n", getpid(), (kcov_mode == KCOV_TRACE_PC ? "trace_order" : "trace_unique"));
+#endif
+	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
+		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
+		if (ret == -1) {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: ioctl init trace unique: %s\n", getpid(), strerror(errno));
+#endif
+			close(kcov_fd);
+			kcov_fd = -1;
+			return;
+		}
+		area_size = pcs_size = ret;
+		pcs_size /= sizeof(kernel_long);
+#ifdef DEBUG
+		dprintf(err_fd, "%d: Kernel told us shared memory size: 0x%jx (0x%jx)\n", getpid(), (uintmax_t)area_size, (uintmax_t)pcs_size);
+#endif
+	} else {
+		area_size = COVER_SIZE * KCOV_ENTRY_SIZE;
+		ret = ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE);
+		if (ret == -1) {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: ioctl init trace pc: %s\n", getpid(), strerror(errno));
+#endif
+			close(kcov_fd);
+			kcov_fd = -1;
+			return;
+		}
+	}
+	area = (kernel_long*)mmap(NULL, area_size,
 			     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
-	if ((void*)cover == MAP_FAILED) {
+	if ((void*)area == MAP_FAILED) {
 #ifdef DEBUG
 		dprintf(err_fd, "%d: mmap, %s\n", getpid(), strerror(errno));
 #endif
@@ -258,11 +307,11 @@ static void __attribute__((constructor)) start_kcov(void) {
 		kcov_fd = -1;
 		return;
 	}
-	if (ioctl(kcov_fd, KCOV_ENABLE, KCOV_TRACE_PC)){
+	if (ioctl(kcov_fd, KCOV_ENABLE, kcov_mode)){
 #ifdef DEBUG
 		dprintf(err_fd, "%d: ioctl enable, %s\n", getpid(), strerror(errno));
 #endif
-		munmap(cover, COVER_SIZE * KCOV_ENTRY_SIZE);
+		munmap(area, area_size);
 		close(kcov_fd);
 		kcov_fd = -1;
 		return;
@@ -275,8 +324,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 	dprintf(err_fd, "%d: Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", 
 		getpid(), getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 #endif
-	__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
-
+	if (kcov_mode == KCOV_TRACE_PC) {
+		__atomic_store_n(&area[0], 0, __ATOMIC_RELAXED);
+	}
 	if (atexit(finish_kcov)) {
 #ifdef DEBUG
 		dprintf(err_fd, "error atexit()\n");
@@ -329,14 +379,19 @@ static void __attribute__((constructor)) start_kcov(void) {
 }
 
 static void __attribute__((destructor)) finish_kcov(void) {
-	cover_t  n, i;
 	int fd;
+	kernel_long num_pcs = 0, i, n;
 
 	if (kcov_fd < 1 || err_fd < 1) {
 #ifdef DEBUG
 		dprintf(err_fd, "%d: No KCOV fd or no fd for stderr present\n", getpid());
 #endif
 		return;
+	}
+	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
+#ifdef DEBUG
+		dprintf(err_fd, "%d: ioctl disable in %s, %s\n", getpid(), __func__, strerror(errno));
+#endif
 	}
 	// Open output file wins over stderr
 	if (out_fd > 0) {
@@ -347,27 +402,48 @@ static void __attribute__((destructor)) finish_kcov(void) {
 #ifdef DEBUG
 	dprintf(err_fd, "%d: out_fd = %d\n", getpid(), out_fd);
 #endif
-
-	n = __atomic_load_n(&cover[0], __ATOMIC_RELAXED);
-#if 1
-	for (i = 0; i < n; i++) {
-		sortuniq_cover.insert(cover[i + 1]);
-	}
-	for (auto elem : sortuniq_cover) {
-		dprintf(fd, "0x%jx\n", (uintmax_t)elem);
-	}
-#endif
-	if (n >= (COVER_SIZE - 1)) {
-		dprintf(err_fd, "%d: Possible buffer overrun detected!\n", getpid());
-	}
+	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 #ifdef DEBUG
-	dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
-		getpid(),
-		(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)COVER_SIZE,
-		program_invocation_name, getpid(), 
-		err_fd, isatty(err_fd),
-		out_fd, isatty(out_fd));
+		dprintf(err_fd, "%d: kernel text base address: 0x%jx\n", getpid(), (uintmax_t)area[0]);
+		dprintf(err_fd, "%d: pcs_size = 0x%jx, &base_addr = %p, &pcs = %p\n", getpid(), (uintmax_t)pcs_size, &area[0], &area[1]);
 #endif
+
+		for (i = 1; i < pcs_size; i++) {
+			for (int j = 0; j < BITS_PER_LONG; j++) {
+				if (area[i] & (1 << j)) {
+					dprintf(fd, "0x%jx\n", (uintmax_t)(area[0] + ((i - 1) * BITS_PER_LONG + j) * 4));
+					num_pcs++;
+				}
+			}
+		}
+#ifdef DEBUG
+		dprintf(err_fd, "%d: Done dumping %jd unique bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+			getpid(),
+			(uintmax_t)num_pcs,
+			program_invocation_name, getpid(),
+			err_fd, isatty(err_fd),
+			out_fd, isatty(out_fd));
+#endif
+	} else {
+		n = __atomic_load_n(&area[0], __ATOMIC_RELAXED);
+		if (n >= (area_size - 1)) {
+			dprintf(err_fd, "%d: Possible buffer overrun detected!\n", getpid());
+		}
+		for (i = 0; i < n; i++) {
+			sortuniq_cover.insert(area[i + 1]);
+		}
+		for (auto elem : sortuniq_cover) {
+			dprintf(fd, "0x%jx\n", (uintmax_t)elem);
+		}
+#ifdef DEBUG
+		dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+			getpid(),
+			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)area_size,
+			program_invocation_name, getpid(),
+			err_fd, isatty(err_fd),
+			out_fd, isatty(out_fd));
+#endif
+	}
 	cleanup_kcov(1);
 }
 
