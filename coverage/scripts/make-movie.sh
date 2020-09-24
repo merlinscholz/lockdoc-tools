@@ -16,7 +16,7 @@ trap "rm -f $TMP" EXIT
 
 echo "Creating symlinks ..."
 i=0
-for f in $PNGDIR/*.map.png; do
+for f in $PNGDIR/*.png; do
 	LINK=$(dirname $f)/$(printf %06d $i).png
 	rm -f $LINK
 	ln -s $(basename $f) $LINK
