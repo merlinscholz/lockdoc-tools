@@ -64,7 +64,7 @@ def readHypothesesDict(hypothesesCSV):
 	count = 0
 	hypothesesDict = dict()
 	# Parse the hypothesizer results, and store them in one large dictionary
-	tempFile = open(hypothesesCSV,'rb')
+	tempFile = open(hypothesesCSV, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	for line in tempReader:
 		count = count + 1

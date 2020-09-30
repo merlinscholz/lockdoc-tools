@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A.Lochmann 2018
 # This script takes the ground-truth.csv and the output of the hypothesizer as input.
 # The hypothesizer has to be run with cut-off threshold set to 0.0, and report mode to csv.
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 	else:
 		LOGGER.setLevel(logging.INFO)
 
-	tempFile = open(groundtruthCSV,'rb')
+	tempFile = open(groundtruthCSV, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 
 	# groundtruthDict Layout 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 	#															   'percentage': 100.0,
 	#															   'total': 2}},
 	LOGGER.debug('Calculating results...')
-	for key, lockingRule in groundtruthDict.iteritems():
+	for key, lockingRule in groundtruthDict.items():
 		# key = (datatype, member, accesstype)
 		if args.writes_only and key[2] == 'r':
 			continue
@@ -131,7 +131,7 @@ if __name__ == '__main__':
 			# '$key in $dict' syntax does *not* do the job, because locksHeld is a regex.
 			# We therefore need to use re.match().
 			LOGGER.debug('%s: %d hypotheses', key, len(locksHeldDict))
-			for locksHeld, locksHeldEntry in locksHeldDict.iteritems():
+			for locksHeld, locksHeldEntry in locksHeldDict.items():
 				if re.match('^' + lockingRule + '$',locksHeld):
 					# If a member is protected by a rw lock, the documented locking rules do not specify 
 					# which part of the lock (read vs. write) should be used.
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 		print('datatype,numrules,noobservations,observations,full,found,notfound')
 	elif args.machine_output == 'summary':
 		print('datatype,member,accesstype,lockingrule,percentage,color')
-	for datatype, resultsEntry in resultsDict.iteritems():
+	for datatype, resultsEntry in resultsDict.items():
 		if args.machine_output == 'summary':
 			if args.percentage:
 				print('%s,%d,%d,%d,%3.2f,%3.2f,%3.2f' %

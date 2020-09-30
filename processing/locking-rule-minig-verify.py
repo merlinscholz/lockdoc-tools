@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A.Lochmann 2019
 # This scripts verifies the mined results against the existing documentation.
 # Question answered: 'How many winning hypotheses, predicted by LockDoc, match the documentation?'
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 	else:
 		LOGGER.setLevel(logging.INFO)
 
-	tempFile = open(args.gtruthCSV,'rb')
+	tempFile = open(args.gtruthCSV, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	for line in tempReader:
 		key = (line['datatype'], line['member'] ,line['accesstype'])
@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
 	totalRules = 0
 	matchedRules = 0
-	for key, lockingRule in groundtruthDict.iteritems():
+	for key, lockingRule in groundtruthDict.items():
 		if key in hypothesisDict:
 			locksHeldDict = hypothesisDict[key]['locks']
 			if len(locksHeldDict) > 1 :
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 			totalRules = totalRules + 1
 			if len(locksHeldDict.keys()) > 1 :
 				LOGGER.error("More than one hypotheses for %s" % (key))
-			locksHeld = locksHeldDict.keys()[0]
+			locksHeld = list(locksHeldDict.keys())[0]
 			if re.match('^' + lockingRule + '$',locksHeld):
 				matchedRules = matchedRules + 1
 	print("totalrules;matched;percentage")

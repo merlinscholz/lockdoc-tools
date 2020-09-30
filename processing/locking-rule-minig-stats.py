@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A. Lochmann 2018
 # ToDo
 
@@ -53,6 +53,7 @@ def main():
 		    ON sl.member_name_id = mn.id \
 		 WHERE dt.name != \'task_struct\' \
 		 GROUP BY sc.id, sc.name, dt.name;' #,case
+
 	try:
 		cursor.execute(query)
 		results = cursor.fetchall()
@@ -86,7 +87,7 @@ def main():
 		print('Error: ' + str(e))
 		sys.exit(1)
 	
-	tempFile = open(hypothesisCSV,'rb')
+	tempFile = open(hypothesisCSV, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	for line in tempReader:
 		if line['type'] not in dataTypes:
