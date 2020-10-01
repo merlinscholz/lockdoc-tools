@@ -58,7 +58,7 @@ def printExtContent(extContent, contentType):
 			continue
 		print("""/* %s (rev %s) --- BEGIN */
 %s
-/* %s (rev %s) --- END */""" % (content['fname'], content['rev'], content['data'], content['fname'], content['rev']))
+/* %s (rev %s) --- END */""" % (content['fname'], content['rev'], content['data'].decode('utf8'), content['fname'], content['rev']))
 
 def readHypothesesDict(hypothesesCSV):
 	count = 0
