@@ -26,6 +26,11 @@ strategies = {
 		'start': 100.0,
 		'step': -0.5,
 		'end': 95.0
+	},
+	"lockset": {
+		'start': 0.0,
+		'step': 1.0,
+		'end': 0.0
 	}
 }
 
