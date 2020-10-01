@@ -49,11 +49,6 @@ def main():
 	hypoInput = args.hypothesizer_input
 	selStrategy = args.selection_strategy
 	outFile = sys.stdout
-	if selStrategy:
-		print("selStrategy = %s" % (selStrategy))
-	print("groundtruthCSV = %s, hypoInput = %s" % (groundtruthCSV, hypoInput))
-
-
 
 	print("strategy;parameter;totalrules;matched;percentage", file = outFile)
 
