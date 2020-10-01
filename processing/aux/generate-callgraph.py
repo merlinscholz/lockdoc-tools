@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A. Lochmann 2018
 # This script generates a complete callgraph for one particular trace donated by the database name.
 # Each edge is labeled with number of calls made by the source node.
@@ -8,7 +8,7 @@
 # ToDo
 # - Find root nodes
 # - Allow printing of subtrees
-
+from __future__ import print_function
 import sys
 import psycopg2
 import logging
@@ -109,13 +109,13 @@ def main():
 					edges[key] = row[1]
 				LOGGER.debug("%s --> %s", str(key), str(edges[key]))
 	except Exception as e:
-		print 'Error: ' + str(e)
+		print('Error: ' + str(e))
 		sys.exit(1)
 
-	print 'digraph kernel_callgraph {'
-	print 'rankdir=TB;'
-	print 'size="8,5"'
-	for key, value in edges.iteritems():
+	print('digraph kernel_callgraph {')
+	print('rankdir=TB;')
+	print('size="8,5"')
+	for key, value in edges.items():
 		# Resolve each node's address, and cache its function name.
 		# If we see a node for the first time, print its label.
 		# Later on, only a node's pseudoname (aka <function name>_<linenumber>) will be printed.
@@ -126,7 +126,7 @@ def main():
 			codePosFn = elems[1]
 			temp = {'node': codePosFn + '_' + codePosLine, 'label': '[label="' + codePosFn + ':' + codePosLine + '"]'}
 			nodes[key[0]] = temp
-			print temp['node'] + ' ' + temp['label']
+			print(temp['node'] + ' ' + temp['label'])
 		if key[1] not in nodes:
 			elems = key[1].split('@')
 			codePosFile = elems[2].split(':')[0]
@@ -134,10 +134,10 @@ def main():
 			codePosFn = elems[1]
 			temp = {'node': codePosFn + '_' + codePosLine, 'label': '[label="' + codePosFn + ':' + codePosLine + '"]'}
 			nodes[key[1]] = temp
-			print temp['node'] + ' ' + temp['label']
-		print nodes[key[0]]['node'] + ' -> ' + nodes[key[1]]['node'] + ' [ label="' + str(value) + '"]'
+			print(temp['node'] + ' ' + temp['label'])
+		print(nodes[key[0]]['node'] + ' -> ' + nodes[key[1]]['node'] + ' [ label="' + str(value) + '"]')
 		LOGGER.debug("(%s [%s],%s [%s]) --> %d", str(key[0]), nodes[key[0]], str(key[1]), nodes[key[1]], value)
-        print '}'
+		print('}')
 	db.close()
 
 if __name__ == '__main__':
