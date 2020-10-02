@@ -505,8 +505,7 @@ void evaluate_hypothesis_lockset(Member& member, void* param, std::deque<std::ve
 	if (cur_rel_sup < 1.0) {
 		return;
 	}
-std::cout << member.datatype << " member: "
-			<< member.name << " [" << member.accesstype << "]: " <<locks2string(cur_node_ordered, " -> ")<<"," << cur_node_sorted.size()<< "," << cur_rel_sup<<std::endl;
+
 	if (member.conflict_list.front().first.size() == cur_node_sorted.size()) {
 		// We've found an equal hypothesis. Just save it.
 		if (!in_conflict_list(member.conflict_list, cur_node_ordered)) {
