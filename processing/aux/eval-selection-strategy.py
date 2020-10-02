@@ -40,20 +40,28 @@ def main():
 
 	parser = argparse.ArgumentParser(prog='PROG')
 	parser.add_argument('--groundtruth-csv', help='CSV containing the documented locking rules', required=True)
-	parser.add_argument('--hypothesizer-input', help='', required=True)
+	parser.add_argument('--hypothesizer-input', help='Input for the hypothesizer', required=True)
 	parser.add_argument('--selection-strategy', help='Just evaluate a particular selections strategy')
-
+	parser.add_argument('--output', help='Redirect output to the given file')
+	parser.add_argument('--verbose', help='Be more verbose', action='store_true')
 	args = parser.parse_args(argv)
 
 	groundtruthCSV = args.groundtruth_csv
 	hypoInput = args.hypothesizer_input
 	selStrategy = args.selection_strategy
-	outFile = sys.stdout
+	if args.output:
+            outFIle = args.output
+	else:
+            outFile = sys.stdout
+	if args.verbose:
+		LOGGER.setLevel(logging.DEBUG)
 
 	print("strategy;parameter;totalrules;matched;percentage", file = outFile)
 
 	for key in strategies.keys():
 		params = strategies[key]
+		if selStrategy != None and selStrategy != key:
+			continue
 		for i in numpy.arange(params['start'], params['end'] + params['step'], params['step']):
 			with tempfile.NamedTemporaryFile() as tempOut:
 				cmd = basedir + '/../../hypothesizer/hypothesizer -g %s -f %.2f -a %.2f -s member -r csvwinner %s' % (key, i, i, hypoInput)
@@ -74,10 +82,10 @@ def main():
 				if lock_verify.returncode != 0:
 					LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
 				lines = stdout.decode().splitlines()
-				if len(lines) > 2:
+				if len(lines) != 2:
 					LOGGER.error("locking-rule-minig-verify.py returned more than 2 lines: %s" % (lines))
 					sys.exit(1)
-				print("%s;%s" % (key, lines[1]), file = outFile)
+				print("%s;%.2f;%s" % (key, i, lines[1]), file = outFile)
 
 if __name__ == "__main__":
 	main()
