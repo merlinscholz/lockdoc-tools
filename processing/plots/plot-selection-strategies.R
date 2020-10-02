@@ -27,6 +27,7 @@ data <- data.frame(strategy = raw[raw$strategy != "lockset",]$strategy,
           parameter = raw[raw$strategy != "lockset",]$parameter,
           percentage = raw[raw$strategy != "lockset",]$percentage,
           lockset_percentage = rep(locksetPercentage, numRows))
+labels <- c(topdown = 'Top Down', bottomup = 'Bottom Up', sharpen = 'Sharpen')
 
 plot <- ggplot(data = data,aes(x = parameter,y = percentage)) + 
   geom_line(size = 1, color = "dodgerblue2") +
