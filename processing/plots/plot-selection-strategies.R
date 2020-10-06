@@ -28,6 +28,16 @@ data <- data.frame(strategy = raw[raw$strategy != "lockset",]$strategy,
           percentage = raw[raw$strategy != "lockset",]$percentage,
           lockset_percentage = rep(locksetPercentage, numRows))
 labels <- c(topdown = 'Top Down', bottomup = 'Bottom Up', sharpen = 'Sharpen')
+minPercentage <- min(data$percentage)
+if (locksetPercentage < minPercentage) {
+  minPercentage <- locksetPercentage
+}
+maxPercentage <- max(data$percentage)
+startTicks <- 2 * round(minPercentage / 2) - 2
+endTicks <- round(maxPercentage,-1) + 2
+steps <- seq(from=startTicks,to=endTicks,by=2)
+breaks <- seq(from=startTicks,to=endTicks,by=2)
+ann_text <- data.frame(parameter = min(data[data$strategy == "bottomup",]$parameter), percentage = locksetPercentage, lab = "LockSet", strategy = factor("bottomup",levels = c("bottomup","topdown","sharpen")))
 
 plot <- ggplot(data = data,aes(x = parameter,y = percentage)) + 
   geom_line(size = 1, color = "dodgerblue2") +
@@ -36,6 +46,9 @@ plot <- ggplot(data = data,aes(x = parameter,y = percentage)) +
   ylab("Korrekte Sperren-Regeln (%)") +
   xlab("Parameterbereich des jeweiligen Verfahrens") +
   geom_hline(data=data, aes(yintercept = lockset_percentage), linetype = "dashed", color = "black") +
+  geom_text(data = ann_text,label = "LockSet-Ergebnis", nudge_x = 1.2, nudge_y = .4) +
+  scale_y_discrete(breaks = breaks, limits = steps) +
+  coord_cartesian(ylim = c(startTicks, endTicks)) +
   theme(
     legend.background = element_rect(size=.2, color="black"),
     legend.title = element_text(size=6),
