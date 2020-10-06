@@ -34,7 +34,7 @@ if (locksetPercentage < minPercentage) {
 }
 maxPercentage <- max(data$percentage)
 startTicks <- 2 * round(minPercentage / 2) - 2
-endTicks <- round(maxPercentage,-1) + 2
+endTicks <- 2 * round(maxPercentage / 2) + 2
 steps <- seq(from=startTicks,to=endTicks,by=2)
 breaks <- seq(from=startTicks,to=endTicks,by=2)
 ann_text <- data.frame(parameter = min(data[data$strategy == "bottomup",]$parameter), percentage = locksetPercentage, lab = "LockSet", strategy = factor("bottomup",levels = c("bottomup","topdown","sharpen")))
