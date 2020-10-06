@@ -147,7 +147,7 @@ if __name__ == '__main__':
 			if tempLocksHeldEntry is None:
 				resultsEntry['notfound'] += 1
 				_color = 'red'
-				LOGGER.debug('SEARCHRULE:%s,%d', key, 0)
+				LOGGER.debug('SEARCHRULE-NOT-FOUND:%s,%d', key, 0)
 			else:
 				if tempLocksHeldEntry['percentage'] == 100:
 					resultsEntry['full'] += 1
