@@ -15,17 +15,17 @@ strategies = {
 	"sharpen": {
 		'start': 0.0,
 		'step': 0.5,
-		'end': 5.0
+		'end': 10.0
 	},
 	"bottomup": {
 		'start': 100.0,
 		'step': -0.5,
-		'end': 95.0
+		'end': 90.0
 	},
 	"topdown": {
 		'start': 100.0,
 		'step': -0.5,
-		'end': 95.0
+		'end': 90.0
 	},
 	"lockset": {
 		'start': 0.0,
