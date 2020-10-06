@@ -56,6 +56,17 @@ def main():
 	if args.verbose:
 		LOGGER.setLevel(logging.DEBUG)
 
+	tempAllCSV = tempfile.NamedTemporaryFile()
+	cmd = basedir + '/../../hypothesizer/hypothesizer -t 0.0 -s member -r csv %s' % (hypoInput)
+	LOGGER.debug("Running '%s'" % (cmd))
+	hypothesizer = subprocess.Popen(cmd.split(),
+						stdout = tempAllCSV,
+						stderr = subprocess.PIPE)
+	stdout, stderr = hypothesizer.communicate()
+	if hypothesizer.returncode != 0:
+		LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
+		sys.exit(1)
+
 	print("strategy;parameter;totalrules;matched;percentage", file = outFile)
 
 	for key in strategies.keys():
@@ -63,17 +74,17 @@ def main():
 		if selStrategy != None and selStrategy != key:
 			continue
 		for i in numpy.arange(params['start'], params['end'] + params['step'], params['step']):
-			with tempfile.NamedTemporaryFile() as tempOut:
+			with tempfile.NamedTemporaryFile() as tempWinnerCSV:
 				cmd = basedir + '/../../hypothesizer/hypothesizer -g %s -f %.2f -a %.2f -s member -r csvwinner %s' % (key, i, i, hypoInput)
 				LOGGER.debug("Running '%s'" % (cmd))
 				hypothesizer = subprocess.Popen(cmd.split(),
-								stdout = tempOut,
+								stdout = tempWinnerCSV,
 								stderr = subprocess.PIPE)
 				stdout, stderr = hypothesizer.communicate()
 				if hypothesizer.returncode != 0:
 					LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
 					continue
-				cmd = basedir + '/../locking-rule-minig-verify.py %s %s' % (groundtruthCSV, tempOut.name)
+				cmd = basedir + '/../locking-rule-minig-verify.py %s %s %s' % (groundtruthCSV, tempAllCSV.name, tempWinnerCSV.name)
 				LOGGER.debug("Running '%s'" % (cmd))
 				lock_verify = subprocess.Popen(cmd.split(),
 								stdout = subprocess.PIPE,
@@ -86,6 +97,8 @@ def main():
 					LOGGER.error("locking-rule-minig-verify.py returned more than 2 lines: %s" % (lines))
 					sys.exit(1)
 				print("%s;%.2f;%s" % (key, i, lines[1]), file = outFile)
+				outFile.flush()
+	tempAllCSV.close()
 
 if __name__ == "__main__":
 	main()
