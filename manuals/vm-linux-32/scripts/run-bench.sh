@@ -37,6 +37,7 @@ then
 		DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
 	fi
 	LTP_CMD="${LTPROOT}/runltp -q"
+	DEVICE=/dev/sdb
 elif [ ${OS} == "FreeBSD" ];
 then
 	stty -f /dev/ttyu0.lock gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
@@ -62,6 +63,19 @@ then
 	fi
 	LTP_CMD="chroot /compat/linux ${LTPROOT}/runltp -q"
 fi
+
+if [ ! -e ${DEVICE} ];
+then
+	echo "Aborting due to missing secondary device: ${DEVICE}" | tee ${OUTDEV}
+	echo "terminate_" > ${OUTDEV}
+fi
+export LTP_DEV=${DEVICE}
+export LTP_DEV_FS_TYPE=ext4
+export LTP_BIG_DEV=${DEVICE}
+export LTP_BIG_DEV_FS_TYPE=ext4
+export TMPDIR=`mktemp -d /tmp/ltp.XXX`
+chmod 0777 ${TMPDIR}
+env > ${OUTDEV}
 
 if [ ! -d ${DIR} ];
 then
