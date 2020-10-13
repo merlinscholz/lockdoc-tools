@@ -235,7 +235,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1
+# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1 e2fsprogs-1.45.6_4
 ```
 
 **Achtung**
