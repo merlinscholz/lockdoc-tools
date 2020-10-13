@@ -75,7 +75,6 @@ export LTP_BIG_DEV=${DEVICE}
 export LTP_BIG_DEV_FS_TYPE=ext4
 export TMPDIR=`mktemp -d /tmp/ltp.XXX`
 chmod 0777 ${TMPDIR}
-env > ${OUTDEV}
 
 if [ ! -d ${DIR} ];
 then
