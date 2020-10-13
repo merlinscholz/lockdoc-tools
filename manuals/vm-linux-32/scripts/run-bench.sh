@@ -29,12 +29,6 @@ then
 	OUTDEV=/dev/ttyS0
 	if [ ${GATHER_COV} -eq 0 ];
 	then
-		KERNEL_VERSION=`cat /proc/version-git`
-		echo "kernelversion=${KERNEL_VERSION}" | tee ${OUTDEV}
-
-		PREEMPT_COUNT_ADDR=`cat /proc/preemptcount-addr`
-		echo "preemptcountaddr=${PREEMPT_COUNT_ADDR}" | tee ${OUTDEV}
-
 		echo "Remount RW" | tee ${OUTDEV}
 		/bin/mount -o remount,rw /
 
