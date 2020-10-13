@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A.Lochmann 2018
 
 from __future__ import print_function
@@ -11,6 +11,7 @@ import logging
 
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
+csv.field_size_limit(sys.maxsize)
 
 def toKey(dataType, member, accessType):
 	return (dataType, member, accessType)
@@ -38,7 +39,7 @@ if __name__ == '__main__':
 		LOGGER.setLevel(logging.INFO)
 
 
-	tempFile = open(args.hypocsv,'rb')
+	tempFile = open(args.hypocsv, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	count = 0
 
@@ -51,7 +52,7 @@ if __name__ == '__main__':
 			cexDict[line['type']] = cexEntry
 
 	for cexFile in args.cexcsv:
-		tempFile = open(cexFile,'rb')
+		tempFile = open(cexFile, 'rt', encoding = 'ascii')
 		tempReader = csv.DictReader(tempFile, delimiter=';')
 		count = 0
 
@@ -76,7 +77,7 @@ if __name__ == '__main__':
 	LOGGER.debug('Read %03d locking rules in total', totalCount)
 
 	print('data_type,cex,members,locations')
-	for key in sorted(cexDict.iterkeys()):
+	for key in sorted(cexDict.keys()):
 		cexEntry = cexDict[key]
 		print('%s,%d,%d,%d' %
 			(key, cexEntry['count'], len(cexEntry['members']), len(cexEntry['locations'])))

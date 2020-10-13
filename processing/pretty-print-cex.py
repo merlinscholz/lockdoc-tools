@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # A.Lochmann 2018
 # This scripts generates a pretty bug overview as an html site.
 # It includes links to the source code for stack entries and for lock
@@ -128,7 +128,7 @@ def getDisplayMode(displayMode, hypo):
 def genLockCombTable(displayMode, lockCombinations, hypothesisID):
 	global cexID
 	output = ''
-	for lockComb, occurrences in lockCombinations.iteritems():
+	for lockComb, occurrences in lockCombinations.items():
 		if displayMode == TREE:
 			indentA = util.genIndentation(2)
 			indentB = util.genIndentation(3)
@@ -184,7 +184,7 @@ def createInitTreeNode(name, codePos, treeID):
 
 def treeDepth(curTree):
 	maxChildDepth = 0
-	for name, child in curTree['children'].iteritems():
+	for name, child in curTree['children'].items():
 		temp = treeDepth(child)
 		if temp > maxChildDepth:
 			maxChildDepth = temp
@@ -195,7 +195,7 @@ def treeCountLeafs(curTree):
 		return 1
 	else:
 		sumLeafs = 0
-		for name, child in curTree['children'].iteritems():
+		for name, child in curTree['children'].items():
 			sumLeafs = sumLeafs + treeCountLeafs(child)
 		return sumLeafs
 
@@ -215,21 +215,24 @@ def addPseudoNodes(child, num, treeID):
 	return pseudoNode
 
 def adjustSubtreeDepth(curTree, maxDepth, curDepth):
+	leafs = list()
 	for child in curTree['children'].values():
 		# Found a leaf?
 		if len(child['children']) == 0:
-			pseudoTree = addPseudoNodes(child, maxDepth - (curDepth + 2), curTree['id'])
-			del curTree['children'][child['name']]
-			curTree['children'][pseudoTree['name']] = pseudoTree
+			leafs.append(child['name'])
 		else:
 			adjustSubtreeDepth(child, maxDepth, curDepth + 1)
+	for nodeName in leafs:
+		pseudoTree = addPseudoNodes(curTree['children'][nodeName], maxDepth - (curDepth + 2), curTree['id'])
+		del curTree['children'][nodeName]
+		curTree['children'][pseudoTree['name']] = pseudoTree
 
 def findTree(curTree, treeName):
 	if curTree['name'] == treeName:
 		return curTree
 	else:
 		found = None
-		for name, child in curTree['children'].iteritems():
+		for name, child in curTree['children'].items():
 			found = findTree(child, treeName)
 			if found is not None:
 				break
@@ -277,7 +280,7 @@ def printTree(baseURL, tree, depth, indentLvl):
 		printIndentation(indentLvl + 1)
 		print('children: [')
 		i = 0
-		for child in tree['children'].itervalues():
+		for child in tree['children'].values():
 			printTree(baseURL, child, depth + 1, indentLvl + 1)
 			if i < (childrenLen - 1):
 				print(',')
@@ -653,7 +656,7 @@ a:visited {
 	hypothesisText = None
 	hypothesisDesc = None
 
-	tempFile = open(cexCSV,'rb')
+	tempFile = open(cexCSV, 'rt', encoding = 'ascii')
 	tempReader = csv.DictReader(tempFile, delimiter=';')
 	for line in tempReader:
 		key = (line['data_type'], line['member'], line['accesstype'])
@@ -679,7 +682,7 @@ a:visited {
 			# the access type or the locking rule.
 			# Moreover, it shows statistics about the locking rule, e.g., the fraction ('percentage') of all accesses ('total') that adhere to that rule.
 			# E.g.: 94.6% (19069 out of 20155 mem accesses under locks): EMBOTHER(inode:i_rwsem)
-			locksHeldKey = hypothesesEntry['locks'].keys()[0]
+			locksHeldKey = list(hypothesesEntry['locks'].keys())[0]
 			locksHeldEntry = hypothesesEntry['locks'][locksHeldKey]
 			hypothesisTitle = line['accesstype'] + ':' + line['member']
 			hypothesisDesc = """<b>Hypothesis %d</b>: When <b>%s %s.%s</b> the following locks <span style="color:green;font-weight:bold;">should be held</span>: <span style="font-weight:bold;color:blue;">%s</span><br/>
@@ -732,7 +735,7 @@ a:visited {
 			# Reached the last edge of the stacktrace: parentIter -> childIter
 			# childNode is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
-				for locksHeld, occurrences in locks.iteritems():
+				for locksHeld, occurrences in locks.items():
 					if locksHeld in childNode['locks']:
 						childNode['locks'][locksHeld] = childNode['locks'][locksHeld] + occurrences
 					else:
@@ -765,7 +768,7 @@ a:visited {
 			# Reached the last edge of the stacktrace: parentIter -> childIter
 			# childIter is the stacktrace entry that corresponds to the actual memory access
 			if i == (traceElemsLen - 2):
-				for locksHeld, occurrences in locks.iteritems():
+				for locksHeld, occurrences in locks.items():
 					if locksHeld in childIter['locks']:
 						childIter['locks'][locksHeld] = childIter['locks'][locksHeld] + occurrences
 					else:
@@ -804,13 +807,13 @@ a:visited {
 		if value['displaymode'] == GRAPH:
 			# Count nodes that have counterexamples attached
 			lockCombsDistinct = 0
-			for nodeID, node in value['nodes'].iteritems():
+			for nodeID, node in value['nodes'].items():
 				if len(node['locks']) > 0:
 					lockCombsDistinct = lockCombsDistinct + 1
 
 			print('			<div class="cexlists" id="cexlists_%d">' % (value['id']))
 			i = 0
-			for nodeID, node in value['nodes'].iteritems():
+			for nodeID, node in value['nodes'].items():
 				lenLockCombs = len(node['locks'])
 				if lenLockCombs == 0:
 					continue
@@ -1069,7 +1072,7 @@ a:visited {
 			nodes: [""" % (hypo['id']))
 			nodesLen = len(hypo['nodes'])
 			i = 0
-			for nodeID, node in hypo['nodes'].iteritems():
+			for nodeID, node in hypo['nodes'].items():
 				print("			{ data : { id: '%s', name: '%s', 'fn': '%s', 'file': '%s', 'line': '%s', lockComb: '"
 					% (node['id'], node['codePos']['fn'], node['codePos']['fn'], node['codePos']['file'], node['codePos']['line']), end="")
 				#for lockComb in node['locks']:
@@ -1083,7 +1086,7 @@ a:visited {
 			edges: [""")
 			edgesLen = len(hypo['edges'])
 			i = 0
-			for edgeID, edge in hypo['edges'].iteritems():
+			for edgeID, edge in hypo['edges'].items():
 				print("			{ data : { id: '%s', source: '%s', target: '%s'}}" % (edgeID, edge[0]['id'], edge[1]['id']), end="")
 				if i < edgesLen - 1:
 					print(',')
