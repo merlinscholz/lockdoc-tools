@@ -1217,6 +1217,19 @@ int main(int argc, char **argv)
 		<< locks.size() << " distinct locks, "
 		<< accesscount << " memory accesses in total)"
 		<< std::endl;
+	std::cerr << "Using strategy '";
+	if (selection_strategy == SHARPEN) {
+		std::cerr << "sharpen";
+	} else if (selection_strategy == BOTTOMUP) {
+		std::cerr << "bottomup";
+	} else if (selection_strategy == TOPDOWN) {
+		std::cerr << "topdown";
+	} else if (selection_strategy == LOCKSET) {
+		std::cerr << "lockset";
+	} else {
+		std::cerr << "unknown";
+	}
+	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << accept_threshold << ", and reduction factor " << reduction_factor << std::endl;
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
