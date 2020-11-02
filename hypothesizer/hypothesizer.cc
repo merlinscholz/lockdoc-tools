@@ -471,9 +471,15 @@ void evaluate_hypothesis_sharpen(Member& member, void* param, std::deque<std::ve
 		for (auto child : member.graph[cur_node_sorted]) {
 			nodes.push_back(child);
 		}
-	} else if (cur_node_sorted.size() > member.conflict_list.front().first.size() &&
-			  (cur_rel_sup == rel_support_winner || delta <= reduction_factor)) {
-		// Found a better hypothesis: More locks involved AND (same rel. support OR reduktion in rel. sup less or equal to reduction factor)
+	} else if ((member.conflict_list.front().first.size() == cur_node_sorted.size() && cur_rel_sup > rel_support_winner) ||
+		   (cur_node_sorted.size() > member.conflict_list.front().first.size() &&
+			  (cur_rel_sup == rel_support_winner || delta <= reduction_factor))) {
+		/*
+		 * Found a better hypothesis:
+		 * (Same amount of locks AND higher rel. support)
+		 * OR
+		 * (More locks involved AND (same rel. support OR reduktion in rel. sup less or equal to reduction factor))
+		 */
 		member.winner_found = true;
 		member.conflict_list.clear();
 		member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
