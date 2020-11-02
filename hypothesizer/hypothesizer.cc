@@ -767,6 +767,7 @@ void print_hypotheses(const Member& member,
 			<< member.name << " [" << member.accesstype << "] ("
 			<< member.combinations.size() << " lock combinations)" << std::endl;
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
+		std::cout << "  accesses without any locks:" << (member.occurrences - member.occurrences_with_locks) << std::endl;
 	}
 
 	//std::cout << "Graph for " << member.accesstype << ":" << member.name << " :" << std::endl;
