@@ -843,7 +843,7 @@ void print_hypotheses(const Member& member,
 				relative_support = (double) match.second / (double) member.occurrences;
 
 				bool this_is_the_winner = !found_winner && member.winning_hypothesis == match.first && member.winner_found;
-				bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, match.first);
+				bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, match.first) && member.winner_found;
 				found_winner = found_winner || this_is_the_winner;
 
 				if (reportmode == ReportMode::NORMAL) {
@@ -890,14 +890,14 @@ void print_hypotheses(const Member& member,
 
 			auto winner = h.matches.begin()->first;
 			bool this_is_the_winner = !found_winner && member.winning_hypothesis == winner && member.winner_found;
+			bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, winner) && member.winner_found;
 			found_winner = found_winner || this_is_the_winner;
 
 			std::string prefix;
 			if (this_is_the_winner) {
 				prefix += "!";
 			} else {
-				bool found = in_conflict_list(member.conflict_list, winner);
-				if (found) {
+				if (is_conflict) {
 					prefix += "?";
 				} else {
 					prefix += " ";
