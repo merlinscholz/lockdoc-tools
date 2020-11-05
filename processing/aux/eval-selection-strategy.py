@@ -13,9 +13,9 @@ LOGGER.setLevel(logging.INFO)
 
 strategies = {
 	"sharpen": {
-		'start': 0.0,
-		'step': 0.5,
-		'end': 10.0
+		'start': 10.0,
+		'step': -0.5,
+		'end': 0.0
 	},
 	"bottomup": {
 		'start': 100.0,
