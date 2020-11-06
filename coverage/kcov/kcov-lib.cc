@@ -29,10 +29,25 @@
 #include <signal.h>
 #include <sys/resource.h>
 #include <sys/time.h>
+#ifdef __FreeBSD__
+#include <sys/user.h>
+#include <libutil.h>
+#endif
 
 //#define DEBUG
 #define WRITE_FILE
 
+#ifdef __FreeBSD__
+#include <sys/kcov.h>
+#define KCOV_PATH "/dev/kcov"
+#ifdef KERNEL64
+typedef uint64_t kernel_long;
+#define BITS_PER_LONG 64
+#else
+typedef uint32_t kernel_long;
+#define BITS_PER_LONG 32
+#endif
+#else
 #ifdef KERNEL64
 #define KCOV_INIT_TRACE _IOR('c', 1, uint64_t)
 #define KCOV_ENTRY_SIZE sizeof(uint64_t)
@@ -49,6 +64,7 @@ typedef uint32_t kernel_long;
 #define KCOV_ENABLE _IO('c', 100)
 #define KCOV_DISABLE _IO('c', 101)
 #define KCOV_PATH "/sys/kernel/debug/kcov"
+#endif
 #define COVER_SIZE (16 << 20)
 #define MAX_PATH_NAME 100
 #define KCOV_ENV_CTL_FD "KCOV_CTL_FD"
@@ -69,12 +85,32 @@ static kernel_long *area, area_size, pcs_size;
 #ifdef WRITE_FILE
 static char temp[MAX_PATH_NAME];
 #endif
-extern char *program_invocation_name;
 struct sigaction new_sa, old_sa[2];
 static void finish_kcov(void);
 
+#ifdef __FreeBSD__
+static void print_program_name(void) {
+	struct kinfo_proc *proc = kinfo_getproc(getpid());
+	if (proc) {
+		dprintf(err_fd, "%s", proc->ki_comm);
+		free(proc);
+	} else {
+		dprintf(err_fd, "unknown");
+	}
+}
+#else
+extern char *program_invocation_name;
+static void print_program_name(void) {
+	dprintf("%s", basename(program_invocation_name));
+}
+#endif
+
 static void cleanup_kcov(int unmap) {
+#ifdef __FreeBSD__
+	if (ioctl(kcov_fd, KIODISABLE, 0)) {
+#else
 	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
+#endif
 #ifdef DEBUG
 		dprintf(err_fd, "%d: ioctl disable in %s: %s\n", getpid(), __func__, strerror(errno));
 #endif
@@ -96,7 +132,9 @@ static void cleanup_kcov(int unmap) {
 static void signal_handler(int signum) {
 	if (signum == SIGSEGV) {
 #ifdef DEBUG
-		dprintf(err_fd, "%d: Caught SIGSEV on '%s'\n", getpid(), basename(program_invocation_name));
+		dprintf(err_fd, "%d: Caught SIGSEV on '", getpid());
+		print_program_name();
+		dprintf(err_fd, "'\n");
 #endif
 		finish_kcov();
 		if (old_sa[0].sa_handler) {
@@ -105,7 +143,9 @@ static void signal_handler(int signum) {
 		exit(1);
 	} else if (signum == SIGTERM) {
 #ifdef DEBUG
-		dprintf(err_fd, "%d: Caught SIGTERM on '%s'\n", getpid(), basename(program_invocation_name));
+		dprintf(err_fd, "%d: Caught SIGTERM on '", getpid());
+		print_program_name();
+		dprintf(err_fd, "'\n");
 #endif
 		finish_kcov();
 		if (old_sa[1].sa_handler) {
@@ -125,7 +165,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 	const char *kcov_out = NULL;
 #endif
 #ifdef DEBUG
-	fprintf(stderr, "%d: Tracing '%s'\n", getpid(), basename(program_invocation_name));
+	fprintf(stderr, "%d: Tracing '", getpid());
+	print_program_name();
+	dprintf(err_fd, "'\n");
 #endif
 	if (kcov_fd > 0) {
 #ifdef DEBUG
@@ -271,6 +313,14 @@ static void __attribute__((constructor)) start_kcov(void) {
 		dprintf(err_fd, "%d: Using tracing mode '%s'\n", getpid(), (kcov_mode == KCOV_TRACE_PC ? "trace_order" : "trace_unique"));
 #endif
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
+#ifdef __FreeBSD__
+#ifdef DEBUG
+		dprintf(err_fd, "%d: Mode not supported by FreeBSD\n", getpid());
+#endif
+		close(kcov_fd);
+		kcov_fd = -1;
+		return;
+#else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
 		if (ret == -1) {
 #ifdef DEBUG
@@ -285,9 +335,14 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef DEBUG
 		dprintf(err_fd, "%d: Kernel told us shared memory size: 0x%jx (0x%jx)\n", getpid(), (uintmax_t)area_size, (uintmax_t)pcs_size);
 #endif
+#endif
 	} else {
 		area_size = COVER_SIZE * KCOV_ENTRY_SIZE;
+#ifdef __FreeBSD__
+		ret = ioctl(kcov_fd, KIOSETBUFSIZE, COVER_SIZE);
+#else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE, COVER_SIZE);
+#endif
 		if (ret == -1) {
 #ifdef DEBUG
 			dprintf(err_fd, "%d: ioctl init trace pc: %s\n", getpid(), strerror(errno));
@@ -307,7 +362,11 @@ static void __attribute__((constructor)) start_kcov(void) {
 		kcov_fd = -1;
 		return;
 	}
+#ifdef __FreeBSD__
+	if (ioctl(kcov_fd, KIOENABLE, KCOV_MODE_TRACE_PC)) {
+#else
 	if (ioctl(kcov_fd, KCOV_ENABLE, kcov_mode)){
+#endif
 #ifdef DEBUG
 		dprintf(err_fd, "%d: ioctl enable, %s\n", getpid(), strerror(errno));
 #endif
@@ -358,7 +417,13 @@ static void __attribute__((constructor)) start_kcov(void) {
 		foreign_fd = 1;
 		return;
 	} else if (strcmp(kcov_out, "progname") == 0) {
+#ifdef __FreeBSD__
+		struct kinfo_proc *proc = kinfo_getproc(getpid());
+		snprintf(temp, MAX_PATH_NAME, "%s.map", proc->ki_comm);
+		free(proc);
+#else
 		snprintf(temp, MAX_PATH_NAME, "%s.map", basename(program_invocation_name));
+#endif
 		kcov_out = temp;
 	}
 	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
@@ -388,7 +453,11 @@ static void __attribute__((destructor)) finish_kcov(void) {
 #endif
 		return;
 	}
+#ifdef __FreeBSD__
+	if (ioctl(kcov_fd, KIODISABLE, 0)) {
+#else
 	if (ioctl(kcov_fd, KCOV_DISABLE, 0)) {
+#endif
 #ifdef DEBUG
 		dprintf(err_fd, "%d: ioctl disable in %s, %s\n", getpid(), __func__, strerror(errno));
 #endif
@@ -417,10 +486,10 @@ static void __attribute__((destructor)) finish_kcov(void) {
 			}
 		}
 #ifdef DEBUG
-		dprintf(err_fd, "%d: Done dumping %jd unique bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		dprintf(err_fd, "%d: Done dumping %jd unique bbs for '", getpid(), (uintmax_t)num_pcs);
+		print_program_name();
+		dprintf(err_fd, "'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
 			getpid(),
-			(uintmax_t)num_pcs,
-			program_invocation_name, getpid(),
 			err_fd, isatty(err_fd),
 			out_fd, isatty(out_fd));
 #endif
@@ -436,10 +505,12 @@ static void __attribute__((destructor)) finish_kcov(void) {
 			dprintf(fd, "0x%jx\n", (uintmax_t)elem);
 		}
 #ifdef DEBUG
-		dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '%s'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		dprintf(err_fd, "%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '",
 			getpid(),
-			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)area_size,
-			program_invocation_name, getpid(),
+			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)area_size);
+		print_program_name();
+		dprintf(err_fd, "'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+			getpid(),
 			err_fd, isatty(err_fd),
 			out_fd, isatty(out_fd));
 #endif
@@ -463,9 +534,9 @@ extern "C" pid_t fork(void) {
 		sigaddset(&new_sig, SIGTERM);
 		sigprocmask(SIG_BLOCK, &new_sig, &old_sig);
 #ifdef DEBUG
-		dprintf(err_fd, "%d: fork() on the traced process '%s'(%d). Disabling KCOV for child %d.\n",
-			getpid(),
-			basename(program_invocation_name), getppid(), getpid());
+		dprintf(err_fd, "%d: fork() on the traced process '", getpid());
+		print_program_name();
+		dprintf(err_fd, "'(%d). Disabling KCOV for child %d.\n", getppid(), getpid());
 #endif
 		cleanup_kcov(1);
 #ifdef DEBUG
