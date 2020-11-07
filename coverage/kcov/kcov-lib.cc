@@ -314,14 +314,10 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 #ifdef __FreeBSD__
-#ifdef DEBUG
-		dprintf(err_fd, "%d: Mode not supported by FreeBSD\n", getpid());
-#endif
-		close(kcov_fd);
-		kcov_fd = -1;
-		return;
+		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &area_size);
 #else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
+#endif
 		if (ret == -1) {
 #ifdef DEBUG
 			dprintf(err_fd, "%d: ioctl init trace unique: %s\n", getpid(), strerror(errno));
@@ -330,11 +326,10 @@ static void __attribute__((constructor)) start_kcov(void) {
 			kcov_fd = -1;
 			return;
 		}
-		area_size = pcs_size = ret;
+		pcs_size = area_size;
 		pcs_size /= sizeof(kernel_long);
 #ifdef DEBUG
 		dprintf(err_fd, "%d: Kernel told us shared memory size: 0x%jx (0x%jx)\n", getpid(), (uintmax_t)area_size, (uintmax_t)pcs_size);
-#endif
 #endif
 	} else {
 		area_size = COVER_SIZE * KCOV_ENTRY_SIZE;
