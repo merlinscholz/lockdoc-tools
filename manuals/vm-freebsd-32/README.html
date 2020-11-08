@@ -57,7 +57,6 @@
 </ul></li>
 <li><a href="#freebas-code-abdeckung">Code-Abdeckung</a>
 <ul>
-<li><a href="#freebsd-code-abdeckung-vorbereitung">Vorbereitung</a></li>
 <li><a href="#freebsd-code-abdeckung-bestimmen-gcov">Code-Abdeckung bestimmen - GCOV</a></li>
 <li><a href="#freebsd-code-abdeckung-bestimmen-kcov">Code-Abdeckung bestimmen - KCOV</a></li>
 <li><a href="#freebsd-code-abdeckung-links">Links</a></li>
@@ -68,11 +67,11 @@
 <h1 id="vorbereitung-und-installation-von-freebsd-unter-qemu">Vorbereitung und Installation von FreeBSD unter QEMU</h1>
 <p><a id="vorbereitung"></a></p>
 <h2 id="vorbereitung">Vorbereitung</h2>
-<p>Zunächst laden wir ein Installer-Image von <a href="https://www.freebsd.org/where.html">freebsd.org/where.html</a> herunter. Wir verwenden das DVD-Image für <a href="https://download.freebsd.org/ftp/releases/i386/i386/ISO-IMAGES/12.0/FreeBSD-12.0-RELEASE-i386-dvd1.iso">FreeBSD 11.2</a> für i386.</p>
+<p>Zunächst laden wir ein Installer-Image von <a href="https://www.freebsd.org/where.html">freebsd.org/where.html</a> herunter. Wir verwenden das DVD-Image für <a href="https://download.freebsd.org/ftp/releases/i386/i386/ISO-IMAGES/12.2/FreeBSD-12.2-RELEASE-i386-dvd1.iso">FreeBSD 12.2</a> für i386.</p>
 <p>Danach erstellen wir entsprechend der geladenen Version ein VM-Image:</p>
 <p><code>qemu-img create -f raw freebsd.img 25G</code></p>
 <p>QEMU kann manuel gestartet werden:</p>
-<p><code>qemu-system-x86_64 -smp 1 -boot c -cdrom /path/to/FreeBSD-12.0-RELEASE-i386-dvd1.iso -m 512 -hda /path/to/freebsd.img</code></p>
+<p><code>qemu-system-x86_64 -smp 1 -boot c -cdrom /path/to/FreeBSD-12.2-RELEASE-i386-dvd1.iso -m 512 -hda /path/to/freebsd.img</code></p>
 <p>Alternativ kann man die virtuelle Maschine via Virt-Manager erstellen.</p>
 <p><a id="installation"></a></p>
 <h2 id="installation">Installation</h2>
@@ -228,9 +227,9 @@ vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels t
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
-# MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=clang80 make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc LD=ld.lld make install</code></pre>
-<p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=""</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist. Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt. Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel="..."</code> in <code>/boot/loader.conf</code>). Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=""</code>: <code>MODULES_OVERRIDE=""  LD=ld.lld make [-j X]</code>. Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.</p>
+# MODULES_OVERRIDE=&quot;&quot; make [-j X]
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc make install</code></pre>
+<p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=""</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist. Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt. Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel="..."</code> in <code>/boot/loader.conf</code>). Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=""</code>: <code>MODULES_OVERRIDE=""  LD=ld.lld make [-j X]</code>.</p>
 <p><a id="%C3%9Cbersetzen-im-source-tree"></a></p>
 <h3 id="übersetzen-im-source-tree">Übersetzen im Source-Tree</h3>
 <p>Möchte man einfach den Kernel innerhalb des FreeBSD-Trees bauen, genügen folgende Befehle:</p>
@@ -249,24 +248,26 @@ vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels t
 </ul>
 <p>&lt;a id="freebas-code-abdeckung"</a></p>
 <h1 id="code-abdeckung">Code-Abdeckung</h1>
-<p><a id="freebsd-code-abdeckung-vorbereitung"></a></p>
-<h2 id="vorbereitung-1">Vorbereitung</h2>
+<p><a id="freebsd-code-abdeckung-bestimmen-kcov"></a></p>
+<h2 id="code-abdeckung-bestimmen---kcov">Code-Abdeckung bestimmen - KCOV</h2>
 <p>Zunächst müssen die passenden Kernel gebaut werden. Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
-# MK_FORMAT_EXTENSION=no MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-kcov LD=ld.lld make install</code></pre>
-<p>Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
-<pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
-# config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
-# MK_FORMAT_EXTENSION=no MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-gcov LD=ld.lld make install</code></pre>
+# MODULES_OVERRIDE=&quot;&quot; make [-j X]
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-kcov make install</code></pre>
 <p>Außerdem müssen die folgenden zwei Headerdateien in das System-Include-Verzeichnis kopiert werden, damit <code>kcovtrace</code> übersetzt werden kann:</p>
 <pre><code># cp /opt/kernel/freebsd/src/sys/sys/kcov.h /usr/include/sys/
 # cp /opt/kernel/freebsd/src/sys/sys/coverage.h /usr/include/sys/
 # clang80 -o kcovtrace kcovtrace.c</code></pre>
 <p>Das Übersetzen mit dem <code>clang</code> geht nur, wenn es nicht für i386 übersetzt wird. Ansonsten muss der GCC genommen werden:</p>
 <pre><code># gcc7 -march=i586 -o kcovtrace kcovtrace.c</code></pre>
+<p><code>kcovtrace</code> muss als <code>root</code> ausgeführt werden.</p>
+<pre><code># GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh &lt;benchmark&gt; 2&gt; pcs.txt</code></pre>
+<p>Achtung ggf. veraltet, da nicht mehr gepflegt: Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
+<pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
+# config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
+# MK_FORMAT_EXTENSION=no MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-gcov LD=ld.lld make install</code></pre>
 <p>Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert sollte als Standardshell für <code>root</code> die Bash eingestellt sein. <a id="freebsd-code-abdeckung-bestimmen-gcov"></a></p>
 <h2 id="code-abdeckung-bestimmen---gcov">Code-Abdeckung bestimmen - GCOV</h2>
 <p>Zunächst das Linux-DebugFS einhängen:</p>
@@ -275,10 +276,6 @@ vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels t
 <pre><code># sysctl debug.gcov.enable=1</code></pre>
 <p>Die Variable <code>GATHER_COV</code> sorgt dafür, dass das Skript <code>run-bench.sh</code> gewisse Initialisierungsbefehle auslässt. Der erste Parameter von <code>./gcov-trace.sh</code> gibt an, wo der Kernel übersetzt wurde - hier <code>/opt/kernel/freebsd/obj-gcov/</code>. Der dritte Parameter gibt den Namen der Ausgabedatei an.</p>
 <pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;</code></pre>
-<p><a id="freebsd-code-abdeckung-bestimmen-kcov"></a></p>
-<h2 id="code-abdeckung-bestimmen---kcov">Code-Abdeckung bestimmen - KCOV</h2>
-<p><code>kcovtrace</code> muss als <code>root</code> ausgeführt werden.</p>
-<pre><code># GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh &lt;benchmark&gt; 2&gt; pcs.txt</code></pre>
 <p><a id="freebsd-code-abdeckung-links"></a></p>
 <h2 id="links-2">Links</h2>
 <ul>
