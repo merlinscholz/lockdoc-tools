@@ -5,11 +5,13 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>README</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
   </style>
   <link rel="stylesheet" href="pandoc.css" />
 </head>
@@ -63,9 +65,9 @@
 </ul>
 <!-- /MarkdownTOC -->
 <p><a id="vorbereitung-und-installation-von-freebsd-unter-qemu"></a></p>
-<h1>Vorbereitung und Installation von FreeBSD unter QEMU</h1>
+<h1 id="vorbereitung-und-installation-von-freebsd-unter-qemu">Vorbereitung und Installation von FreeBSD unter QEMU</h1>
 <p><a id="vorbereitung"></a></p>
-<h2>Vorbereitung</h2>
+<h2 id="vorbereitung">Vorbereitung</h2>
 <p>Zunächst laden wir ein Installer-Image von <a href="https://www.freebsd.org/where.html">freebsd.org/where.html</a> herunter. Wir verwenden das DVD-Image für <a href="https://download.freebsd.org/ftp/releases/i386/i386/ISO-IMAGES/12.0/FreeBSD-12.0-RELEASE-i386-dvd1.iso">FreeBSD 11.2</a> für i386.</p>
 <p>Danach erstellen wir entsprechend der geladenen Version ein VM-Image:</p>
 <p><code>qemu-img create -f raw freebsd.img 25G</code></p>
@@ -73,42 +75,42 @@
 <p><code>qemu-system-x86_64 -smp 1 -boot c -cdrom /path/to/FreeBSD-12.0-RELEASE-i386-dvd1.iso -m 512 -hda /path/to/freebsd.img</code></p>
 <p>Alternativ kann man die virtuelle Maschine via Virt-Manager erstellen.</p>
 <p><a id="installation"></a></p>
-<h2>Installation</h2>
+<h2 id="installation">Installation</h2>
 <p><a id="booten"></a></p>
-<h3>Booten</h3>
+<h3 id="booten">Booten</h3>
 <p>Wir booten das Installer-Image in den gewünschten Modus. Der Standardfall ist dabei <code>multi user</code>. Zu den Modis siehe auch <a href="https://www.freebsd.org/doc/handbook/boot-introduction.html#boot-singleuser">FreeBSD Handbook</a>.</p>
 <p><img src="./img/install-01.png" alt="alt text" /></p>
 <p><a id="beginn-der-installation"></a></p>
-<h3>Beginn der Installation</h3>
+<h3 id="beginn-der-installation">Beginn der Installation</h3>
 <p>Danach wählen wir <code>Install</code> aus, um die Installation zu beginnen.</p>
 <p><img src="./img/install-02.png" alt="alt text" /></p>
 <p><a id="keyboard-konfiguration"></a></p>
-<h3>Keyboard konfiguration</h3>
+<h3 id="keyboard-konfiguration">Keyboard konfiguration</h3>
 <p>Konfiguration des Tastatur Layouts (Default ist US).</p>
 <p><img src="./img/install-03.png" alt="alt text" /></p>
 <p>Wir haben <em>German</em> gewählt.</p>
 <p><img src="./img/install-04.png" alt="alt text" /></p>
 <p><a id="konfiguration"></a></p>
-<h3>Konfiguration</h3>
+<h3 id="konfiguration">Konfiguration</h3>
 <p>Danach geben wir der Maschine einen Namen.</p>
 <p><img src="./img/install-05.png" alt="alt text" /></p>
 <p>Und haben nun die Auswahl darüber, was installiert werden soll. Entgegen des Screenshots ist das Paket <code>src</code> nicht erforderlich, da wir unseren eigenen FreeBSD-Tree nutzen. Ansonsten ist noch die Option <code>ports</code> zu erwähnen, die eine Ansammlung von Scripten entspricht, die automatisiert Software (z.B. X11), die nicht direkt zu FreeBSD gehört, laden, übersetzt und installiert. Der Rest sollte selbsterklärend sein.</p>
 <p>Die Komponenten lassen sich auch alle nachträglich installieren.</p>
 <p><img src="./img/install-06.png" alt="alt text" /></p>
 <p><a id="partitionierung"></a></p>
-<h3>Partitionierung</h3>
+<h3 id="partitionierung">Partitionierung</h3>
 <p>Anschließend partitionieren wir unser VM-Image. Hier wird <code>UFS</code> als Dateisystem gewählt.</p>
 <p><img src="./img/install-07.png" alt="alt text" /> <img src="./img/install-08.png" alt="alt text" /> <img src="./img/install-09.png" alt="alt text" /> <img src="./img/install-10.png" alt="alt text" /> <img src="./img/install-11.png" alt="alt text" /></p>
 <p><a id="eigentliche-installation"></a></p>
-<h3>Eigentliche Installation</h3>
+<h3 id="eigentliche-installation">Eigentliche Installation</h3>
 <p>Jetzt kopiert und entpackt der Installer die Daten von dem Installer-Image auf das VM-Image. Das kann je nach Maschine und Installer-Image 3-10 Minuten dauern.</p>
 <p><img src="./img/install-12.png" alt="alt text" /></p>
 <p><a id="root-passwort"></a></p>
-<h3>Root-Passwort</h3>
+<h3 id="root-passwort">Root-Passwort</h3>
 <p>Jetzt noch das root-Passwort festlegen und wir sind fast fertig.</p>
 <p><img src="./img/install-15.png" alt="alt text" /></p>
 <p><a id="netzwerk"></a></p>
-<h3>Netzwerk</h3>
+<h3 id="netzwerk">Netzwerk</h3>
 <p>Entsprechende Netzwerk Einstellungen sind nur notwendig, falls Software (z.B. <code>vim</code>) nachinstalliert werden soll oder falls für die eigentliche Aufgabe Netzwerk notwendig ist.</p>
 <p><img src="./img/install-16.png" alt="alt text" /> <img src="./img/install-17.png" alt="alt text" /> <img src="./img/install-18.png" alt="alt text" /> <img src="./img/install-19.png" alt="alt text" /></p>
 <p>IPv6 können wir überspringen, da die Uni (und das ITMC) eh nicht daran glauben.</p>
@@ -116,51 +118,51 @@
 <p>Die DNS Einstellungen kann man auf den voreingestellten Werten belassen.</p>
 <p><img src="./img/install-21.png" alt="alt text" /></p>
 <p><a id="zeiteinstellung"></a></p>
-<h3>Zeiteinstellung</h3>
+<h3 id="zeiteinstellung">Zeiteinstellung</h3>
 <p><img src="./img/install-22.png" alt="alt text" /> <img src="./img/install-23.png" alt="alt text" /> <img src="./img/install-24.png" alt="alt text" /> <img src="./img/install-25.png" alt="alt text" /></p>
 <p>Falls notwendig setzen des korrekten Datums und Uhrzeit.</p>
 <p><img src="./img/install-26.png" alt="alt text" /> <img src="./img/install-27.png" alt="alt text" /></p>
 <p><a id="services"></a></p>
-<h3>Services</h3>
+<h3 id="services">Services</h3>
 <p>Hier kann der Default auch belassen werden. <code>sshd</code> ist natürlich empfehlenswert.</p>
 <p><img src="./img/install-28.png" alt="alt text" /></p>
 <p><a id="hardening"></a></p>
-<h3>Hardening</h3>
+<h3 id="hardening">Hardening</h3>
 <p><img src="./img/install-29.png" alt="alt text" /></p>
 <p><a id="weitere-benutzer"></a></p>
-<h3>Weitere Benutzer</h3>
+<h3 id="weitere-benutzer">Weitere Benutzer</h3>
 <p>Hier sollte direkt ein Nutzer angelegt werden. Analog zu Linux können wir später jeder Zeit neue Nutzer mit <code>adduser</code> anlegen.</p>
 <p><img src="./img/install-30.png" alt="alt text" /></p>
 <p><a id="abschluss"></a></p>
-<h3>Abschluss</h3>
+<h3 id="abschluss">Abschluss</h3>
 <p>Im Anschluss haben wir noch einmal die Möglichkeit diverse Einstellungen zu ändern. <img src="./img/install-31.png" alt="alt text" /></p>
 <p>Außerdem erhalten wir noch die Option vor dem Neustart mit einer Shell im neuen System eigene Änderungen vorzunehmen. Hier empfhielt es sich, für die erstellten Partitionen bzw. Slices Labels zu vergeben. So kann man in QEMU z.B. den VirtIO-Treiber für die Festplattenemulation nutzen und gleichzeitig in BOCHS eine IDE-Platte emulieren. Wichtig ist, dass in diesem Schritt <strong>nur</strong> die Labels vergeben werden. Die Änderungen an der <code>/etc/fstab</code> sollten später <strong>nach</strong> einem Neutstart erfolgen.</p>
 <pre><code>glabel label swap /dev/XXX
 tunefs -L roots /dev/XXX</code></pre>
 <p><strong>Achtung:</strong> Das Tool <code>glabel</code> darf <strong>nur</strong> für Partitionen, die kein Dateisystem beinhalten, wie z.B. die swap-Partition, genutzt werden. Für Dateisysteme, wie z.B. UFS, ist <code>tunefs</code> zu nehmen. <img src="./img/install-32.png" alt="alt text" /> <img src="./img/install-33.png" alt="alt text" /> <img src="./img/install-34.png" alt="alt text" /></p>
 <p><a id="fertiges-os"></a></p>
-<h3>Fertiges OS</h3>
+<h3 id="fertiges-os">Fertiges OS</h3>
 <p>Nach dem Neustart können wir uns anmelden:</p>
 <p><img src="./img/install-35.png" alt="alt text" /> <img src="./img/install-36.png" alt="alt text" /> <img src="./img/install-37.png" alt="alt text" /></p>
 <p><a id="links"></a></p>
-<h3>Links</h3>
+<h3 id="links">Links</h3>
 <p>Nützliche Links:</p>
 <ul>
 <li><a href="http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html" class="uri">http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html</a> Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.).</li>
 <li><a href="http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html" class="uri">http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html</a> Anleitung Komponenten wie <strong>ports</strong> oder <strong>src</strong> nachinstalliert.</li>
 </ul>
 <p><a id="freebsd-f%C3%BCr-lockdoc-vorbereiten"></a></p>
-<h1>FreeBSD für LockDoc vorbereiten</h1>
+<h1 id="freebsd-für-lockdoc-vorbereiten">FreeBSD für LockDoc vorbereiten</h1>
 <p>Damit LockDoc mit FreeBSD funktioniert, müssen noch ein paar Skripte und Programme installiert sowie Einstellungen vorgenommen werden.</p>
 <p><a id="erforderliche-pakete-installieren"></a></p>
-<h2>Erforderliche Pakete installieren</h2>
+<h2 id="erforderliche-pakete-installieren">Erforderliche Pakete installieren</h2>
 <p>Mit dem folgenden Befehl lassen sich als <strong>root</strong> alle notwendigen Programme installieren.</p>
 <pre><code># pkg install &lt;paketname&gt;</code></pre>
 <p>Für unser Setup wurden u.a. folgende Pakete installiert:</p>
 <pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1 e2fsprogs-1.45.6_4</code></pre>
 <p><strong>Achtung</strong> Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
 <p><a id="userland-einrichten"></a></p>
-<h2>Userland einrichten</h2>
+<h2 id="userland-einrichten">Userland einrichten</h2>
 <p>Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe <code>wheel</code> sein.</p>
 <pre><code>pw groupmod -m al -n wheel</code></pre>
 <p>In <code>/usr/local/etc/sudoers</code> muss nun die Zeile <code>%wheel ALL=(ALL) ALL</code> auskommentiert werden.</p>
@@ -182,51 +184,55 @@ kernels_autodetect=&quot;YES&quot;                # Detect all installed kernels
 console=&quot;vidconsole&quot;
 vm.kmem_size=&quot;512M&quot;
 vm.kmem_size_max=&quot;512M&quot;</code></pre>
-<p>Möchte man Labels statt absolute Pfade für die Dateisystem und das root-Device nutzen, muss folgende Zeile in <code>/boot/loader.conf</code> eingetragen werden:</p>
-<pre><code>vfs.root.mountfrom=&quot;ufs:ufs/rootfs&quot;     # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio</code></pre>
+<p>Damit man nicht an die Gerätenamen beim Einbinden von Partitionen gebunden ist, müssen Label gesetzt werden. Für die SWAP-Partition:</p>
+<pre><code>swapinfo                # determine swap partition
+glabel label swap /dev/vtbd0s1b     # Set label</code></pre>
 <p>Außerdem muss die <code>/etc/fstab</code> noch angepasst werden. Dies kann z.B. so aussehen:</p>
 <pre><code># Device        Mountpoint      FStype  Options Dump    Pass#
-/dev/ufs/rootfs /               ufs     rw      1       1
+/dev/vtbd0s1a /               ufs     rw      1       1
 /dev/label/swap none            swap    sw      0       0
 linproc /compat/linux/proc linprocfs rw,late 0 0
 linsysfs /compat/linux/sys linsysfs rw 0 0
 tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
-<p>Alle mit <code>glabel</code> erstellten Label landen unter <code>/dev/label</code>. Die mit <code>tunefs</code> erstellten Label liegen unter <code>/dev/ufs/</code>.</p>
+<p>Damit immmer das richtige rootfs genutzt wird:</p>
+<pre><code>mount                           # Get root partition
+dumpfs -l /dev/vtbd0s1a                 # Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
+vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio</code></pre>
 <p><a id="installation-des-init-skripts"></a></p>
-<h2>Installation des Init-Skripts</h2>
+<h2 id="installation-des-init-skripts">Installation des Init-Skripts</h2>
 <p>Die Skripte finden sich im tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese müssen in die VM nach <code>/lockdoc</code> kopiert werden. Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei <code>/boot/loader.conf</code> eingetragen werden: Da das ZFS-Dateisystem für <code>/home</code> einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.</p>
 <pre><code>init_script=&quot;/lockdoc/boot.init.sh&quot;     # Hook in our own init script to automatically start the benchmark</code></pre>
 <p>Ggf. sind die Zeilen, die ebensfalls <code>init_script</code> setzen, auszukommentieren. Jetzt wird bei jedem Start, nachdem der Kernel geladen wurde, als erstes dieses Script ausgeführt. <strong>Achtung:</strong> Sollte der Nutzer <strong>nicht</strong> <code>al</code> lauten, müssen die Init-Skripte angepasst werden. Sollte der Nutzer beim Startet <strong>nicht</strong> innerhalb von fünf Sekunden einen beliebigen Buchstaben drücken, wird der Benchmark gestartet. Andernfalls wird das gewöhnliche FreeBSD-Userland gestartet.</p>
 <p><a id="installation-des-benchmark-skripts"></a></p>
-<h2>Installation des Benchmark-Skripts</h2>
+<h2 id="installation-des-benchmark-skripts">Installation des Benchmark-Skripts</h2>
 <p>Das Skript <code>run-bench.sh</code> befindet sich im tools-Repo unter <code>manuals/vm-linux-32/scripts</code>. Dies muss in der VM nach <code>/lockdoc</code> kopiert werden. Zusätzlich muss das Verzeichnis <code>/lockdoc/bench-out</code> angelegt werden und aus <code>manuals/vm-linux-32/scripts</code> die Datei <code>fork.c</code> dahin kopiert werden.</p>
 <p><a id="installation-der-benchmark-tools"></a></p>
-<h2>Installation der Benchmark-Tools</h2>
+<h2 id="installation-der-benchmark-tools">Installation der Benchmark-Tools</h2>
 <p>Sowohl in der Linux- als auch in der FreeBSD-VM verwenden wir ein Subset des Linux-Test-Project (LTP) für unsere Benchmarksuite. Der Quellcode findet sich unter <code>https://github.com/linux-test-project/ltp.git</code>. Aktuell setzen wir Revision <code>a6a5caef</code>, Tag/Release <code>20190115</code>, ein. Mit Hilfe des Linux-Kompatibilitätslayers laufen die Programme aus dem LTP problemlos unter FreeBSD. Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis <code>/compat/linux/opt/kernel/ltp/bin</code> installiert werden. Vor dem Übersetzen müssen noch die Dateien <code>{syscalls,{syscalls,fs}-custom}</code> aus <code>manuals/vm-linux-32/scripts/</code> nach <code>$LTPSRC/runtest/</code> kopiert werden.</p>
 <p><a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a></p>
-<h2>Konfiguration und Übersetzen des FreeBSD Kernels</h2>
+<h2 id="konfiguration-und-übersetzen-des-freebsd-kernels">Konfiguration und Übersetzen des FreeBSD Kernels</h2>
 <p>Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.</p>
 <pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/12.0-lockdoc /opt/kernel/freebsd/src</code></pre>
 <p>** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:</p>
 <pre><code>sudo cp -r /boot/kernel /boot/kernel.ori</code></pre>
 <p>Bei einem <code>make install</code> wird der aktuelle Kernel nach <code>/boot/kernel.old</code> kopiert und der neue Kernel in <code>/boot/kernel</code> installiert. <a id="konfiguration-1"></a></p>
-<h3>Konfiguration</h3>
+<h3 id="konfiguration-1">Konfiguration</h3>
 <p>Die Konfiguration für LockDoc befindet sich bereits in <code>/opt/kernel/freebsd/src/sys/i386/conf</code>. Daher ist nichts weiter zu tun, sofern diese Konfiguration verwendet werden soll.</p>
 <p>Alternativ kann auch mit einer Standard-Konfiguration begonnen werden:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # cp GENERIC LOCKDOC</code></pre>
 <p>Danach kann die Konfiguration angepasst werden, um z.B. einige Sub-Systeme zu entfernen.</p>
 <p><a id="%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees"></a></p>
-<h3>Übersetzen außerhalb des Source-Trees</h3>
+<h3 id="übersetzen-außerhalb-des-source-trees">Übersetzen außerhalb des Source-Trees</h3>
 <p>Damit wirklich nur der Kernel übersetzt wird und nicht noch Abhängigkeiten aus dem FreeBSD-Tree, kann man mit einer Konfiguration einen spezialisierten Source-Tree erzeugen und diesen anschließend übersetzen:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
 # MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=clang80 make [-j X]
 # sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc LD=ld.lld make install</code></pre>
-<p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=&quot;&quot;</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist. Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt. Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel=&quot;...&quot;</code> in <code>/boot/loader.conf</code>). Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=&quot;&quot;</code>: <code>MODULES_OVERRIDE=&quot;&quot;  LD=ld.lld make [-j X]</code>. Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.</p>
+<p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=""</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist. Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt. Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel="..."</code> in <code>/boot/loader.conf</code>). Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=""</code>: <code>MODULES_OVERRIDE=""  LD=ld.lld make [-j X]</code>. Sofern der 13.0er Kernel unter FreeBSD 12.0 übersetzt wird, muss clang 8.0 genutzt werden. Dazu wird die Variable CC passend gesetzt.</p>
 <p><a id="%C3%9Cbersetzen-im-source-tree"></a></p>
-<h3>Übersetzen im Source-Tree</h3>
+<h3 id="übersetzen-im-source-tree">Übersetzen im Source-Tree</h3>
 <p>Möchte man einfach den Kernel innerhalb des FreeBSD-Trees bauen, genügen folgende Befehle:</p>
 <pre><code># cd /usr/src
 # make buildkernel KERNCONF=LOCKDOC
@@ -236,15 +242,15 @@ tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
 # make installkernel KERNCONF=LOCKDOC</code></pre>
 <p><a id="links-1"></a></p>
-<h2>Links</h2>
+<h2 id="links-1">Links</h2>
 <ul>
 <li><a href="http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html">ausführliche Anleitung zur Konfiguration des Kernels</a></li>
 <li><a href="http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html">ausführliche Anleitung zur Übersetzung des Kernels</a></li>
 </ul>
-<p>&lt;a id=&quot;freebas-code-abdeckung&quot;</a></p>
-<h1>Code-Abdeckung</h1>
+<p>&lt;a id="freebas-code-abdeckung"</a></p>
+<h1 id="code-abdeckung">Code-Abdeckung</h1>
 <p><a id="freebsd-code-abdeckung-vorbereitung"></a></p>
-<h2>Vorbereitung</h2>
+<h2 id="vorbereitung-1">Vorbereitung</h2>
 <p>Zunächst müssen die passenden Kernel gebaut werden. Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
@@ -262,7 +268,7 @@ tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
 <p>Das Übersetzen mit dem <code>clang</code> geht nur, wenn es nicht für i386 übersetzt wird. Ansonsten muss der GCC genommen werden:</p>
 <pre><code># gcc7 -march=i586 -o kcovtrace kcovtrace.c</code></pre>
 <p>Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert sollte als Standardshell für <code>root</code> die Bash eingestellt sein. <a id="freebsd-code-abdeckung-bestimmen-gcov"></a></p>
-<h2>Code-Abdeckung bestimmen - GCOV</h2>
+<h2 id="code-abdeckung-bestimmen---gcov">Code-Abdeckung bestimmen - GCOV</h2>
 <p>Zunächst das Linux-DebugFS einhängen:</p>
 <pre><code># mount -t debugfs debugfs /mnt</code></pre>
 <p>GCOV muss zunaechst mindestens einmal aktiviert werden. Andernfalls existiert das Verzeichnis <code>/mnt/gcov</code> nicht und das Skript <code>gcov-trace.sh</code> bricht ab.</p>
@@ -270,11 +276,11 @@ tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
 <p>Die Variable <code>GATHER_COV</code> sorgt dafür, dass das Skript <code>run-bench.sh</code> gewisse Initialisierungsbefehle auslässt. Der erste Parameter von <code>./gcov-trace.sh</code> gibt an, wo der Kernel übersetzt wurde - hier <code>/opt/kernel/freebsd/obj-gcov/</code>. Der dritte Parameter gibt den Namen der Ausgabedatei an.</p>
 <pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;</code></pre>
 <p><a id="freebsd-code-abdeckung-bestimmen-kcov"></a></p>
-<h2>Code-Abdeckung bestimmen - KCOV</h2>
+<h2 id="code-abdeckung-bestimmen---kcov">Code-Abdeckung bestimmen - KCOV</h2>
 <p><code>kcovtrace</code> muss als <code>root</code> ausgeführt werden.</p>
 <pre><code># GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh &lt;benchmark&gt; 2&gt; pcs.txt</code></pre>
 <p><a id="freebsd-code-abdeckung-links"></a></p>
-<h2>Links</h2>
+<h2 id="links-2">Links</h2>
 <ul>
 <li><a href="https://01.org/linuxgraphics/gfx-docs/drm/dev-tools/gcov.html#">GCOV on Linux</a></li>
 <li><a href="https://01.org/linuxgraphics/gfx-docs/drm/dev-tools/gcov.html#appendix-b-gather-on-test-sh">Gather GCOV files on test machine</a></li>

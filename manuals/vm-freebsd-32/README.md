@@ -283,20 +283,27 @@ vm.kmem_size="512M"
 vm.kmem_size_max="512M"
 ```
 
-Möchte man Labels statt absolute Pfade für die Dateisystem und das root-Device nutzen, muss folgende Zeile in ```/boot/loader.conf```  eingetragen werden:
+Damit man nicht an die Gerätenamen beim Einbinden von Partitionen gebunden ist, müssen Label gesetzt werden. Für die SWAP-Partition:
 ```
-vfs.root.mountfrom="ufs:ufs/rootfs"     # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+swapinfo				# determine swap partition
+glabel label swap /dev/vtbd0s1b		# Set label
 ```
 Außerdem muss die `/etc/fstab` noch angepasst werden. Dies kann z.B. so aussehen:
 ```
 # Device        Mountpoint      FStype  Options Dump    Pass#
-/dev/ufs/rootfs /               ufs     rw      1       1
+/dev/vtbd0s1a /               ufs     rw      1       1
 /dev/label/swap none            swap    sw      0       0
 linproc /compat/linux/proc linprocfs rw,late 0 0
 linsysfs /compat/linux/sys linsysfs rw 0 0
 tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0
 ```
-Alle mit `glabel` erstellten Label landen unter `/dev/label`. Die mit `tunefs` erstellten Label liegen unter `/dev/ufs/`.
+
+Damit immmer das richtige rootfs genutzt wird:
+```
+mount 							# Get root partition
+dumpfs -l /dev/vtbd0s1a					# Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
+vfs.root.mountfrom="ufs:/dev/ufsid/5fa7141d81b1911d"    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+```
 
 <a id="installation-des-init-skripts"></a>
 ## Installation des Init-Skripts
