@@ -40,29 +40,23 @@
 #ifdef __FreeBSD__
 #include <sys/kcov.h>
 #define KCOV_PATH "/dev/kcov"
-#ifdef KERNEL64
+#define KIOGETBUFSIZE   _IOR('c', 5, sizeof(int)) /* Get the buffer size */
+#define KCOV_MODE_TRACE_PC_UNIQUE      2
 typedef uint64_t kernel_long;
 #define BITS_PER_LONG 64
 #else
+#ifdef KERNEL32
 typedef uint32_t kernel_long;
 #define BITS_PER_LONG 32
-#endif
 #else
-#ifdef KERNEL64
-#define KCOV_INIT_TRACE _IOR('c', 1, uint64_t)
-#define KCOV_ENTRY_SIZE sizeof(uint64_t)
-#define KCOV_INIT_TRACE_UNIQUE          _IOR('c', 2, uint64_t)
 typedef uint64_t kernel_long;
 #define BITS_PER_LONG 64
-#else
-#define KCOV_INIT_TRACE _IOR('c', 1, uint32_t)
-#define KCOV_INIT_TRACE_UNIQUE          _IOR('c', 2, uint32_t)
-#define KCOV_ENTRY_SIZE sizeof(uint32_t)
-typedef uint32_t kernel_long;
-#define BITS_PER_LONG 32
 #endif
 #define KCOV_ENABLE _IO('c', 100)
 #define KCOV_DISABLE _IO('c', 101)
+#define KCOV_INIT_TRACE _IOR('c', 1, kernel_long)
+#define KCOV_INIT_TRACE_UNIQUE          _IOR('c', 2, kernel_long)
+#define KCOV_ENTRY_SIZE sizeof(kernel_long)
 #define KCOV_PATH "/sys/kernel/debug/kcov"
 #endif
 #define COVER_SIZE (16 << 20)
@@ -314,9 +308,11 @@ static void __attribute__((constructor)) start_kcov(void) {
 #endif
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 #ifdef __FreeBSD__
-		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &area_size);
+		int temp = 0x4711;
+		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &temp);
 #else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
+		temp = ret;
 #endif
 		if (ret == -1) {
 #ifdef DEBUG
@@ -326,7 +322,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 			kcov_fd = -1;
 			return;
 		}
-		pcs_size = area_size;
+		area_size = pcs_size = temp;
 		pcs_size /= sizeof(kernel_long);
 #ifdef DEBUG
 		dprintf(err_fd, "%d: Kernel told us shared memory size: 0x%jx (0x%jx)\n", getpid(), (uintmax_t)area_size, (uintmax_t)pcs_size);
@@ -358,10 +354,15 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	}
 #ifdef __FreeBSD__
-	if (ioctl(kcov_fd, KIOENABLE, KCOV_MODE_TRACE_PC)) {
+	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
+		ret = ioctl(kcov_fd, KIOENABLE, KCOV_MODE_TRACE_PC_UNIQUE);
+	} else {
+		ret = ioctl(kcov_fd, KIOENABLE, KCOV_MODE_TRACE_PC);
+	}
 #else
-	if (ioctl(kcov_fd, KCOV_ENABLE, kcov_mode)){
+	ret = ioctl(kcov_fd, KCOV_ENABLE, kcov_mode);
 #endif
+	if (ret) {
 #ifdef DEBUG
 		dprintf(err_fd, "%d: ioctl enable, %s\n", getpid(), strerror(errno));
 #endif
