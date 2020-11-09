@@ -380,7 +380,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 		getpid(), getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 #endif
 	if (kcov_mode == KCOV_TRACE_PC) {
-		__atomic_store_n(&area[0], 0, __ATOMIC_RELAXED);
+		// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
+		// __atomic_store_n(&area[0], 0, __ATOMIC_RELAXED);
+		area[0] = 0;
 	}
 	if (atexit(finish_kcov)) {
 #ifdef DEBUG
@@ -490,7 +492,9 @@ static void __attribute__((destructor)) finish_kcov(void) {
 			out_fd, isatty(out_fd));
 #endif
 	} else {
-		n = __atomic_load_n(&area[0], __ATOMIC_RELAXED);
+		// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
+		// n = __atomic_load_n(&area[0], __ATOMIC_RELAXED);
+		n = area[0];
 		if (n >= (area_size - 1)) {
 			dprintf(err_fd, "%d: Possible buffer overrun detected!\n", getpid());
 		}
