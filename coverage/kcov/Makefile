@@ -22,6 +22,6 @@ kcovlib64.so: kcov-lib.cc
 	g++ -DKERNEL64 -Wall -fPIC -shared -o $@ $<  -ldl $(LIBS)
 
 clean:
-	rm sortuniq kcov*.so kcovtrace32 kcovtrace64
+	rm -f sortuniq kcov*.so kcovtrace32 kcovtrace64
 
 .PHONY: all clean
