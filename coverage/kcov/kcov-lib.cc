@@ -95,7 +95,7 @@ static void print_program_name(void) {
 #else
 extern char *program_invocation_name;
 static void print_program_name(void) {
-	dprintf("%s", basename(program_invocation_name));
+	dprintf(err_fd, "%s", basename(program_invocation_name));
 }
 #endif
 
@@ -307,12 +307,12 @@ static void __attribute__((constructor)) start_kcov(void) {
 		dprintf(err_fd, "%d: Using tracing mode '%s'\n", getpid(), (kcov_mode == KCOV_TRACE_PC ? "trace_order" : "trace_unique"));
 #endif
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
+		int temp_size = 0x4711;
 #ifdef __FreeBSD__
-		int temp = 0x4711;
-		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &temp);
+		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &temp_size);
 #else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
-		temp = ret;
+		temp_size = ret;
 #endif
 		if (ret == -1) {
 #ifdef DEBUG
@@ -322,7 +322,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 			kcov_fd = -1;
 			return;
 		}
-		area_size = pcs_size = temp;
+		area_size = pcs_size = temp_size;
 		pcs_size /= sizeof(kernel_long);
 #ifdef DEBUG
 		dprintf(err_fd, "%d: Kernel told us shared memory size: 0x%jx (0x%jx)\n", getpid(), (uintmax_t)area_size, (uintmax_t)pcs_size);
