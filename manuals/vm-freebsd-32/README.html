@@ -44,6 +44,7 @@
 <ul>
 <li><a href="#erforderliche-pakete-installieren">Erforderliche Pakete installieren</a></li>
 <li><a href="#userland-einrichten">Userland einrichten</a></li>
+<li><a href="#userland-compilieren">Userland aus dem Repository installieren</a></li>
 <li><a href="#installation-des-init-skripts">Installation des Init-Skripts</a></li>
 <li><a href="#installation-des-benchmark-skripts">Installation des Benchmark-Skripts</a></li>
 <li><a href="#installation-der-benchmark-tools">Installation der Benchmark-Tools</a></li>
@@ -197,6 +198,19 @@ tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
 <pre><code>mount                           # Get root partition
 dumpfs -l /dev/vtbd0s1a                 # Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
 vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio</code></pre>
+<p><a id="userland-compilieren"></a></p>
+<h2 id="userland-aus-dem-repository-installieren">Userland aus dem Repository installieren</h2>
+<p>Es ist nicht ganz klar, ob der Schritt wirklich nötig ist. Es gibt aber Berichte, dass FreeBSD sich komisch verhalten kann, wenn Kernel und Userland nicht auf derselben Version basieren. Installiert wird in dieser Anleitung ein FreebSD 12.4. Der Kernel-Tree ist aber in Version 13.0-current. Daher muss das Userland aus dem Tree gebaut werden. Eine detailierte Anleitung, wie man das Userland aktualisiert, findet sich <a href="https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/makeworld.html">hier</a>.</p>
+<pre><code>chmod g+w /usr/obj          # FreeBSD places object files during userland build here. Make it writeable for members of group wheel
+cd /opt/kernel/freebsd/src/
+make -j4 buildworld
+make -j4 kernel
+shutdown -r now
+cd /opt/kernel/freebsd/src
+sudo make installworld
+sudo mergemaster -Ui
+shutdown -r now
+</code></pre>
 <p><a id="installation-des-init-skripts"></a></p>
 <h2 id="installation-des-init-skripts">Installation des Init-Skripts</h2>
 <p>Die Skripte finden sich im tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese müssen in die VM nach <code>/lockdoc</code> kopiert werden. Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei <code>/boot/loader.conf</code> eingetragen werden: Da das ZFS-Dateisystem für <code>/home</code> einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.</p>

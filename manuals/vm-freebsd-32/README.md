@@ -22,6 +22,7 @@
 - [FreeBSD für LockDoc vorbereiten](#freebsd-f%C3%BCr-lockdoc-vorbereiten)
 	- [Erforderliche Pakete installieren](#erforderliche-pakete-installieren)
 	- [Userland einrichten](#userland-einrichten)
+	- [Userland aus dem Repository installieren](#userland-compilieren)
 	- [Installation des Init-Skripts](#installation-des-init-skripts)
 	- [Installation des Benchmark-Skripts](#installation-des-benchmark-skripts)
 	- [Installation der Benchmark-Tools](#installation-der-benchmark-tools)
@@ -302,6 +303,24 @@ Damit immmer das richtige rootfs genutzt wird:
 mount 							# Get root partition
 dumpfs -l /dev/vtbd0s1a					# Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
 vfs.root.mountfrom="ufs:/dev/ufsid/5fa7141d81b1911d"    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+```
+
+<a id="userland-compilieren"></a>
+## Userland aus dem Repository installieren
+Es ist nicht ganz klar, ob der Schritt wirklich nötig ist. Es gibt aber Berichte, dass FreeBSD sich komisch verhalten kann, wenn Kernel und Userland nicht auf derselben Version basieren.
+Installiert wird in dieser Anleitung ein FreebSD 12.4. Der Kernel-Tree ist aber in Version 13.0-current. Daher muss das Userland aus dem Tree gebaut werden.
+Eine detailierte Anleitung, wie man das Userland aktualisiert, findet sich [hier](https://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/makeworld.html).
+```
+chmod g+w /usr/obj			# FreeBSD places object files during userland build here. Make it writeable for members of group wheel
+cd /opt/kernel/freebsd/src/
+make -j4 buildworld
+make -j4 kernel
+shutdown -r now
+cd /opt/kernel/freebsd/src
+sudo make installworld
+sudo mergemaster -Ui
+shutdown -r now
+
 ```
 
 <a id="installation-des-init-skripts"></a>
