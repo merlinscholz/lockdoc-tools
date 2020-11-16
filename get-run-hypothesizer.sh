@@ -46,7 +46,9 @@ else
 fi
 
 PREFIX=${1};shift
+SELECTION_STRATEGY=${1};shift
 ACCEPT_THRESHOLD=${1};shift
+REDUCTION_FACTOR=${1};shift
 HOST=${1};shift
 USER=${1};shift
 
@@ -63,7 +65,7 @@ fi
 
 if [ ${SKIP_EXEC} -eq 0 ];
 then
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX} ${ACCEPT_THRESHOLD}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX} ${SELECTION_STRATEGY} ${ACCEPT_THRESHOLD} ${REDUCTION_FACTOR}
 	EXEC_TIME=`cat ${DURATION_FILE}`
 	echo "Hypothesizer took ${EXEC_TIME} secs."
 fi

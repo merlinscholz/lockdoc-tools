@@ -1,5 +1,7 @@
 library("ggplot2")
 library("reshape2")
+library("getopt")
+library("plyr")
 
 globalPlotWidth = 4.5
 globalPlotHeight = 3

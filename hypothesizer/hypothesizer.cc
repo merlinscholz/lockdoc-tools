@@ -28,7 +28,7 @@
 
 const double accept_threshold_default = .9, nolock_threshold_default = .05, cutoff_threshold_default = .1, confidence_threshold_default = 50.0, reduction_factor_default = .05;
 
-enum SelectionStrategy { TOPDOWN, BOTTOMUP, SHARPEN };
+enum SelectionStrategy { TOPDOWN, BOTTOMUP, SHARPEN, LOCKSET };
 enum optionIndex { UNKNOWN, HELP,
 	REDUCTIONFACTOR, SELECTIONSTRATEGY,
 	NOLOCKTHRESHOLD, ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
@@ -471,9 +471,15 @@ void evaluate_hypothesis_sharpen(Member& member, void* param, std::deque<std::ve
 		for (auto child : member.graph[cur_node_sorted]) {
 			nodes.push_back(child);
 		}
-	} else if (cur_node_sorted.size() > member.conflict_list.front().first.size() &&
-			  (cur_rel_sup == rel_support_winner || delta <= reduction_factor)) {
-		// Found a better hypothesis: More locks involved AND (same rel. support OR reduktion in rel. sup less or equal to reduction factor)
+	} else if ((member.conflict_list.front().first.size() == cur_node_sorted.size() && cur_rel_sup > rel_support_winner) ||
+		   (cur_node_sorted.size() > member.conflict_list.front().first.size() &&
+			  (cur_rel_sup == rel_support_winner || delta <= reduction_factor))) {
+		/*
+		 * Found a better hypothesis:
+		 * (Same amount of locks AND higher rel. support)
+		 * OR
+		 * (More locks involved AND (same rel. support OR reduktion in rel. sup less or equal to reduction factor))
+		 */
 		member.winner_found = true;
 		member.conflict_list.clear();
 		member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
@@ -498,6 +504,58 @@ void evaluate_hypothesis_init_topdown(Member& member, void* param, std::deque<st
 	member.winner_found = false;
 	nodes.clear();
 	nodes.push_back(Member::root_node);
+}
+
+void evaluate_hypothesis_lockset(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,
+	std::vector<myid_t>& cur_node_sorted, std::vector<myid_t>& cur_node_ordered, double& rel_support_winner, double& cur_rel_sup) {
+	if (cur_rel_sup < 1.0) {
+		return;
+	}
+
+	if (member.conflict_list.front().first.size() == cur_node_sorted.size()) {
+		// We've found an equal hypothesis. Just save it.
+		if (!in_conflict_list(member.conflict_list, cur_node_ordered)) {
+			member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+#ifdef DEBUG
+			std::cout << "adding to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		} else {
+#ifdef DEBUG
+			std::cout << "already in to conflict list: " << locks2string(cur_node_ordered, " -> ") << std::endl;
+#endif
+		}
+#ifdef DEBUG
+		std::cout << " adding to conflict list" << std::endl;
+#endif
+		// Examine the children
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+		}
+	} else if (member.conflict_list.front().first.size() <= cur_node_sorted.size()) {
+		/*
+		 * Found a better hypothesis:
+		 * (rel. support is 100.0) AND
+		 * (greater or equal amount of locks are involved)
+		 */
+#ifdef DEBUG
+		std::cout << "Better node found. Resetting: " <<  locks2string(cur_node_sorted, " -> ") << std::endl;
+#endif
+		member.winner_found = true;
+		member.conflict_list.clear();
+		member.conflict_list.push_back(std::pair<std::vector<myid_t>, std::vector<myid_t>>(cur_node_sorted, cur_node_ordered));
+		/*
+		 * Since we've found a new potential winner, we'll examine
+		 * the children.
+		 * A child might have the same rel. support but
+		 * more locks involved, for example.
+		 */
+		for (auto child : member.graph[cur_node_sorted]) {
+			nodes.push_back(child);
+#ifdef DEBUG
+			std::cout << "adding child to list: " << locks2string(child, " + ") << std::endl;
+#endif
+		}
+	}
 }
 
 void evaluate_hypothesis_topdown(Member& member, void* param, std::deque<std::vector<myid_t>>& nodes,
@@ -709,6 +767,7 @@ void print_hypotheses(const Member& member,
 			<< member.name << " [" << member.accesstype << "] ("
 			<< member.combinations.size() << " lock combinations)" << std::endl;
 		std::cout << "  hypotheses: " << member.hypotheses.size() << std::endl;
+		std::cout << "  accesses without any locks:" << (member.occurrences - member.occurrences_with_locks) << std::endl;
 	}
 
 	//std::cout << "Graph for " << member.accesstype << ":" << member.name << " :" << std::endl;
@@ -784,7 +843,7 @@ void print_hypotheses(const Member& member,
 				relative_support = (double) match.second / (double) member.occurrences;
 
 				bool this_is_the_winner = !found_winner && member.winning_hypothesis == match.first && member.winner_found;
-				bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, match.first);
+				bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, match.first) && member.winner_found;
 				found_winner = found_winner || this_is_the_winner;
 
 				if (reportmode == ReportMode::NORMAL) {
@@ -831,14 +890,14 @@ void print_hypotheses(const Member& member,
 
 			auto winner = h.matches.begin()->first;
 			bool this_is_the_winner = !found_winner && member.winning_hypothesis == winner && member.winner_found;
+			bool is_conflict = !this_is_the_winner && in_conflict_list(member.conflict_list, winner) && member.winner_found;
 			found_winner = found_winner || this_is_the_winner;
 
 			std::string prefix;
 			if (this_is_the_winner) {
 				prefix += "!";
 			} else {
-				bool found = in_conflict_list(member.conflict_list, winner);
-				if (found) {
+				if (is_conflict) {
 					prefix += "?";
 				} else {
 					prefix += " ";
@@ -930,6 +989,8 @@ int main(int argc, char **argv)
 			selection_strategy = SelectionStrategy::BOTTOMUP;
 		} else if (criterion == "sharpen") {
 			selection_strategy = SelectionStrategy::SHARPEN;
+		} else if (criterion == "lockset") {
+			selection_strategy = SelectionStrategy::LOCKSET;
 		} else {
 			std::cerr << "Unknown hypothesis sort criterion " << criterion << std::endl;
 			return 1;
@@ -1163,6 +1224,19 @@ int main(int argc, char **argv)
 		<< locks.size() << " distinct locks, "
 		<< accesscount << " memory accesses in total)"
 		<< std::endl;
+	std::cerr << "Using strategy '";
+	if (selection_strategy == SHARPEN) {
+		std::cerr << "sharpen";
+	} else if (selection_strategy == BOTTOMUP) {
+		std::cerr << "bottomup";
+	} else if (selection_strategy == TOPDOWN) {
+		std::cerr << "topdown";
+	} else if (selection_strategy == LOCKSET) {
+		std::cerr << "lockset";
+	} else {
+		std::cerr << "unknown";
+	}
+	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << accept_threshold << ", and reduction factor " << reduction_factor << std::endl;
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
@@ -1211,6 +1285,10 @@ int main(int argc, char **argv)
 
 			case SelectionStrategy::BOTTOMUP:
 				determine_winning_hypothesis(member, &accept_threshold, evaluate_hypothesis_bottomup, NULL);
+				break;
+
+			case SelectionStrategy::LOCKSET:
+				determine_winning_hypothesis(member, &accept_threshold, evaluate_hypothesis_lockset, NULL);
 				break;
 		}
 

@@ -39,9 +39,9 @@ then
 	exit 1
 fi
 
-if [ -z ${ACCEPT_THRESHOLD} ];
+if [ -z ${ACCEPT_THRESHOLD} ] || [ -z ${SELECTION_STRATEGY} ] || [ -z ${REDUCTION_FACTOR} ];
 then
-	echo "Variable ACCEPT_THRESHOLD is not set!" >&2
+	echo "Vars ACCEPT_THRESHOLD, SELECTION_STRATEGY, or REDUCTION_FACTOR are not set!" >&2
 	exit 1
 fi
 
@@ -162,7 +162,7 @@ do
 		echo "Start processing '${VARIANT}'"
 		if [ ${SKIP_HYPO_QUERY} -eq 0 ] || [ ${SKIP_HYPO_EXEC} -eq 0 ];
 		then
-			SKIP_QUERY=${SKIP_HYPO_QUERY} SKIP_EXEC=${SKIP_HYPO_EXEC} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX} ${ACCEPT_THRESHOLD} ${PSQL_HOST} ${PSQL_USER}
+			SKIP_QUERY=${SKIP_HYPO_QUERY} SKIP_EXEC=${SKIP_HYPO_EXEC} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/get-run-hypothesizer.sh ${DB} ${USE_STACK} ${USE_SUBCLASSES} ${PREFIX} ${SELECTION_STRATEGY} ${ACCEPT_THRESHOLD} ${REDUCTION_FACTOR} ${PSQL_HOST} ${PSQL_USER}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run hypothesizer for ${VARIANT}!">&2

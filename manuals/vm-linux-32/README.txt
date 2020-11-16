@@ -60,7 +60,7 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 		# Clone our ltp repo to /opt/kernel/ltp/src 
  		# git checkout lockdoc
 		# Copy {syscalls,fs}-custom from manuals/vm-linux-32/scripts/ to /opt/kernel/ltp/src/runtest/
-		# Install the following packages: libaio-dev quota procps
+		# Install the following packages: libaio-dev quota procps libattr1-dev libnuma-dev libcap-dev
 		# ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
 		# If configure does not exists, run 'make autotools' first.
 
