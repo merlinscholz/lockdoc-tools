@@ -19,6 +19,7 @@ SYZKALLER_DIR=$2
 PNGDIR=$3
 CSV=$4
 LTP=$5
+JUST_SAVE_LAST_PNG=${JUST_SAVE_LAST_PNG:-0}
 
 [ "$PNGDIR" != /dev/null ] && mkdir -p "$PNGDIR"
 
@@ -81,7 +82,7 @@ for f in "$SYZKALLER_DIR"/*; do
 	# determine FS subset of aggregate that's not covered by LTP already
 	FSCOV_NOTLTP=$( set-minus $TMP $LTP | wc -l )
 
-	[ "$PNGDIR" != /dev/null ] && $SFCTOOL -t spiral \
+	[ "$PNGDIR" != /dev/null ] && [ ${JUST_SAVE_LAST_PNG} -eq 0 ] && $SFCTOOL -t spiral \
 		--off-map $ALLBBS --color ffffff \
 		--off-map $ALLFS --color dddddd \
 		--off-map $AGGREGATE --color 9999ff \
@@ -99,3 +100,12 @@ for f in "$SYZKALLER_DIR"/*; do
 	echo -n $(wc -l < $TMP)" " >> $CSV
 	echo $FSCOV_NOTLTP $ALLBBS_COUNT $ALLFS_COUNT >> $CSV
 done
+[ "$PNGDIR" != /dev/null ] && [ ${JUST_SAVE_LAST_PNG} -gt 0 ] && $SFCTOOL -t spiral \
+	--off-map $ALLBBS --color ffffff \
+	--off-map $ALLFS --color dddddd \
+	--off-map $AGGREGATE --color 9999ff \
+	--off-map $TMP --color ff9999 \
+	--on-map $ALLBBS --color 3333ff \
+	--on-map $ALLFS --color ff3333 \
+	--on-map $NEWBBS --color ff00ff \
+	$SFC_ORDERING $f "$PNGDIR"/$BASE.png
