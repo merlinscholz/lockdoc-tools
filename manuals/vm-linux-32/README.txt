@@ -64,3 +64,25 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 		# ./configure --prefix=/opt/kernel/ltp/bin/ && make && make install
 		# If configure does not exists, run 'make autotools' first.
 
+- Gather code coverage
+	+ Compile the aformentioned Linux kernel with a KCOV-enabled config: lockdoc-coverage-{amd64,386}.config
+	+ Compile the kcov-lib (run 'make' in tools-repo/coverage/kcov) on the target machine
+	+ Build and install LTP
+	+ Gather basic-block coverage
+		# For any program: LD_PRELOAD=/path/to/tools/coverage/kcov/kcovlib.so KCOV_MODE=trace_{order,unique} KCOV_OUT={fd,progname,stderr,FILENAME} PROGRAM
+		  KCOV_OUT 
+			fd: kcovlib expects the output file/pipe to opened at fd MAX_FD-1; for a Bash example see below:
+				MAX_FD=`ulimit -Sn`
+			        OUT_FD=`echo  ${MAX_FD} - 1 | bc`
+				exec ${OUT_FD}> > OUT.TXT
+			progname: kcovlib uses the program name for the output file
+			stderr: obvious.
+		# For LTP: Use the provided script tools-repo/coverage/kcov-all-ltp-tests.sh
+		  We recommend disabling sortuniq for large or parallel programs setting USE_SORTUNIQ=0.
+		  Please providate a secondary device for LTP using DEVICE env variable.
+		  Use TESTS env variable to run a subset of all LTP testsuites, e.g. TESTS=syscalls,fs
+		  Usage: kcov-all-ltp-tests.sh <path to kcovlib.so> <path to LTP> <output directory>
+		  Example usage:
+			USE_SORTUNIQ=0 DEVICE=/dev/vdb TESTS=fsx,fs_readonly /home/al/tools/coverage/kcov-all-ltp-tests.sh /home/al/tools/coverage/kcov/kcovlib.so /home/al/ltp/bin/ /home/al/ltp-coverage/
+		# For LockDoc's benchmark used for the EuroSys paper:
+			LD_PRELOAD=/home/al/tools/coverage/kcov/kcovlib.so KCOV_OUT=/tmp/bar.map GATHER_COV=1 /lockdoc/run-bench.sh mixed-fs
