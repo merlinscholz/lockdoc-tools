@@ -81,8 +81,37 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 		  We recommend disabling sortuniq for large or parallel programs setting USE_SORTUNIQ=0.
 		  Please providate a secondary device for LTP using DEVICE env variable.
 		  Use TESTS env variable to run a subset of all LTP testsuites, e.g. TESTS=syscalls,fs
-		  Usage: kcov-all-ltp-tests.sh <path to kcovlib.so> <path to LTP> <output directory>
+		  Usage: trace-all-ltp-tests.sh <kcov|strace> <path to kcovlib.so> <path to LTP> <output directory>
 		  Example usage:
-			USE_SORTUNIQ=0 DEVICE=/dev/vdb TESTS=fsx,fs_readonly /home/al/tools/coverage/kcov-all-ltp-tests.sh /home/al/tools/coverage/kcov/kcovlib.so /home/al/ltp/bin/ /home/al/ltp-coverage/
+			USE_SORTUNIQ=0 DEVICE=/dev/vdb TESTS=fsx,fs_readonly /home/al/tools/coverage/trace-all-ltp-tests.sh kcov /home/al/tools/coverage/kcov/kcovlib.so /home/al/ltp/bin/ /home/al/ltp-coverage/
 		# For LockDoc's benchmark used for the EuroSys paper:
 			LD_PRELOAD=/home/al/tools/coverage/kcov/kcovlib.so KCOV_OUT=/tmp/bar.map GATHER_COV=1 /lockdoc/run-bench.sh mixed-fs
+
+- Using Moonshine (https://github.com/shankarapailoor/moonshine)
+	+ Activate Debian Buster Backports
+	+ Install: ragel
+	+ Install from backports: apt install -t buster-backports golang-1.14-go
+	+ mkdir moonshine; export GOROOT=/usr/lib/go-1.14/; export GOPATH=$HOME/moonshine; export PATH=$GOPATH/bin:$GOROOT/bin:$PATH;
+	+ cd moonshine
+	+ go get golang.org/x/tools/cmd/goyacc
+	+ go get -u -d github.com/google/syzkaller/ (maybe with /prog at the end)
+	+ cd src/github.com/google/syzkaller/ && git checkout -b moonshine f48c20b8f9b2a6c26629f11cc15e1c9c316572c8
+	+ cd ~/moonshine/src/github.com/shankarapailoor/moonshine && make
+	+ cd ~/moonshine
+	+ git clone https://github.com/strace/strace strace
+	+ cd strace && git checkout -b moonshine a8d2417e97e71ae01095bee1a1e563b07f2d6b41
+	+ git apply $GOPATH/src/github.com/shankarapailoor/moonshine/strace_kcov.patch
+	+ ./bootstrap
+	+ ./configure
+	+ make
+	+ ./strace -o tracefile -s 65501 -v -xx -f -k /path/to/executable arg1 arg2 .. argN
+		Example usage for LTP:
+		DEVICE=/dev/vdb TESTS=syscalls /home/al/tools/coverage/trace-all-ltp-tests.sh strace /home/al/moonshine/strace/ /home/al/ltp/bin/ /home
+/al/ltp-strace/
+	+ ./bin/moonshine -dir TRACES_DIR -distill getting-started/distill.json
+	+ Place resulting corpus.db in your syzkaller's workdir
+
+	+ To directly convert strace output to syzkaller programs, and convert them to a corpus.db:
+		# cd ~/moonshine/src/github.com/google/syzkaller/ && git checkout master && make trace2syz
+		# ./bin/syz-trace2syz -deserialize TARGET_DIR -dir INPUT_DIR -vv 2
+		# ./bin/syz-db pack TARGET_DIR foo.db
