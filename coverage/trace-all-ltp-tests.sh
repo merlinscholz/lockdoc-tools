@@ -73,7 +73,7 @@ function run_cmd() {
 		fi
 	elif [ ${_TRACE_TOOL} == "strace" ];
 	then
-		${STRACE_DIR}/strace -o ${OUTFILE}.strace -s 65500 -v -xx -f -k ${_CMD}
+		eval ${STRACE_DIR}/strace -o ${OUTFILE}.strace -s 65500 -v -xx -f -k ${_CMD}
 	else
 		echo "Unknown tracing tool: ${_TRACE_TOOL}"
 		exit 2
