@@ -32,8 +32,8 @@
 		- [Übersetzen im Source-Tree](#%C3%9Cbersetzen-im-source-tree)
 	- [Links](#links-1)
 - [Code-Abdeckung](#freebas-code-abdeckung)
-	- [Code-Abdeckung bestimmen - GCOV](#freebsd-code-abdeckung-bestimmen-gcov)
 	- [Code-Abdeckung bestimmen - KCOV](#freebsd-code-abdeckung-bestimmen-kcov)
+	- [Code-Abdeckung bestimmen - GCOV](#freebsd-code-abdeckung-bestimmen-gcov)
 	- [Links](#freebsd-code-abdeckung-links)
 
 <!-- /MarkdownTOC -->
@@ -257,13 +257,6 @@ chsh -s /usr/local/bin/bash
 ```
 Es empfiehlt sich dies ebenfalls als `root` zu tun.
 
-Da manche Programme unter FreeBSD an anderer Stelle im Dateisystem als unter Linux liegen, erstellen wir Symlinks, damit dasselbe Benchmark-Skript nutzen können.
-
-```
-# ln -s /usr/local/bin/bash /bin/
-# ln -s /usr/local/bin/sysbench /usr/bin/
-# ln -s gcov7 /usr/local/bin/gcov
-```
 Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der `/etc/fstab` eingetragen werden:
 
 ```
@@ -304,6 +297,10 @@ mount 							# Get root partition
 dumpfs -l /dev/vtbd0s1a					# Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
 vfs.root.mountfrom="ufs:/dev/ufsid/5fa7141d81b1911d"    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
 ```
+
+Abschließend erhält die VM noch ein zweites Festplatten-Image mit einer Größe von 5G. Dies wird von LTP Testsuites genutzt.
+Das Device muss in der Variable DEVICE in ```/lockdoc/run-bench.sh``` vermerkt werden. Achtung: Device heißt in QEMU möglicherweise anders als in BOCHS.
+Bei der Nutzung von KCOV mittels ```trace-all-ltp-tests.sh``` muss die Umgebungsvariable DEVICE gesetzt werden, siehe manuals/vm-linux-32/README.txt.
 
 <a id="userland-compilieren"></a>
 ## Userland aus dem Repository installieren
@@ -423,7 +420,7 @@ geändert hat.
 - [ausführliche Anleitung zur Konfiguration des Kernels](http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html)
 - [ausführliche Anleitung zur Übersetzung des Kernels](http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html)
 
-<a id="freebas-code-abdeckung"</a>
+<a id="freebas-code-abdeckung"></a>
 # Code-Abdeckung
 <a id="freebsd-code-abdeckung-bestimmen-kcov"></a>
 ## Code-Abdeckung bestimmen - KCOV
@@ -435,20 +432,12 @@ Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 # MODULES_OVERRIDE="" make [-j X]
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-kcov make install
 ```
-Außerdem müssen die folgenden zwei Headerdateien in das System-Include-Verzeichnis kopiert werden, damit `kcovtrace` übersetzt werden kann:
-```
-# cp /opt/kernel/freebsd/src/sys/sys/kcov.h /usr/include/sys/
-# cp /opt/kernel/freebsd/src/sys/sys/coverage.h /usr/include/sys/
-# clang80 -o kcovtrace kcovtrace.c
-```
-Das Übersetzen mit dem `clang` geht nur, wenn es nicht für i386 übersetzt wird. Ansonsten muss der GCC genommen werden:
-```
-# gcc7 -march=i586 -o kcovtrace kcovtrace.c
-```
-`kcovtrace` muss als `root` ausgeführt werden.
-```
-# GATHER_COV=1 ./kcovtrace /lockdoc/run_bench.sh <benchmark> 2> pcs.txt
-```
+Für weitere Details bitte in ```manuals/vm-linux-32/README.txt``` im Abschnitt `Gather code coverage` nachschauen.
+
+
+<a id="freebsd-code-abdeckung-bestimmen-gcov"></a>
+## Code-Abdeckung bestimmen - GCOV
+
 Achtung ggf. veraltet, da nicht mehr gepflegt: Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 ```
 # cd /opt/kernel/freebsd/src/sys/i386/conf
@@ -457,8 +446,6 @@ Achtung ggf. veraltet, da nicht mehr gepflegt: Um einen Kernel mit GCOV-Unterst�
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-gcov LD=ld.lld make install
 ```
 Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert sollte als Standardshell für `root` die Bash eingestellt sein.
-<a id="freebsd-code-abdeckung-bestimmen-gcov"></a>
-## Code-Abdeckung bestimmen - GCOV
 Zunächst das Linux-DebugFS einhängen:
 ```
 # mount -t debugfs debugfs /mnt
