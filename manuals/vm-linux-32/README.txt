@@ -2,6 +2,9 @@
 	+ Attention: You must use a raw image for your VM. Do *not* use QCOW2 and others.
 	+ Install the following packages (incomplete list): lcov libncurses5-dev git-core build-essential bison flex libssl-dev libgmp-dev libmpfr-dev libmpc-dev bc
 	+ We recommend 2 cores, 2GB of RAM and 40GB of hdd space for the VM.
+	+ Provide a second empty disk image with 5G.
+	  It will later be used by the LTP testsuite. Adapt the device node in run-bench.sh (variable DEVICE) accordingly.
+	  Use DEVICE env variable for trace-all-ltp-tests.sh
 - Build your own kernel
 	+ Checkout kernel in /opt/kernel/XXX, for the moment use branch lockdoc-4-10
 	+ We recommend using GCC 7.X. GCC 8.x has issues resolving instruction pointers that point to a leaf in the callgraph correctly.
