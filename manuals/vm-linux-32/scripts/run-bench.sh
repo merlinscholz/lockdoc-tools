@@ -48,8 +48,6 @@ then
 	OUTDEV=/dev/ttyu0
 	if [ ${GATHER_COV} -eq 0 ];
 	then
-		KERNEL_VERSION=`cat /dev/lockdoc/version`
-		echo "kernelversion=${KERNEL_VERSION}" | tee ${OUTDEV}
 		#POOL=`zpool list -o name -H`
 		echo "Remount RW" | tee ${OUTDEV}
 		mount -u -o rw /
@@ -62,6 +60,7 @@ then
 		DEFAULT_GROUP=20
 	fi
 	LTP_CMD="chroot /compat/linux ${LTPROOT}/runltp -q"
+	DEVICE=/dev/ada1
 fi
 
 if [ ! -e ${DEVICE} ];
@@ -75,6 +74,7 @@ export LTP_BIG_DEV=${DEVICE}
 export LTP_BIG_DEV_FS_TYPE=ext4
 export TMPDIR=`mktemp -d /tmp/ltp.XXX`
 chmod 0777 ${TMPDIR}
+env > ${OUTDEV}
 
 if [ ! -d ${DIR} ];
 then
@@ -251,6 +251,12 @@ then
 elif [ "${BENCH}" == "ltp-fs-custom" ];
 then
 	run_cmd ${LTP_CMD} -f fs-custom
+elif [ "${BENCH}" == "ltp-fs-al" ];
+then
+	run_cmd ${LTP_CMD} -f fs-al
+elif [ "${BENCH}" == "ltp" ];
+then
+	run_cmd ${LTP_CMD}
 elif [ "${BENCH}" == "startup" ];
 then
 	echo "Doing nothing!" | tee ${OUTDEV}
