@@ -395,16 +395,25 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	} else if (strcmp(kcov_out, "stderr") == 0) {
 		return;
-	} else if (strcmp(kcov_out, "fd") == 0) {
-		if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
+	} else if (strncmp(kcov_out, "fd", 2) == 0) {
+		if (sscanf(kcov_out, "fd:%d", &out_fd) < 0) {
 #ifdef DEBUG
-			dprintf(err_fd, "%d: getrlimit, %s\n", getpid(), strerror(errno));
+			dprintf(err_fd, "%d: sscanf: cannot parse fd from: '%s', falling back to the getrlimit() method\n", getpid(), kcov_out);
+#endif
+			if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
+				dprintf(err_fd, "%d: getrlimit, %s\n", getpid(), strerror(errno));
+				cleanup_kcov(1);
+				return;
+			}
+			out_fd = max_ofiles.rlim_cur - 1;
+#ifdef DEBUG
+			dprintf(err_fd, "%d: Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", getpid(), out_fd);
+#endif
+		} else {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: Someone provided use with an FD: %d\n", getpid(), out_fd);
 #endif
 		}
-		out_fd = max_ofiles.rlim_cur - 1;
-#ifdef DEBUG
-		dprintf(err_fd, "%d: Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", getpid(), out_fd);
-#endif
 		if (fcntl(out_fd, F_GETFD)) {
 #ifdef DEBUG
 			dprintf(err_fd, "%d: fcntl out_fd start, %s\n", getpid(), strerror(errno));
