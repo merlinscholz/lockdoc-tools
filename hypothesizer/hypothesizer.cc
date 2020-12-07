@@ -1236,7 +1236,7 @@ int main(int argc, char **argv)
 	} else {
 		std::cerr << "unknown";
 	}
-	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << accept_threshold << ", and reduction factor " << reduction_factor << std::endl;
+	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << 100 * accept_threshold << ", and reduction factor " << 100 * reduction_factor << std::endl;
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
