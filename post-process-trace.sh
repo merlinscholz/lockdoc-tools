@@ -6,6 +6,8 @@ TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
 STACK_USAGE=(0 1)
 SUBCLASS_USAGE=(0 1)
+DURATION_CSV="post-processing-durations.csv"
+STATS_CSV="post-processing-stats.csv"
 
 function usage() {
         echo "usage: $0 <database> [ pid of fail-client ]" >&2
@@ -57,6 +59,8 @@ fi
 OVERALL_EXEC_TIME=0.0
 DURATION_FILE=`mktemp /tmp/output.XXXXX`
 PSQL="psql --tuples-only --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB}"
+echo "step,section,duration" > ${DURATION_CSV}
+echo "topic,param,value" > ${STATS_CSV}
 
 if [ ${SKIP_IMPORT} -eq 0 ];
 then
@@ -69,6 +73,7 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,conv-import,${EXEC_TIME}" >> ${DURATION_CSV}
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
@@ -80,6 +85,7 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,flattenstructs,${EXEC_TIME}" >> ${DURATION_CSV}
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
@@ -91,6 +97,7 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,delatomic,${EXEC_TIME}" >> ${DURATION_CSV}
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
@@ -102,6 +109,7 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,checkbroken,${EXEC_TIME}" >> ${DURATION_CSV}
 	echo " took ${EXEC_TIME} sec."
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
@@ -119,6 +127,7 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,accessesflat,${EXEC_TIME}" >> ${DURATION_CSV}
 	echo " took ${EXEC_TIME} sec."
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
@@ -131,11 +140,13 @@ then
 		exit 1
 	fi
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "import,locksflat,${EXEC_TIME}" >> ${DURATION_CSV}
 	echo " took ${EXEC_TIME} sec."
 	OVERALL_EXEC_TIME=`echo ${EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 	IMPORT_EXEC_TIME=`echo ${EXEC_TIME}+${IMPORT_EXEC_TIME} | bc`
 
 	echo "Import and atomic handling took ${IMPORT_EXEC_TIME} secs."
+	echo "import,total,${IMPORT_EXEC_TIME}" >> ${DURATION_CSV}
 fi
 
 PREFIX="all-txns-members-locks"
@@ -197,7 +208,35 @@ do
 		OVERALL_EXEC_TIME=`echo ${VARIANT_EXEC_TIME}+${OVERALL_EXEC_TIME} | bc`
 		echo "Finished processing '${VARIANT}'. Took ${VARIANT_EXEC_TIME} secs."
 		echo "-----------------------------------"
+		echo "${VARIANT},hypothesizer,${HYPO_EXEC_TIME}" >> ${DURATION_CSV}
+		echo "${VARIANT},cex,${CEX_EXEC_TIME}" >> ${DURATION_CSV}
+		echo "${VARIANT},total,${VARIANT_EXEC_TIME}" >> ${DURATION_CSV}
 	done
 done
 echo "Overall exec time: ${OVERALL_EXEC_TIME} secs."
+echo "total,total,${VARIANT_EXEC_TIME}" >> ${DURATION_CSV}
+echo "Gathering stats about ${DATA}.."
+if echo $DATA | egrep -q '.gz$';
+then
+	zcat ${DATA} | tail --lines=+2 | cut -d '#' -f2 | awk '{c[$1]++}END{for (x in c) print "events,"x","c[x]}' >> ${STATS_CSV}
+	echo -n "events,total," >> ${STATS_CSV}
+	zcat ${DATA} | tail --lines=+2 | wc -l >> ${STATS_CSV}
+
+	echo -n "locks,static," >> ${STATS_CSV}
+	echo "SELECT COUNT(*) FROM locks WHERE embedded_in IS NULL;" | psql --tuples-only --no-align --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB} >> ${STATS_CSV}
+
+	echo -n "locks,dynamic," >> ${STATS_CSV}
+	echo "SELECT COUNT(*) FROM locks WHERE embedded_in IS NOT NULL;" | psql --tuples-only --no-align --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB} >> ${STATS_CSV}
+
+	echo -n "locks,total," >> ${STATS_CSV}
+	echo "SELECT COUNT(*) FROM locks;" | psql --tuples-only --no-align --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB} >> ${STATS_CSV}
+
+	echo -n "accesses,total," >> ${STATS_CSV}
+	echo "SELECT COUNT(*) FROM accesses;" | psql --tuples-only --no-align --quiet --echo-errors -h ${PSQL_HOST} -U ${PSQL_USER} ${DB} >> ${STATS_CSV}
+else
+	echo "${DATA} is not a valid gzip file! No stats produced!"
+	exit 1
+fi
+
+
 rm ${DURATION_FILE}
