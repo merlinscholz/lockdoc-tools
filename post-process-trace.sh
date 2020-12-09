@@ -214,7 +214,7 @@ do
 	done
 done
 echo "Overall exec time: ${OVERALL_EXEC_TIME} secs."
-echo "total,total,${VARIANT_EXEC_TIME}" >> ${DURATION_CSV}
+echo "total,total,${OVERALL_EXEC_TIME}" >> ${DURATION_CSV}
 echo "Gathering stats about ${DATA}.."
 if echo $DATA | egrep -q '.gz$';
 then
