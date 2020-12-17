@@ -235,7 +235,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1 e2fsprogs-1.45.6_4 gcc gmake
+# pkg install vim mosh tmux git bash linux_base-c7-7.8.2003_1 sysbench-1.0.15 sudo e2fsprogs-1.45.6_4 gcc gmake
 ```
 
 **Achtung**
@@ -323,9 +323,8 @@ shutdown -r now
 <a id="installation-des-init-skripts"></a>
 ## Installation des Init-Skripts
 
-Die Skripte finden sich im tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese müssen in die VM nach `/lockdoc` kopiert werden.
+Die Skripte befinden sich im tools-Repo unter `manuals/vm-freebsd-32/scripts`. Diese müssen in die VM nach `/lockdoc` kopiert werden.
 Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei `/boot/loader.conf` eingetragen werden:
-Da das ZFS-Dateisystem für `/home` einen separaten Pool anlegt, der zum Startzeitpunkt noch nicht eingehängt ist, muss das Init-Skript im root-Dateisystem liegen.
 
 ```
 init_script="/lockdoc/boot.init.sh"     # Hook in our own init script to automatically start the benchmark
@@ -348,7 +347,8 @@ Zusätzlich muss das Verzeichnis `/lockdoc/bench-out` angelegt werden und aus `m
 Sowohl in der Linux- als auch in der FreeBSD-VM verwenden wir ein Subset des Linux-Test-Project (LTP) für unsere Benchmarksuite.
 Der Quellcode findet sich unter `https://github.com/linux-test-project/ltp.git`. Aktuell setzen wir Revision `a6a5caef`, Tag/Release `20190115`, ein.
 Mit Hilfe des Linux-Kompatibilitätslayers laufen die Programme aus dem LTP problemlos unter FreeBSD.
-Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/compat/linux/opt/kernel/ltp/bin` installiert werden. Das Übersetzen muss wegen Problemen mit der neueren Glibc auf Debian 9 übersetzt werden.
+Übersetzt werden muss LTP allerdings unter Linux, z.B. unter Debian 9 i386. Das Übersetzen auf einer neueren Debian-Version führt zu einer Inkompatibilität mit der von FreeBSD bereitgesteltlen glibc.
+Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/compat/linux/opt/kernel/ltp/bin` installiert werden.
 Vor dem Übersetzen müssen noch die Dateien `{syscalls,{syscalls,fs}-custom}` aus `manuals/vm-linux-32/scripts/` nach `$LTPSRC/runtest/` kopiert werden. (TODO: nicht mehr aktuell?)
 Vor einer Aufzeichnung sollte LTP einmal ausgeführt werden, um z.B. benötigte Nutzer oder Gruppen anzulegen
 ```
