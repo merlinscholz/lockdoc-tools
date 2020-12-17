@@ -235,7 +235,7 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1 e2fsprogs-1.45.6_4
+# pkg install vim mosh tmux git bash linux_base-c7-7.4.1708_6 sysbench-1.0.15 sudo clang80 gcc7-7.4.0_1 e2fsprogs-1.45.6_4 gcc gmake
 ```
 
 **Achtung**
@@ -348,8 +348,12 @@ Zusätzlich muss das Verzeichnis `/lockdoc/bench-out` angelegt werden und aus `m
 Sowohl in der Linux- als auch in der FreeBSD-VM verwenden wir ein Subset des Linux-Test-Project (LTP) für unsere Benchmarksuite.
 Der Quellcode findet sich unter `https://github.com/linux-test-project/ltp.git`. Aktuell setzen wir Revision `a6a5caef`, Tag/Release `20190115`, ein.
 Mit Hilfe des Linux-Kompatibilitätslayers laufen die Programme aus dem LTP problemlos unter FreeBSD.
-Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/compat/linux/opt/kernel/ltp/bin` installiert werden. Vor dem Übersetzen müssen noch 
-die Dateien `{syscalls,{syscalls,fs}-custom}` aus `manuals/vm-linux-32/scripts/` nach `$LTPSRC/runtest/` kopiert werden.
+Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis `/compat/linux/opt/kernel/ltp/bin` installiert werden. Das Übersetzen muss wegen Problemen mit der neueren Glibc auf Debian 9 übersetzt werden.
+Vor dem Übersetzen müssen noch die Dateien `{syscalls,{syscalls,fs}-custom}` aus `manuals/vm-linux-32/scripts/` nach `$LTPSRC/runtest/` kopiert werden. (TODO: nicht mehr aktuell?)
+Vor einer Aufzeichnung sollte LTP einmal ausgeführt werden, um z.B. benötigte Nutzer oder Gruppen anzulegen
+```
+GATHER_COV=1 /lockdoc/run-bench.sh ltp-syscalls
+```
 
 <a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a>
 ## Konfiguration und Übersetzen des FreeBSD Kernels
