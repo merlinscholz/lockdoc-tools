@@ -166,7 +166,7 @@ static void parse_env(void) {
 	kcov_mode_env = getenv(KCOV_ENV_MODE);
 	env = getenv(KCOV_ENV_CTL_FD);
 	if (env != NULL) {
-		DEBUG_STDERR("start_kcov() called, but found active KCOV. Possible exec*() detected.\n");
+		DEBUG_STDERR("%d: start_kcov() called, but found active KCOV. Possible exec*() detected.\n", getpid());
 		kcov_fd = strtol(env, NULL, 10);
 		if (fcntl(kcov_fd, F_GETFD)) {
 			DEBUG_STDERR("%d: fcntl kcov_fd, %s\n", getpid(), strerror(errno));
@@ -444,7 +444,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		}
 		DEBUG_FD("%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '",
 			getpid(),
-			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)area_size);
+			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)COVER_SIZE);
 		print_program_name();
 		DEBUG_FD("'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
 			getpid(),
