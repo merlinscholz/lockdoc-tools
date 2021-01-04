@@ -112,15 +112,16 @@ static void cleanup_kcov(int unmap) {
 #endif
 		DEBUG_FD("%d: ioctl disable in %s: %s\n", getpid(), __func__, strerror(errno));
 	}
-	if (unmap) {
-		munmap(area, area_size);
+	if (munmap(area, area_size)) {
+		DEBUG_FD("%d: munmap in %s: %s\n", getpid(), __func__, strerror(errno));
 	}
 	close(kcov_fd);
 	close(err_fd);
 	if (out_fd > 0 && !foreign_fd) {
 		close(out_fd);
 	}
-	foreign_fd = kcov_fd = err_fd = out_fd = 0;
+	area_size = foreign_fd = kcov_fd = err_fd = out_fd = 0;
+	area = NULL;
 	unsetenv(KCOV_ENV_CTL_FD);
 	unsetenv(KCOV_ENV_ERR_FD);
 	unsetenv(KCOV_ENV_OUT_FD);
