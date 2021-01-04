@@ -77,9 +77,8 @@ static kcov_mode_t kcov_mode = KCOV_TRACE_UNIQUE_PC;
 static int kcov_fd, err_fd, out_fd, foreign_fd;
 static std::set<kernel_long> sortuniq_cover;
 static kernel_long *area, area_size, pcs_size;
-#ifdef WRITE_FILE
 static char temp[MAX_PATH_NAME];
-#endif
+static const char *kcov_mode_env = NULL;
 struct sigaction new_sa, old_sa[2];
 static void finish_kcov(void);
 
@@ -150,67 +149,11 @@ static void signal_handler(int signum) {
 	}
 }
 
-static void __attribute__((constructor)) start_kcov(void) {
-	char buff[30], *env;
+static void parse_env(void) {
+	char *env;
 	struct rlimit max_ofiles;
-	struct sigaction temp_sa;
-	int ret;
-	const char *kcov_mode_env = NULL;
-#ifdef WRITE_FILE
 	const char *kcov_out = NULL;
-#endif
-#ifdef DEBUG
-	fprintf(stderr, "%d: Tracing '", getpid());
-	print_program_name();
-	dprintf(err_fd, "'\n");
-#endif
-	if (kcov_fd > 0) {
-#ifdef DEBUG
-		fprintf(stderr, "%d: KCOV already active\n", getpid());
-#endif
-		return;
-	}
-	new_sa.sa_handler = signal_handler;
-	sigemptyset (&new_sa.sa_mask);
-	new_sa.sa_flags = 0;
-	// Signal handler already present for SIGSEGV? (aka fork detection)
-	if (sigaction(SIGSEGV, NULL, &temp_sa) == -1) {
-#ifdef DEBUG
-		dprintf(STDERR_FILENO, "%d: sigaction old SIGSEGV, %s\n", getpid(), strerror(errno));
-#endif
-		return;
-	}
-	if (temp_sa.sa_handler != signal_handler) {
-		if (sigaction(SIGSEGV, &new_sa, &old_sa[0]) == -1) {
-#ifdef DEBUG
-			dprintf(STDERR_FILENO, "%d: sigaction SIGSEGV, %s\n", getpid(), strerror(errno));
-#endif
-		}
-	} else {
-#ifdef DEBUG
-		dprintf(STDERR_FILENO, "%d: signal handler already set for SIGSEGV\n", getpid());
-#endif
-	}
-	new_sa.sa_flags = SA_RESETHAND;
-	// Signal handler already present for SIGTERM? (aka fork detection)
-	if (sigaction(SIGTERM, NULL, &temp_sa) == -1) {
-#ifdef DEBUG
-		dprintf(STDERR_FILENO, "%d: sigaction old SIGTERM, %s\n", getpid(), strerror(errno));
-#endif
-		return;
-	}
-	if (temp_sa.sa_handler != signal_handler) {
-		if (sigaction(SIGTERM, &new_sa, &old_sa[1]) == -1) {
-#ifdef DEBUG
-			dprintf(STDERR_FILENO, "%d: sigaction SIGTERM, %s\n", getpid(), strerror(errno));
-#endif
-		}
-	} else {
-#ifdef DEBUG
-		dprintf(STDERR_FILENO, "%d: signal handler already set for SIGTERM\n", getpid());
-#endif
-	}
-
+	char buff[30];
 	/*
 	 * For some reasons, getenv() does not work
 	 * if bash is started for the first time,
@@ -257,20 +200,136 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef DEBUG
 		dprintf(err_fd, "%d: Active KCOV disabled. Restarting...\n", getpid());
 #endif
-#if 1
 		cleanup_kcov(0);
-#else
-		cover = (cover_t*)mmap(NULL, COVER_SIZE * KCOV_ENTRY_SIZE,
-				     PROT_READ | PROT_WRITE, MAP_SHARED, kcov_fd, 0);
-		if ((void*)cover == MAP_FAILED) {
-#ifdef DEBUG
-			dprintf(STDERR_FILENO, "%d: mmap re-init");
-#endif
-			cleanup_kcov(0);
-		}
+	}
+
+	if (!kcov_out) {
 		return;
+	} else if (strcmp(kcov_out, "stderr") == 0) {
+		return;
+	} else if (strncmp(kcov_out, "fd", 2) == 0) {
+		if (sscanf(kcov_out, "fd:%d", &out_fd) < 0) {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: sscanf: cannot parse fd from: '%s', falling back to the getrlimit() method\n", getpid(), kcov_out);
+#endif
+			if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
+				dprintf(err_fd, "%d: getrlimit, %s\n", getpid(), strerror(errno));
+				cleanup_kcov(1);
+				return;
+			}
+			out_fd = max_ofiles.rlim_cur - 1;
+#ifdef DEBUG
+			dprintf(err_fd, "%d: Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", getpid(), out_fd);
+#endif
+		} else {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: Someone provided use with an FD: %d\n", getpid(), out_fd);
+#endif
+		}
+		if (fcntl(out_fd, F_GETFD)) {
+#ifdef DEBUG
+			dprintf(err_fd, "%d: fcntl out_fd start, %s\n", getpid(), strerror(errno));
+#endif
+			cleanup_kcov(1);
+			return;
+		}
+		foreign_fd = 1;
+		return;
+	} else if (strcmp(kcov_out, "progname") == 0) {
+#ifdef __FreeBSD__
+		struct kinfo_proc *proc = kinfo_getproc(getpid());
+		snprintf(temp, MAX_PATH_NAME, "%s.map", proc->ki_comm);
+		free(proc);
+#else
+		snprintf(temp, MAX_PATH_NAME, "%s.map", basename(program_invocation_name));
+#endif
+		kcov_out = temp;
+	}
+	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
+#ifdef DEBUG
+	if (out_fd == -1) {
+		dprintf(err_fd, "%d: open out_fd, %s\n", getpid(), strerror(errno));
+		dprintf(err_fd, "%d: Cannot open '%s'. Falling back to stderr \n", getpid(), kcov_out);
+	} else {
+		dprintf(err_fd, "%d: Writing bbs to %s (%d)\n", getpid(), kcov_out, out_fd);
+	}
+#endif
+	snprintf(buff, sizeof(buff), "%d", out_fd);
+	setenv(KCOV_ENV_OUT_FD, buff, 1);
+#ifdef DEBUG
+	dprintf(err_fd, "%d: Wrote setting to env variable: out_fd = %s\n", getpid(), getenv(KCOV_ENV_OUT_FD));
+#endif
+}
+
+static void setup_signal_handler(void) {
+	struct sigaction temp_sa;
+	new_sa.sa_handler = signal_handler;
+	sigemptyset (&new_sa.sa_mask);
+	new_sa.sa_flags = 0;
+	// Signal handler already present for SIGSEGV? (aka fork detection)
+	if (sigaction(SIGSEGV, NULL, &temp_sa) == -1) {
+#ifdef DEBUG
+		dprintf(STDERR_FILENO, "%d: sigaction old SIGSEGV, %s\n", getpid(), strerror(errno));
+#endif
+		return;
+	}
+	if (temp_sa.sa_handler != signal_handler) {
+		if (sigaction(SIGSEGV, &new_sa, &old_sa[0]) == -1) {
+#ifdef DEBUG
+			dprintf(STDERR_FILENO, "%d: sigaction SIGSEGV, %s\n", getpid(), strerror(errno));
+#endif
+		}
+	} else {
+#ifdef DEBUG
+		dprintf(STDERR_FILENO, "%d: signal handler already set for SIGSEGV\n", getpid());
 #endif
 	}
+	new_sa.sa_flags = SA_RESETHAND;
+	// Signal handler already present for SIGTERM? (aka fork detection)
+	if (sigaction(SIGTERM, NULL, &temp_sa) == -1) {
+#ifdef DEBUG
+		dprintf(STDERR_FILENO, "%d: sigaction old SIGTERM, %s\n", getpid(), strerror(errno));
+#endif
+		return;
+	}
+	if (temp_sa.sa_handler != signal_handler) {
+		if (sigaction(SIGTERM, &new_sa, &old_sa[1]) == -1) {
+#ifdef DEBUG
+			dprintf(STDERR_FILENO, "%d: sigaction SIGTERM, %s\n", getpid(), strerror(errno));
+#endif
+		}
+	} else {
+#ifdef DEBUG
+		dprintf(STDERR_FILENO, "%d: signal handler already set for SIGTERM\n", getpid());
+#endif
+	}
+}
+
+static void __attribute__((constructor)) start_kcov(void) {
+	int ret;
+	char buff[30];
+#ifdef DEBUG
+	fprintf(stderr, "%d: Tracing '", getpid());
+	print_program_name();
+	dprintf(err_fd, "'\n");
+#endif
+	if (kcov_fd > 0) {
+#ifdef DEBUG
+		fprintf(stderr, "%d: KCOV already active\n", getpid());
+#endif
+		return;
+	}
+
+	if (atexit(finish_kcov)) {
+#ifdef DEBUG
+		dprintf(err_fd, "error atexit()\n");
+#endif
+	}
+
+	setup_signal_handler();
+
+	parse_env();
+
 	/*
 	 * Duplicate the fd for stderr
 	 * Some programs such as cat or touch close stderr
@@ -305,8 +364,9 @@ static void __attribute__((constructor)) start_kcov(void) {
 		return;
 	}
 #ifdef DEBUG
-		dprintf(err_fd, "%d: Using tracing mode '%s'\n", getpid(), (kcov_mode == KCOV_TRACE_PC ? "trace_order" : "trace_unique"));
+	dprintf(err_fd, "%d: Using tracing mode '%s'\n", getpid(), (kcov_mode == KCOV_TRACE_PC ? "trace_order" : "trace_unique"));
 #endif
+
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 		int temp_size = 0x4711;
 #ifdef __FreeBSD__
@@ -385,70 +445,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		// __atomic_store_n(&area[0], 0, __ATOMIC_RELAXED);
 		area[0] = 0;
 	}
-	if (atexit(finish_kcov)) {
-#ifdef DEBUG
-		dprintf(err_fd, "error atexit()\n");
-#endif
-	}
 
-#ifdef WRITE_FILE
-	if (!kcov_out) {
-		return;
-	} else if (strcmp(kcov_out, "stderr") == 0) {
-		return;
-	} else if (strncmp(kcov_out, "fd", 2) == 0) {
-		if (sscanf(kcov_out, "fd:%d", &out_fd) < 0) {
-#ifdef DEBUG
-			dprintf(err_fd, "%d: sscanf: cannot parse fd from: '%s', falling back to the getrlimit() method\n", getpid(), kcov_out);
-#endif
-			if (getrlimit(RLIMIT_NOFILE, &max_ofiles) == -1 ) {
-				dprintf(err_fd, "%d: getrlimit, %s\n", getpid(), strerror(errno));
-				cleanup_kcov(1);
-				return;
-			}
-			out_fd = max_ofiles.rlim_cur - 1;
-#ifdef DEBUG
-			dprintf(err_fd, "%d: Someone provided use with an FD (soft-limit(max_open_files) - 1): %d\n", getpid(), out_fd);
-#endif
-		} else {
-#ifdef DEBUG
-			dprintf(err_fd, "%d: Someone provided use with an FD: %d\n", getpid(), out_fd);
-#endif
-		}
-		if (fcntl(out_fd, F_GETFD)) {
-#ifdef DEBUG
-			dprintf(err_fd, "%d: fcntl out_fd start, %s\n", getpid(), strerror(errno));
-#endif
-			cleanup_kcov(1);
-			return;
-		}
-		foreign_fd = 1;
-		return;
-	} else if (strcmp(kcov_out, "progname") == 0) {
-#ifdef __FreeBSD__
-		struct kinfo_proc *proc = kinfo_getproc(getpid());
-		snprintf(temp, MAX_PATH_NAME, "%s.map", proc->ki_comm);
-		free(proc);
-#else
-		snprintf(temp, MAX_PATH_NAME, "%s.map", basename(program_invocation_name));
-#endif
-		kcov_out = temp;
-	}
-	out_fd = open(kcov_out, O_RDWR | O_CREAT | O_APPEND, 0755);
-#ifdef DEBUG
-	if (out_fd == -1) {
-		dprintf(err_fd, "%d: open out_fd, %s\n", getpid(), strerror(errno));
-		dprintf(err_fd, "%d: Cannot open '%s'. Falling back to stderr \n", getpid(), kcov_out);
-	} else {
-		dprintf(err_fd, "%d: Writing bbs to %s (%d)\n", getpid(), kcov_out, out_fd);
-	}
-#endif
-	snprintf(buff, sizeof(buff), "%d", out_fd);
-	setenv(KCOV_ENV_OUT_FD, buff, 1);
-#ifdef DEBUG
-	dprintf(err_fd, "%d: Wrote setting to env variable: out_fd = %s\n", getpid(), getenv(KCOV_ENV_OUT_FD));
-#endif
-#endif
 }
 
 static void __attribute__((destructor)) finish_kcov(void) {
