@@ -66,6 +66,7 @@ typedef uint64_t kernel_long;
 #define KCOV_ENV_OUT_FD "KCOV_OUT_FD"
 #define KCOV_ENV_OUT "KCOV_OUT"
 #define KCOV_ENV_MODE "KCOV_MODE"
+#define BASE_ADDRESS 0xffffffff81000000
 
 enum kcov_mode_t {
 	KCOV_TRACE_PC = 0,
@@ -312,7 +313,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &temp_size);
 #else
 		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
-		temp_size = ret;
+		temp_size = ret * KCOV_ENTRY_SIZE;
 #endif
 		if (ret == -1) {
 #ifdef DEBUG
@@ -480,14 +481,14 @@ static void __attribute__((destructor)) finish_kcov(void) {
 #endif
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 #ifdef DEBUG
-		dprintf(err_fd, "%d: kernel text base address: 0x%jx\n", getpid(), (uintmax_t)area[0]);
-		dprintf(err_fd, "%d: pcs_size = 0x%jx, &base_addr = %p, &pcs = %p\n", getpid(), (uintmax_t)pcs_size, &area[0], &area[1]);
+		dprintf(err_fd, "%d: kernel text base address: 0x%jx\n", getpid(), (uintmax_t)BASE_ADDRESS);
+		dprintf(err_fd, "%d: pcs_size = 0x%jx, &pcs_size = %p, &pcs = %p\n", getpid(), (uintmax_t)pcs_size, &area[0], &area[1]);
 #endif
 
 		for (i = 1; i < pcs_size; i++) {
 			for (int j = 0; j < BITS_PER_LONG; j++) {
 				if (area[i] & (1 << j)) {
-					dprintf(fd, "0x%jx\n", (uintmax_t)(area[0] + ((i - 1) * BITS_PER_LONG + j) * 4));
+					dprintf(fd, "0x%jx\n", (uintmax_t)(BASE_ADDRESS + ((i - 1) * BITS_PER_LONG + j)));
 					num_pcs++;
 				}
 			}
