@@ -120,7 +120,8 @@ static void cleanup_kcov(int unmap) {
 	if (out_fd > 0 && !foreign_fd) {
 		close(out_fd);
 	}
-	area_size = foreign_fd = kcov_fd = err_fd = out_fd = 0;
+	foreign_fd = kcov_fd = err_fd = out_fd = -1;
+	area_size = 0;
 	area = NULL;
 	unsetenv(KCOV_ENV_CTL_FD);
 	unsetenv(KCOV_ENV_ERR_FD);
