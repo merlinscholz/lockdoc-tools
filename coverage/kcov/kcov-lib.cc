@@ -434,7 +434,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
 		// n = __atomic_load_n(&area[0], __ATOMIC_RELAXED);
 		n = area[0];
-		if (n >= (area_size - 1)) {
+		if (n >= (COVER_SIZE - 1)) {
 			DEBUG_FD("%d: Possible buffer overrun detected!\n", getpid());
 		}
 		for (i = 0; i < n; i++) {
