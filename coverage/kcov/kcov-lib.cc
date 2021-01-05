@@ -79,7 +79,7 @@ enum kcov_mode_t {
 };
 
 static kcov_mode_t kcov_mode = KCOV_TRACE_UNIQUE_PC;
-static int kcov_fd, err_fd, out_fd, foreign_fd;
+static int kcov_fd, err_fd, out_fd, foreign_fd, overrun_fd;
 static std::set<kernel_long> sortuniq_cover;
 static kernel_long *area, area_size, pcs_size;
 static char temp[MAX_PATH_NAME];
@@ -120,6 +120,7 @@ static void cleanup_kcov(int unmap) {
 	if (out_fd > 0 && !foreign_fd) {
 		close(out_fd);
 	}
+	close(overrun_fd);
 	foreign_fd = kcov_fd = err_fd = out_fd = -1;
 	area_size = 0;
 	area = NULL;
@@ -288,6 +289,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 		DEBUG_FD("error atexit()\n");
 	}
 
+	overrun_fd = open("/tmp/overrun.txt", O_RDWR | O_CREAT | O_APPEND, 0755);
 	setup_signal_handler();
 
 	parse_env();
@@ -417,9 +419,9 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		DEBUG_FD("%d: pcs_size = 0x%jx, &pcs_size = %p, &pcs = %p\n", getpid(), (uintmax_t)pcs_size, &area[0], &area[1]);
 
 		for (i = 1; i < pcs_size; i++) {
-			for (int j = 0; j < BITS_PER_LONG; j++) {
-				if (area[i] & (1 << j)) {
-					dprintf(fd, "0x%jx\n", (uintmax_t)(BASE_ADDRESS + ((i - 1) * BITS_PER_LONG + j)));
+			for (unsigned long j = 0; j < BITS_PER_LONG; j++) {
+				if (area[i] & ((unsigned long)1 << j)) {
+					dprintf(fd, "0x%lx\n", (BASE_ADDRESS + ((i - 1) * BITS_PER_LONG + j)));
 					num_pcs++;
 				}
 			}
@@ -436,6 +438,7 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		n = area[0];
 		if (n >= (COVER_SIZE - 1)) {
 			DEBUG_FD("%d: Possible buffer overrun detected!\n", getpid());
+			dprintf(overrun_fd, "%d/%s: Possible buffer overrun detected!\n", getpid(), basename(program_invocation_name));
 		}
 		for (i = 0; i < n; i++) {
 			sortuniq_cover.insert(area[i + 1]);
