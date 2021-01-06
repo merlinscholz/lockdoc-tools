@@ -58,7 +58,7 @@ function run_cmd() {
 			rm ${OUTFILE}.map
 		fi
 		eval $FOO
-		CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${1}"
+		CMD="KCOV_OUT=fd KCOV_MODE=trace_unique LD_PRELOAD=${KCOV_BINARY} ${_CMD}"
 		if [ -z ${DUMP} ];
 		then
 			eval ${CMD}
