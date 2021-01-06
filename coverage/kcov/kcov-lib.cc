@@ -418,10 +418,10 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		DEBUG_FD("%d: kernel text base address: 0x%jx\n", getpid(), (uintmax_t)BASE_ADDRESS);
 		DEBUG_FD("%d: pcs_size = 0x%jx, &pcs_size = %p, &pcs = %p\n", getpid(), (uintmax_t)pcs_size, &area[0], &area[1]);
 
-		for (i = 1; i < pcs_size; i++) {
+		for (i = 0; i < pcs_size; i++) {
 			for (unsigned long j = 0; j < BITS_PER_LONG; j++) {
-				if (area[i] & ((unsigned long)1 << j)) {
-					dprintf(fd, "0x%lx\n", (BASE_ADDRESS + ((i - 1) * BITS_PER_LONG + j)));
+				if (area[i] & (1L << j)) {
+					dprintf(fd, "0x%lx\n", (BASE_ADDRESS + (i * BITS_PER_LONG + j)));
 					num_pcs++;
 				}
 			}
