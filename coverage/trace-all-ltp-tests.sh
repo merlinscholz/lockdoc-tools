@@ -42,6 +42,7 @@ function run_cmd() {
 	_TRACE_TOOL=${1}
 	_CMD=${2}
 	OUTFILE=${3}
+	USE_BASH=${4}
 	if [ ${_TRACE_TOOL} == "kcov" ];
 	then
 		MAX_FD=`ulimit -Sn`
@@ -121,13 +122,13 @@ do
 		if [[ ${TEST_CMD} =~ [\"\'\;|\<\>\$\\]+ ]];
 		then
 			echo "Using bash"
-			run_cmd ${TRACE_TOOL} "/bin/bash -c '${TEST_CMD}'" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+			run_cmd ${TRACE_TOOL} "${TEST_CMD}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 1
 		else
 			if [ -z "${TEST_PARAMS}" ];
 			then
-				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 0
 			else
-				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 0
 			fi
 		fi
 	done < ${TEST_SUITE_FILE}
