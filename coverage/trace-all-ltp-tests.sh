@@ -47,6 +47,7 @@ function run_cmd() {
 	then
 		MAX_FD=`ulimit -Sn`
 		OUT_FD=`echo  ${MAX_FD} - 1 | bc`
+		OUT_FD=42
 		if [ ${USE_SORTUNIQ} -eq 0 ];
 		then
 			FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' > ${OUTFILE}.map)"
@@ -59,7 +60,7 @@ function run_cmd() {
 			rm ${OUTFILE}.map
 		fi
 		eval $FOO
-		CMD="KCOV_OUT=fd KCOV_MODE=trace_unique LD_PRELOAD=${KCOV_BINARY} ${_CMD}"
+		CMD="KCOV_OUT=fd:${OUT_FD} KCOV_MODE=trace_unique LD_PRELOAD=${KCOV_BINARY} ${_CMD}"
 		if [ -z ${DUMP} ];
 		then
 			eval ${CMD}
