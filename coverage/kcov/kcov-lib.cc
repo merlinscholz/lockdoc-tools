@@ -79,7 +79,10 @@ enum kcov_mode_t {
 };
 
 static kcov_mode_t kcov_mode = KCOV_TRACE_UNIQUE_PC;
-static int kcov_fd, err_fd, out_fd, foreign_fd, overrun_fd;
+static int kcov_fd, out_fd, foreign_fd;
+#ifdef DEBUG
+static int err_fd;
+#endif
 static std::set<kernel_long> sortuniq_cover;
 static kernel_long *area, area_size, pcs_size;
 static char temp[MAX_PATH_NAME];
@@ -116,12 +119,15 @@ static void cleanup_kcov(int unmap) {
 		DEBUG_FD("%d: munmap in %s: %s\n", getpid(), __func__, strerror(errno));
 	}
 	close(kcov_fd);
+#ifdef DEBUG
 	close(err_fd);
-	if (out_fd > 0 && !foreign_fd) {
+	err_fd = -1;
+#endif
+	if (!foreign_fd) {
 		close(out_fd);
 	}
-	close(overrun_fd);
-	foreign_fd = kcov_fd = err_fd = out_fd = -1;
+	foreign_fd = 0;
+	kcov_fd = out_fd = -1;
 	area_size = 0;
 	area = NULL;
 	unsetenv(KCOV_ENV_CTL_FD);
@@ -172,22 +178,33 @@ static void parse_env(void) {
 		kcov_fd = strtol(env, NULL, 10);
 		if (fcntl(kcov_fd, F_GETFD)) {
 			DEBUG_STDERR("%d: fcntl kcov_fd, %s\n", getpid(), strerror(errno));
-			kcov_fd = err_fd = out_fd = -1;
+			kcov_fd = out_fd = -1;
+#ifdef DEBUG
+			err_fd = -1;
+#endif
 			return;
 		}
+#ifdef DEBUG
 		env = getenv(KCOV_ENV_ERR_FD);
 		err_fd = strtol(env, NULL, 10);
 		if (fcntl(err_fd, F_GETFD)) {
 			DEBUG_STDERR("%d: fcntl err_fd, %s\n", getpid(), strerror(errno));
-			kcov_fd = err_fd = out_fd = -1;
+			kcov_fd = out_fd = -1;
+#ifdef DEBUG
+			err_fd = -1;
+#endif
 			return;
 		}
+#endif
 		env = getenv(KCOV_ENV_OUT_FD);
 		if (env != NULL) {
 			out_fd = strtol(env, NULL, 10);
 			if (fcntl(out_fd, F_GETFD)) {
 				DEBUG_STDERR("%d: fcntl out_fd, %s\n", getpid(), strerror(errno));
-				kcov_fd = err_fd = out_fd = -1;
+				kcov_fd = out_fd = -1;
+#ifdef DEBUG
+				err_fd = -1;
+#endif
 				return;
 			}
 		}
@@ -196,8 +213,6 @@ static void parse_env(void) {
 	}
 
 	if (!kcov_out) {
-		return;
-	} else if (strcmp(kcov_out, "stderr") == 0) {
 		return;
 	} else if (strncmp(kcov_out, "fd", 2) == 0) {
 		if (sscanf(kcov_out, "fd:%d", &out_fd) < 0) {
@@ -289,10 +304,14 @@ static void __attribute__((constructor)) start_kcov(void) {
 		DEBUG_FD("error atexit()\n");
 	}
 
-	overrun_fd = open("/tmp/overrun.txt", O_RDWR | O_CREAT | O_APPEND, 0755);
 	setup_signal_handler();
 
+	out_fd = -1;
 	parse_env();
+	if (out_fd < 0) {
+		DEBUG_FD("%d: No output given!\n", getpid());
+		return;
+	}
 
 	/*
 	 * Duplicate the fd for stderr
@@ -300,10 +319,12 @@ static void __attribute__((constructor)) start_kcov(void) {
 	 * before we reach finish_kcov().
 	 * This way stderr remains open until we have dumped all pcs.
 	 */
+#ifdef DEBUG
 	err_fd = dup(STDERR_FILENO);
 	if (err_fd == -1) {
 		DEBUG_STDERR("%d: dup, %s\n", getpid(), strerror(errno));
 	}
+#endif
 	kcov_fd = open(KCOV_PATH, O_RDWR);
 	if (kcov_fd == -1) {
 		DEBUG_FD("%d: open, %s\n", getpid(), strerror(errno));
@@ -380,8 +401,10 @@ static void __attribute__((constructor)) start_kcov(void) {
 	}
 	snprintf(buff, sizeof(buff), "%d", kcov_fd);
 	setenv(KCOV_ENV_CTL_FD, buff, 1);
+#ifdef DEBUG
 	snprintf(buff, sizeof(buff), "%d", err_fd);
 	setenv(KCOV_ENV_ERR_FD, buff, 1);
+#endif
 	DEBUG_FD("%d: Wrote settings to env variables: kcov_fd = %s, err_fd = %s\n", 
 		getpid(), getenv(KCOV_ENV_CTL_FD), getenv(KCOV_ENV_ERR_FD));
 	if (kcov_mode == KCOV_TRACE_PC) {
@@ -393,11 +416,10 @@ static void __attribute__((constructor)) start_kcov(void) {
 }
 
 static void __attribute__((destructor)) finish_kcov(void) {
-	int fd;
 	kernel_long num_pcs = 0, i, n;
 
-	if (kcov_fd < 1 || err_fd < 1) {
-		DEBUG_FD("%d: No KCOV fd or no fd for stderr present\n", getpid());
+	if (kcov_fd < 1) {
+		DEBUG_FD("%d: No KCOV fd present\n", getpid());
 		return;
 	}
 #ifdef __FreeBSD__
@@ -407,12 +429,6 @@ static void __attribute__((destructor)) finish_kcov(void) {
 #endif
 		DEBUG_FD("%d: ioctl disable in %s, %s\n", getpid(), __func__, strerror(errno));
 	}
-	// Open output file wins over stderr
-	if (out_fd > 0) {
-		fd = out_fd;
-	} else {
-		fd = err_fd;
-	}
 	DEBUG_FD("%d: out_fd = %d\n", getpid(), out_fd);
 	if (kcov_mode == KCOV_TRACE_UNIQUE_PC) {
 		DEBUG_FD("%d: kernel text base address: 0x%jx\n", getpid(), (uintmax_t)BASE_ADDRESS);
@@ -421,16 +437,15 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		for (i = 0; i < pcs_size; i++) {
 			for (unsigned long j = 0; j < BITS_PER_LONG; j++) {
 				if (area[i] & (1L << j)) {
-					dprintf(fd, "0x%lx\n", (BASE_ADDRESS + (i * BITS_PER_LONG + j)));
+					dprintf(out_fd, "0x%lx\n", (BASE_ADDRESS + (i * BITS_PER_LONG + j)));
 					num_pcs++;
 				}
 			}
 		}
 		DEBUG_FD("%d: Done dumping %jd unique bbs for '", getpid(), (uintmax_t)num_pcs);
 		print_program_name();
-		DEBUG_FD("'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		DEBUG_FD("'(%d), isatty(out_fd = %d) = %d\n",
 			getpid(),
-			err_fd, isatty(err_fd),
 			out_fd, isatty(out_fd));
 	} else {
 		// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
@@ -438,21 +453,19 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		n = area[0];
 		if (n >= (COVER_SIZE - 1)) {
 			DEBUG_FD("%d: Possible buffer overrun detected!\n", getpid());
-			dprintf(overrun_fd, "%d/%s: Possible buffer overrun detected!\n", getpid(), basename(program_invocation_name));
 		}
 		for (i = 0; i < n; i++) {
 			sortuniq_cover.insert(area[i + 1]);
 		}
 		for (auto elem : sortuniq_cover) {
-			dprintf(fd, "0x%jx\n", (uintmax_t)elem);
+			dprintf(out_fd, "0x%jx\n", (uintmax_t)elem);
 		}
 		DEBUG_FD("%d: Done dumping %jd unique bbs of %ju/%ju recorded bbs for '",
 			getpid(),
 			(uintmax_t)sortuniq_cover.size(), (uintmax_t)n, (uintmax_t)COVER_SIZE);
 		print_program_name();
-		DEBUG_FD("'(%d), isatty(err_fd = %d) = %d, isatty(out_fd = %d) = %d\n",
+		DEBUG_FD("'(%d), isatty(out_fd = %d) = %d\n",
 			getpid(),
-			err_fd, isatty(err_fd),
 			out_fd, isatty(out_fd));
 	}
 	cleanup_kcov(1);
