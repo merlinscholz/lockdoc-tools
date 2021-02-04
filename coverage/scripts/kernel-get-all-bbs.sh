@@ -5,11 +5,11 @@ if [ $# -ne 2 ]; then
 	exit 1
 fi
 
-objdump -d "$1" | grep -A1 'callq.*<__sanitizer_cov_trace_pc>' | grep -v '^--$' | \
+objdump -d "$1" | grep -A1 'call.*<__sanitizer_cov_trace_pc>' | grep -v '^--$' | \
 while read CALLQ_SANITIZER; do  # we're not interested in the callq, but in the *next* instruction's address
 	read NEXT_LINE
 	# cover the case with consecutive __sanitizer_cov_trace_pc calls
-	while [ "${NEXT_LINE/*callq*<__sanitizer_cov_trace_pc>*/match}" = match ]; do
+	while [ "${NEXT_LINE/*call*<__sanitizer_cov_trace_pc>*/match}" = match ]; do
 		echo "$NEXT_LINE"
 		read NEXT_LINE
 	done
