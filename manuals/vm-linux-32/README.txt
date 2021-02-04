@@ -109,7 +109,7 @@ menuentry 'LockDoc-X.YY-al' --class debian --class gnu-linux --class gnu --class
 	+ make
 	+ ./strace -o tracefile -s 65501 -v -xx -f -k /path/to/executable arg1 arg2 .. argN
 		Example usage for LTP:
-		DEVICE=/dev/vdb TESTS=syscalls /home/al/tools/coverage/trace-all-ltp-tests.sh strace /home/al/moonshine/strace/ /home/al/ltp/bin/ /home
+		DEVICE=/dev/vdb TESTS=fs-moonshine-lockdoc /home/al/tools/coverage/trace-all-ltp-tests.sh strace /home/al/moonshine/strace/ /home/al/ltp/bin/ /home
 /al/ltp-strace/
 	+ ./bin/moonshine -dir TRACES_DIR -distill getting-started/distill.json
 	+ Place resulting corpus.db in your syzkaller's workdir
