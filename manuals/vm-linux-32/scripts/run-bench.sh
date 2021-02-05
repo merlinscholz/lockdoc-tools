@@ -15,7 +15,7 @@ DEFAULT_USER=1000
 DEFAULT_GROUP=1000
 
 function run_cmd {
-	echo "Running ${1}" | tee ${OUTDEV}
+	echo "Running ${@}" | tee ${OUTDEV}
 	${@} 2>&1 | tee ${BENCH_OUTDEV}
 	if [ ${PIPESTATUS[0]} -ne 0 ];
 	then
@@ -240,18 +240,10 @@ then
 	then
 		rm -r 00
 	fi
-elif [ "${BENCH}" == "ltp-syscalls" ];
+elif [[ ${BENCH} =~ ^ltp-.*$ ]];
 then
-	run_cmd ${LTP_CMD} -f syscalls
-elif [ "${BENCH}" == "ltp-syscalls-custom" ];
-then
-	run_cmd ${LTP_CMD} -f syscalls-custom
-elif [ "${BENCH}" == "ltp-fs" ];
-then
-	run_cmd ${LTP_CMD} -f fs
-elif [ "${BENCH}" == "ltp-fs-custom" ];
-then
-	run_cmd ${LTP_CMD} -f fs-custom
+	TESTSUITE=${BENCH#ltp-}
+	run_cmd ${LTP_CMD} -f ${TESTSUITE}
 elif [ "${BENCH}" == "startup" ];
 then
 	echo "Doing nothing!" | tee ${OUTDEV}
