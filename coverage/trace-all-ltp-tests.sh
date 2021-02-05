@@ -42,10 +42,12 @@ function run_cmd() {
 	_TRACE_TOOL=${1}
 	_CMD=${2}
 	OUTFILE=${3}
+	USE_BASH=${4}
 	if [ ${_TRACE_TOOL} == "kcov" ];
 	then
 		MAX_FD=`ulimit -Sn`
 		OUT_FD=`echo  ${MAX_FD} - 1 | bc`
+		OUT_FD=42
 		if [ ${USE_SORTUNIQ} -eq 0 ];
 		then
 			FOO="exec ${OUT_FD}> >(sed -e 's/^0x//' > ${OUTFILE}.map)"
@@ -58,7 +60,7 @@ function run_cmd() {
 			rm ${OUTFILE}.map
 		fi
 		eval $FOO
-		CMD="KCOV_OUT=fd LD_PRELOAD=${KCOV_BINARY} ${1}"
+		CMD="KCOV_OUT=fd:${OUT_FD} KCOV_MODE=trace_unique LD_PRELOAD=${KCOV_BINARY} ${_CMD}"
 		if [ -z ${DUMP} ];
 		then
 			eval ${CMD}
@@ -121,13 +123,13 @@ do
 		if [[ ${TEST_CMD} =~ [\"\'\;|\<\>\$\\]+ ]];
 		then
 			echo "Using bash"
-			run_cmd ${TRACE_TOOL} "/bin/bash -c '${TEST_CMD}'" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+			run_cmd ${TRACE_TOOL} "${TEST_CMD}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 1
 		else
 			if [ -z "${TEST_PARAMS}" ];
 			then
-				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}`" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 0
 			else
-				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME}
+				run_cmd ${TRACE_TOOL} "`which ${TEST_BIN}` ${TEST_PARAMS}" ${TEST_SUITE_OUT_DIR}/ltp-${TEST_SUITE}-${TEST_NAME} 0
 			fi
 		fi
 	done < ${TEST_SUITE_FILE}
