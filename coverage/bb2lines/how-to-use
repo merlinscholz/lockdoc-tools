@@ -1,0 +1,18 @@
+How to call bb2lines for example:
+./bb2lines -p /opt/kernel/linux-32-vanilla-kcov-gcov-4-10/ -b /opt/kernel/linux-32-vanilla-kcov-gcov-4-10/vmlinux -v 3 /opt/kernel/linux-32-vanilla-kcov-gcov-4-10/fs/ < pcs.txt > result.csv
+or more general:
+./bb2lines -p $FILE_PREFIX -b $BINARY $GCNO_DIR -v 3 < pcs.txt > result.csv
+
+
+With the argument -p the prefix of the source files must be set. This prefix has to be determined by an experiment.
+That means it must be read manually from the output "bb_read:" by calling
+'./bb2lines -p . -b $BINARY_DIR/test $GCNO_DIR/ -v 3 < pcs.txt' first.
+
+With the argument -b the binary on which the code coverage should be determined is given.
+
+Finally the directory where the .gcno files are located must be specified. The program will recursively find all .gcno files inside.
+
+
+Then the standard input is used to read in the pcs, which must be in hex form and line by line.
+
+The result is then printed as csv on the standard output.

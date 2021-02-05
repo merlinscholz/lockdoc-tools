@@ -45,6 +45,8 @@ int main(int argc, char** argv, char** envp)
 	int fd, pid, status;
 	cover_t *cover, n, i;
 
+	fprintf(stderr, "Currently not well maintained! Pls use kcov-lib.\n");
+	exit(1);
 	if (argc == 1) {
 		fprintf(stderr, "usage: kcovtrace program [args...]\n");
 		exit(1);
@@ -87,7 +89,9 @@ int main(int argc, char** argv, char** envp)
 			perror("ioctl");
 			exit(1);
 		}
-		__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
+		// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
+		//__atomic_store_n(&cover[0], 0, __ATOMIC_RELAXED);
+		cover[0] = 0;
 		execve(argv[1], argv + 1, envp);
 		perror("execve");
 		exit(1);
@@ -98,7 +102,9 @@ int main(int argc, char** argv, char** envp)
 	while (waitpid(-1, &status, __WALL) != pid) {
 #endif
 	}
-	n = __atomic_load_n(&cover[0], __ATOMIC_RELAXED);
+	// Disabled because does not work on i386. Kernel uses uint64_t elements for the buffer
+	//n = __atomic_load_n(&cover[0], __ATOMIC_RELAXED);
+	n = cover[0];
 	for (i = 0; i < n; i++) {
 		fprintf(stderr, "0x%jx\n", (uintmax_t)cover[i + 1]);
 	}

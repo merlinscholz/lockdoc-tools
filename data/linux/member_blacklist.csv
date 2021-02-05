@@ -22,6 +22,8 @@ transaction_t;t_handle_lock
 super_block;s_vfs_rename_mutex
 super_block;s_inode_list_lock
 super_block;s_inode_wblist_lock
+super_block;s_umount
+super_block;s_sync_lock
 backing_dev_info;wb.list_lock
 backing_dev_info;wb.work_lock
 block_device;bd_mutex
@@ -30,8 +32,3 @@ pipe_inode_info;mutex
 bdi_writeback;list_lock
 bdi_writeback;work_lock
 dentry;d_lockref.anonymous_0.lock
-ext4_sb_info;s_orphan_lock
-ext4_sb_info;s_ext_stats_lock
-ext4_sb_info;s_md_lock
-ext4_sb_info;s_es_lock
-ext4_sb_info;s_writepages_rwsem

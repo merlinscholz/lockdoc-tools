@@ -44,12 +44,10 @@ then
 	stty -f /dev/ttyu0.init gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
 	stty -f /dev/ttyu1.lock gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
 	stty -f /dev/ttyu1.init gfmt1:cflag=cb00:iflag=0:lflag=0:oflag=6:discard=f:dsusp=19:eof=4:eol=ff:eol2=ff:erase=7f:erase2=8:intr=3:kill=15:lnext=16:min=1:quit=1c:reprint=12:start=11:status=14:stop=13:susp=1a:time=0:werase=17:ispeed=9600:ospeed=9600
-	INDEV=/dev/cuau1
+	INDEV=/dev/ttyu1
 	OUTDEV=/dev/ttyu0
 	if [ ${GATHER_COV} -eq 0 ];
 	then
-		KERNEL_VERSION=`cat /dev/lockdoc/version`
-		echo "kernelversion=${KERNEL_VERSION}" | tee ${OUTDEV}
 		#POOL=`zpool list -o name -H`
 		echo "Remount RW" | tee ${OUTDEV}
 		mount -u -o rw /
@@ -62,6 +60,7 @@ then
 		DEFAULT_GROUP=20
 	fi
 	LTP_CMD="chroot /compat/linux ${LTPROOT}/runltp -q"
+	DEVICE=/dev/ada1
 fi
 
 if [ ! -e ${DEVICE} ];

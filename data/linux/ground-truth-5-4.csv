@@ -63,10 +63,6 @@ transaction_t;t_inode_list;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/
 transaction_t;t_inode_list;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_chp_stats;r;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_chp_stats;w;EMBOTHER\(journal_t.j_checkpoint_mutex\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_updates;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_updates;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_outstanding_credits;r;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
-transaction_t;t_outstanding_credits;w;EMBSAME\(transaction_t.t_handle_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_cpnext;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_cpnext;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
 transaction_t;t_cpprev;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:543
@@ -111,8 +107,8 @@ dentry;d_name.hash_len;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;i
 dentry;d_name.hash_len;w;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_lockref.count;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_lockref.count;w;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
-dentry;d_hash;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
-dentry;d_hash;w;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
+dentry;d_hash;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;fs/dcache.c:39
+dentry;d_hash;w;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;fs/dcache.c:39
 dentry;d_parent;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_parent;w;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
 dentry;d_subdirs;r;EMBSAME\(dentry.d_lockref.anonymous_0.lock\[[rw]\]\);;include/linux/dcache.h:56
@@ -149,6 +145,8 @@ journal_head;b_cpprev;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux
 journal_head;b_cpprev;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/journal_head.h:19
 super_block;s_inodes;r;EMBSAME\(super_block.s_inode_list_lock\[[rw]\]\);;include/linux/fs.h:1337
 super_block;s_inodes;w;EMBSAME\(super_block.s_inode_list_lock\[[rw]\]\);;include/linux/fs.h:1337
+super_block;s_inodes_wb;r;EMBSAME\(super_block.s_inode_wblist_lock\[[rw]\]\);;include/linux/fs.h:1337
+super_block;s_inodes_wb;w;EMBSAME\(super_block.s_inode_wblist_lock\[[rw]\]\);;include/linux/fs.h:1337
 jbd2_inode;i_transaction;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421
 jbd2_inode;i_transaction;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421
 jbd2_inode;i_next_transaction;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421

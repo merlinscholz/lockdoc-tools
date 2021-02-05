@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ $# -lt 2 -o $# -gt 6 ]; then
+	echo "usage: $0 file1 file2 [ file3 [ file4 [ file5 [ file6 ] ] ] ]" >&2
+	echo "Both input files must be sorted." >&2
+	exit 1
+fi
+
+[ $# -eq 2 ] && exec join "$@"
+[ $# -eq 3 ] && join "$1" "$2" | join - "$3"
+[ $# -eq 4 ] && join "$1" "$2" | join - "$3" | join - "$4"
+[ $# -eq 5 ] && join "$1" "$2" | join - "$3" | join - "$4" | join - "$5"
+[ $# -eq 6 ] && join "$1" "$2" | join - "$3" | join - "$4" | join - "$5" | join - "$6"
+# TODO write generic version with tmp files or named pipes
+
+# alternative for $# = 2: comm -12 f1 f2
