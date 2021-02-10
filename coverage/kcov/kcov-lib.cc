@@ -349,8 +349,7 @@ static void __attribute__((constructor)) start_kcov(void) {
 #ifdef __FreeBSD__
 		ret = ioctl(kcov_fd, KIOGETBUFSIZE, &temp_size);
 #else
-		ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
-		temp_size = ret * KCOV_ENTRY_SIZE;
+		temp_size = ret = ioctl(kcov_fd, KCOV_INIT_TRACE_UNIQUE, 0);
 #endif
 		if (ret == -1) {
 			DEBUG_FD("%d: ioctl init trace unique: %s\n", getpid(), strerror(errno));
