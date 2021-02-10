@@ -44,12 +44,14 @@
 
 #ifdef __FreeBSD__
 #include <sys/kcov.h>
+#define BASE_ADDRESS (8 * 1024 * 1024)
 #define KCOV_PATH "/dev/kcov"
 #define KIOGETBUFSIZE   _IOR('c', 5, sizeof(int)) /* Get the buffer size */
 #define KCOV_MODE_TRACE_PC_UNIQUE      2
 typedef uint64_t kernel_long;
 #define BITS_PER_LONG 64
 #else
+#define BASE_ADDRESS 0xffffffff81000000
 #ifdef KERNEL32
 typedef uint32_t kernel_long;
 #define BITS_PER_LONG 32
@@ -71,7 +73,6 @@ typedef uint64_t kernel_long;
 #define KCOV_ENV_OUT_FD "KCOV_OUT_FD"
 #define KCOV_ENV_OUT "KCOV_OUT"
 #define KCOV_ENV_MODE "KCOV_MODE"
-#define BASE_ADDRESS 0xffffffff81000000
 
 enum kcov_mode_t {
 	KCOV_TRACE_PC = 0,
