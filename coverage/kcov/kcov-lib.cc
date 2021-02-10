@@ -436,7 +436,11 @@ static void __attribute__((destructor)) finish_kcov(void) {
 		for (i = 0; i < pcs_size; i++) {
 			for (unsigned long j = 0; j < BITS_PER_LONG; j++) {
 				if (area[i] & (1L << j)) {
+#ifdef __FreeBSD__
+					dprintf(out_fd, "0x%llx\n", (BASE_ADDRESS + (i * BITS_PER_LONG + j)));
+#else
 					dprintf(out_fd, "0x%lx\n", (BASE_ADDRESS + (i * BITS_PER_LONG + j)));
+#endif
 					num_pcs++;
 				}
 			}
