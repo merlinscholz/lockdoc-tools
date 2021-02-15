@@ -1370,6 +1370,8 @@ static struct tag *die__create_new_inline_expansion(Dwarf_Die *die,
 						    struct lexblock *lexblock,
 						    struct cu *cu);
 
+static struct tag unsupported_tag;
+
 static int die__process_inline_expansion(Dwarf_Die *die, struct cu *cu)
 {
 	Dwarf_Die child;
@@ -1416,6 +1418,9 @@ static int die__process_inline_expansion(Dwarf_Die *die, struct cu *cu)
 			if (tag == NULL)
 				goto out_enomem;
 
+			if (tag == &unsupported_tag)
+				continue;
+
 			if (cu__add_tag(cu, tag, &id) < 0)
 				goto out_delete_tag;
 			goto hash;
@@ -1457,8 +1462,6 @@ static struct tag *die__create_new_inline_expansion(Dwarf_Die *die,
 		lexblock__add_inline_expansion(lexblock, exp);
 	return &exp->ip.tag;
 }
-
-static struct tag unsupported_tag;
 
 static int die__process_function(Dwarf_Die *die, struct ftype *ftype,
 				 struct lexblock *lexblock, struct cu *cu)
