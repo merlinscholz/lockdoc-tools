@@ -1370,7 +1370,9 @@ static struct tag *die__create_new_inline_expansion(Dwarf_Die *die,
 						    struct lexblock *lexblock,
 						    struct cu *cu);
 
-static int die__process_inline_expansion(Dwarf_Die *die, struct cu *cu)
+static struct tag unsupported_tag;
+
+static int die__process_inline_expansion(Dwarf_Die *die, struct lexblock *lexblock, struct cu *cu)
 {
 	Dwarf_Die child;
 	struct tag *tag;
@@ -1392,7 +1394,7 @@ static int die__process_inline_expansion(Dwarf_Die *die, struct cu *cu)
 			tag__print_not_supported(dwarf_tag(die));
 			continue;
 		case DW_TAG_lexical_block:
-			if (die__create_new_lexblock(die, cu, NULL) != 0)
+			if (die__create_new_lexblock(die, cu, lexblock) != 0)
 				goto out_enomem;
 			continue;
 		case DW_TAG_formal_parameter:
@@ -1409,12 +1411,18 @@ static int die__process_inline_expansion(Dwarf_Die *die, struct cu *cu)
 			 */
 			continue;
 		case DW_TAG_inlined_subroutine:
-			tag = die__create_new_inline_expansion(die, NULL, cu);
+			tag = die__create_new_inline_expansion(die, lexblock, cu);
+			break;
+		case DW_TAG_label:
+			tag = die__create_new_label(die, lexblock, cu);
 			break;
 		default:
 			tag = die__process_tag(die, cu, 0);
 			if (tag == NULL)
 				goto out_enomem;
+
+			if (tag == &unsupported_tag)
+				continue;
 
 			if (cu__add_tag(cu, tag, &id) < 0)
 				goto out_delete_tag;
@@ -1448,7 +1456,7 @@ static struct tag *die__create_new_inline_expansion(Dwarf_Die *die,
 	if (exp == NULL)
 		return NULL;
 
-	if (die__process_inline_expansion(die, cu) != 0) {
+	if (die__process_inline_expansion(die, lexblock, cu) != 0) {
 		obstack_free(&cu->obstack, exp);
 		return NULL;
 	}
@@ -1515,6 +1523,9 @@ static int die__process_function(Dwarf_Die *die, struct ftype *ftype,
 			if (tag == NULL)
 				goto out_enomem;
 
+			if (tag == &unsupported_tag)
+				continue;
+
 			if (cu__add_tag(cu, tag, &id) < 0)
 				goto out_delete_tag;
 
@@ -1552,8 +1563,6 @@ static struct tag *die__create_new_function(Dwarf_Die *die, struct cu *cu)
 
 	return function ? &function->proto.tag : NULL;
 }
-
-static struct tag unsupported_tag;
 
 static struct tag *__die__process_tag(Dwarf_Die *die, struct cu *cu,
 				      int top_level, const char *fn)
