@@ -1,4 +1,3 @@
-
 <!-- MarkdownTOC -->
 
 - [Vorbereitung und Installation von FreeBSD unter QEMU](#vorbereitung-und-installation-von-freebsd-unter-qemu)
@@ -235,11 +234,11 @@ Mit dem folgenden Befehl lassen sich als **root** alle notwendigen Programme ins
 Für unser Setup wurden u.a. folgende Pakete installiert:
 
 ```
-# pkg install vim mosh tmux git bash linux_base-c7-7.8.2003_1 sysbench-1.0.15 sudo e2fsprogs-1.45.6_4 gcc gmake
+# pkg install vim mosh tmux git bash linux_base-c7-7.8.2003_1 sysbench-1.0.15 sudo e2fsprogs-1.45.6_4 gcc gmake debootstrap
 ```
 
 **Achtung**
-Ggf. muss der Versions-String für einzelne Pakete angepasst werden.
+Ggf. muss der Versions-String für einzelne Pakete angepasst werden. Dann kann mit `pkg search` nach dem betreffenden Paket gesucht werden.
 
 
 <a id="userland-einrichten"></a>
@@ -264,6 +263,10 @@ linproc         /compat/linux/proc  linprocfs  rw,late  0       0
 linsysfs        /compat/linux/sys   linsysfs        rw      0       0
 tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
 ```
+
+Zusätzlich kann man noch ein Ubuntu-Chroot mittels `debootstrap` installieren. Details dazu finden sich dazu im FreeBSD-Wiki -- siehe Links.
+Ggf. lässt sich damit auch das Problem einer veralteten Libc umgehen -- siehe [Installation der Benchmarks-Tools](#installation-der-benchmark-tools).
+
 
 Die dafür nötigen Kernel-Module sollten automatisch geladen werden.
 Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in ```/boot/loader.conf``` ein:
@@ -423,6 +426,7 @@ geändert hat.
 
 - [ausführliche Anleitung zur Konfiguration des Kernels](http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html)
 - [ausführliche Anleitung zur Übersetzung des Kernels](http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html)
+- [Ubuntu-Jail unter FreeBSD](https://wiki.freebsd.org/LinuxJails)
 
 <a id="freebas-code-abdeckung"></a>
 # Code-Abdeckung
@@ -436,13 +440,16 @@ Um einen Kernel mit KCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 # MODULES_OVERRIDE="" make [-j X]
 # sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc-kcov make install
 ```
-Für weitere Details bitte in ```manuals/vm-linux-32/README.txt``` im Abschnitt `Gather code coverage` nachschauen.
+Für weitere Details bitte in ```manuals/vm-linux-32/README.txt``` im Abschnitt `Gather code coverage` nachschauen. Der dort erklärte Mechanismus (LD_PRELOAD) funktioniert unter FreeBSD, allerdings nur für FreeBSD-Binaries.
+Aufzeichnungen mit Linux-Binaries funktionieren (noch?) nicht. Daher funktioniert das Skript `trace-all-ltp-tests.sh` für LTP auch nicht.
 
 
 <a id="freebsd-code-abdeckung-bestimmen-gcov"></a>
 ## Code-Abdeckung bestimmen - GCOV
 
-Achtung ggf. veraltet, da nicht mehr gepflegt: Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
+**Achtung:** Ggf. veraltet, da nicht mehr gepflegt!
+
+Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:
 ```
 # cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV

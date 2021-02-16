@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>README</title>
+  <title>FreeBSD Anleitung</title>
   <style>
     code{white-space: pre-wrap;}
     span.smallcaps{font-variant: small-caps;}
@@ -16,7 +16,11 @@
   <link rel="stylesheet" href="pandoc.css" />
 </head>
 <body>
+<header id="title-block-header">
+<h1 class="title">FreeBSD Anleitung</h1>
+</header>
 <!-- MarkdownTOC -->
+
 <ul>
 <li><a href="#vorbereitung-und-installation-von-freebsd-unter-qemu">Vorbereitung und Installation von FreeBSD unter QEMU</a>
 <ul>
@@ -64,6 +68,7 @@
 </ul></li>
 </ul>
 <!-- /MarkdownTOC -->
+
 <p><a id="vorbereitung-und-installation-von-freebsd-unter-qemu"></a></p>
 <h1 id="vorbereitung-und-installation-von-freebsd-unter-qemu">Vorbereitung und Installation von FreeBSD unter QEMU</h1>
 <p><a id="vorbereitung"></a></p>
@@ -138,7 +143,8 @@
 <p>Im Anschluss haben wir noch einmal die Möglichkeit diverse Einstellungen zu ändern. <img src="./img/install-31.png" alt="alt text" /></p>
 <p>Außerdem erhalten wir noch die Option vor dem Neustart mit einer Shell im neuen System eigene Änderungen vorzunehmen. Hier empfhielt es sich, für die erstellten Partitionen bzw. Slices Labels zu vergeben. So kann man in QEMU z.B. den VirtIO-Treiber für die Festplattenemulation nutzen und gleichzeitig in BOCHS eine IDE-Platte emulieren. Wichtig ist, dass in diesem Schritt <strong>nur</strong> die Labels vergeben werden. Die Änderungen an der <code>/etc/fstab</code> sollten später <strong>nach</strong> einem Neutstart erfolgen.</p>
 <pre><code>glabel label swap /dev/XXX
-tunefs -L roots /dev/XXX</code></pre>
+tunefs -L roots /dev/XXX
+</code></pre>
 <p><strong>Achtung:</strong> Das Tool <code>glabel</code> darf <strong>nur</strong> für Partitionen, die kein Dateisystem beinhalten, wie z.B. die swap-Partition, genutzt werden. Für Dateisysteme, wie z.B. UFS, ist <code>tunefs</code> zu nehmen. <img src="./img/install-32.png" alt="alt text" /> <img src="./img/install-33.png" alt="alt text" /> <img src="./img/install-34.png" alt="alt text" /></p>
 <p><a id="fertiges-os"></a></p>
 <h3 id="fertiges-os">Fertiges OS</h3>
@@ -148,8 +154,8 @@ tunefs -L roots /dev/XXX</code></pre>
 <h3 id="links">Links</h3>
 <p>Nützliche Links:</p>
 <ul>
-<li><a href="http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html" class="uri">http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html</a> Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.).</li>
-<li><a href="http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html" class="uri">http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html</a> Anleitung Komponenten wie <strong>ports</strong> oder <strong>src</strong> nachinstalliert.</li>
+<li><a href="http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html">http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html</a> Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.).</li>
+<li><a href="http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html">http://web.archive.org/web/20180602143507/https://www.freebsd.org/doc/handbook/svn.html</a> Anleitung Komponenten wie <strong>ports</strong> oder <strong>src</strong> nachinstalliert.</li>
 </ul>
 <p><a id="freebsd-f%C3%BCr-lockdoc-vorbereiten"></a></p>
 <h1 id="freebsd-für-lockdoc-vorbereiten">FreeBSD für LockDoc vorbereiten</h1>
@@ -157,43 +163,53 @@ tunefs -L roots /dev/XXX</code></pre>
 <p><a id="erforderliche-pakete-installieren"></a></p>
 <h2 id="erforderliche-pakete-installieren">Erforderliche Pakete installieren</h2>
 <p>Mit dem folgenden Befehl lassen sich als <strong>root</strong> alle notwendigen Programme installieren.</p>
-<pre><code># pkg install &lt;paketname&gt;</code></pre>
+<pre><code># pkg install &lt;paketname&gt;
+</code></pre>
 <p>Für unser Setup wurden u.a. folgende Pakete installiert:</p>
-<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.8.2003_1 sysbench-1.0.15 sudo e2fsprogs-1.45.6_4 gcc gmake</code></pre>
-<p><strong>Achtung</strong> Ggf. muss der Versions-String für einzelne Pakete angepasst werden.</p>
+<pre><code># pkg install vim mosh tmux git bash linux_base-c7-7.8.2003_1 sysbench-1.0.15 sudo e2fsprogs-1.45.6_4 gcc gmake debootstrap
+</code></pre>
+<p><strong>Achtung</strong> Ggf. muss der Versions-String für einzelne Pakete angepasst werden. Dann kann mit <code>pkg search</code> nach dem betreffenden Paket gesucht werden.</p>
 <p><a id="userland-einrichten"></a></p>
 <h2 id="userland-einrichten">Userland einrichten</h2>
 <p>Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe <code>wheel</code> sein.</p>
-<pre><code>pw groupmod -m al -n wheel</code></pre>
+<pre><code>pw groupmod -m al -n wheel
+</code></pre>
 <p>In <code>/usr/local/etc/sudoers</code> muss nun die Zeile <code>%wheel ALL=(ALL) ALL</code> auskommentiert werden.</p>
 <p>Möchte man die Bash als Standardshell setzen, geht dies mit folgendem Befehl:</p>
-<pre><code>chsh -s /usr/local/bin/bash</code></pre>
+<pre><code>chsh -s /usr/local/bin/bash
+</code></pre>
 <p>Es empfiehlt sich dies ebenfalls als <code>root</code> zu tun.</p>
 <p>Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der <code>/etc/fstab</code> eingetragen werden:</p>
 <pre><code>linproc         /compat/linux/proc  linprocfs  rw,late  0       0
 linsysfs        /compat/linux/sys   linsysfs        rw      0       0
-tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0</code></pre>
+tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
+</code></pre>
+<p>Zusätzlich kann man noch ein Ubuntu-Chroot mittels <code>debootstrap</code> installieren. Details dazu finden sich dazu im FreeBSD-Wiki -- siehe Links. Ggf. lässt sich damit auch das Problem einer veralteten Libc umgehen -- siehe <a href="#installation-der-benchmark-tools">Installation der Benchmarks-Tools</a>.</p>
 <p>Die dafür nötigen Kernel-Module sollten automatisch geladen werden. Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in <code>/boot/loader.conf</code> ein:</p>
 <pre><code>kernel=&quot;lockdoc&quot;                        # Set FreeBSD&#39;s kernel as default
 kernels_autodetect=&quot;YES&quot;                # Detect all installed kernels automatically
 #console=&quot;vidconsole,comconsole&quot;        # Use video or video+com as console
 console=&quot;vidconsole&quot;
 vm.kmem_size=&quot;512M&quot;
-vm.kmem_size_max=&quot;512M&quot;</code></pre>
+vm.kmem_size_max=&quot;512M&quot;
+</code></pre>
 <p>Damit man nicht an die Gerätenamen beim Einbinden von Partitionen gebunden ist, müssen Label gesetzt werden. Für die SWAP-Partition:</p>
 <pre><code>swapinfo                # determine swap partition
-glabel label swap /dev/vtbd0s1b     # Set label</code></pre>
+glabel label swap /dev/vtbd0s1b     # Set label
+</code></pre>
 <p>Außerdem muss die <code>/etc/fstab</code> noch angepasst werden. Dies kann z.B. so aussehen:</p>
 <pre><code># Device        Mountpoint      FStype  Options Dump    Pass#
 /dev/vtbd0s1a /               ufs     rw      1       1
 /dev/label/swap none            swap    sw      0       0
 linproc /compat/linux/proc linprocfs rw,late 0 0
 linsysfs /compat/linux/sys linsysfs rw 0 0
-tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0</code></pre>
+tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0
+</code></pre>
 <p>Damit immmer das richtige rootfs genutzt wird:</p>
 <pre><code>mount                           # Get root partition
 dumpfs -l /dev/vtbd0s1a                 # Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
-vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio</code></pre>
+vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+</code></pre>
 <p>Abschließend erhält die VM noch ein zweites Festplatten-Image mit einer Größe von 5G. Dies wird von LTP Testsuites genutzt. Das Device muss in der Variable DEVICE in <code>/lockdoc/run-bench.sh</code> vermerkt werden. Achtung: Device heißt in QEMU möglicherweise anders als in BOCHS. Bei der Nutzung von KCOV mittels <code>trace-all-ltp-tests.sh</code> muss die Umgebungsvariable DEVICE gesetzt werden, siehe manuals/vm-linux-32/README.txt.</p>
 <p><a id="userland-compilieren"></a></p>
 <h2 id="userland-aus-dem-repository-installieren">Userland aus dem Repository installieren</h2>
@@ -207,11 +223,13 @@ cd /opt/kernel/freebsd/src
 sudo make installworld
 sudo mergemaster -Ui
 shutdown -r now
+
 </code></pre>
 <p><a id="installation-des-init-skripts"></a></p>
 <h2 id="installation-des-init-skripts">Installation des Init-Skripts</h2>
 <p>Die Skripte befinden sich im tools-Repo unter <code>manuals/vm-freebsd-32/scripts</code>. Diese müssen in die VM nach <code>/lockdoc</code> kopiert werden. Anschließend muss das neue Init-Skript im Bootloader vermerkt werden. Hierzu muss folgende Zeile in die Datei <code>/boot/loader.conf</code> eingetragen werden:</p>
-<pre><code>init_script=&quot;/lockdoc/boot.init.sh&quot;     # Hook in our own init script to automatically start the benchmark</code></pre>
+<pre><code>init_script=&quot;/lockdoc/boot.init.sh&quot;     # Hook in our own init script to automatically start the benchmark
+</code></pre>
 <p>Ggf. sind die Zeilen, die ebensfalls <code>init_script</code> setzen, auszukommentieren. Jetzt wird bei jedem Start, nachdem der Kernel geladen wurde, als erstes dieses Script ausgeführt. <strong>Achtung:</strong> Sollte der Nutzer <strong>nicht</strong> <code>al</code> lauten, müssen die Init-Skripte angepasst werden. Sollte der Nutzer beim Startet <strong>nicht</strong> innerhalb von fünf Sekunden einen beliebigen Buchstaben drücken, wird der Benchmark gestartet. Andernfalls wird das gewöhnliche FreeBSD-Userland gestartet.</p>
 <p><a id="installation-des-benchmark-skripts"></a></p>
 <h2 id="installation-des-benchmark-skripts">Installation des Benchmark-Skripts</h2>
@@ -219,19 +237,23 @@ shutdown -r now
 <p><a id="installation-der-benchmark-tools"></a></p>
 <h2 id="installation-der-benchmark-tools">Installation der Benchmark-Tools</h2>
 <p>Sowohl in der Linux- als auch in der FreeBSD-VM verwenden wir ein Subset des Linux-Test-Project (LTP) für unsere Benchmarksuite. Der Quellcode findet sich unter <code>https://github.com/linux-test-project/ltp.git</code>. Aktuell setzen wir Revision <code>a6a5caef</code>, Tag/Release <code>20190115</code>, ein. Mit Hilfe des Linux-Kompatibilitätslayers laufen die Programme aus dem LTP problemlos unter FreeBSD. Übersetzt werden muss LTP allerdings unter Linux, z.B. unter Debian 9 i386. Das Übersetzen auf einer neueren Debian-Version führt zu einer Inkompatibilität mit der von FreeBSD bereitgesteltlen glibc. Allerdings müssen sie unter Linux übersetzt und in das Verzeichnis <code>/compat/linux/opt/kernel/ltp/bin</code> installiert werden. Vor dem Übersetzen müssen noch die Dateien <code>{syscalls,{syscalls,fs}-custom}</code> aus <code>manuals/vm-linux-32/scripts/</code> nach <code>$LTPSRC/runtest/</code> kopiert werden. (TODO: nicht mehr aktuell?) Vor einer Aufzeichnung sollte LTP einmal ausgeführt werden, um z.B. benötigte Nutzer oder Gruppen anzulegen</p>
-<pre><code>GATHER_COV=1 /lockdoc/run-bench.sh ltp-syscalls</code></pre>
+<pre><code>GATHER_COV=1 /lockdoc/run-bench.sh ltp-syscalls
+</code></pre>
 <p><a id="konfiguration-und-%C3%9Cbersetzen-des-freebsd-kernels"></a></p>
 <h2 id="konfiguration-und-übersetzen-des-freebsd-kernels">Konfiguration und Übersetzen des FreeBSD Kernels</h2>
 <p>Zuerst muss unsere eigene Version des FreeBSD-Trees ausgechecked werden. Wir verwenden einen bestimmten Branch.</p>
-<pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/12.0-lockdoc /opt/kernel/freebsd/src</code></pre>
+<pre><code>git clone git@gitos.cs.tu-dortmund.de:lockdoc/freebsd.git -b releng/12.0-lockdoc /opt/kernel/freebsd/src
+</code></pre>
 <p>** Achtung: ** Bevor irgendein selbstgebauter Kernel installiert wird, sollte der Standard-Kernel gesichert werden:</p>
-<pre><code>sudo cp -r /boot/kernel /boot/kernel.ori</code></pre>
+<pre><code>sudo cp -r /boot/kernel /boot/kernel.ori
+</code></pre>
 <p>Bei einem <code>make install</code> wird der aktuelle Kernel nach <code>/boot/kernel.old</code> kopiert und der neue Kernel in <code>/boot/kernel</code> installiert. <a id="konfiguration-1"></a></p>
 <h3 id="konfiguration-1">Konfiguration</h3>
 <p>Die Konfiguration für LockDoc befindet sich bereits in <code>/opt/kernel/freebsd/src/sys/i386/conf</code>. Daher ist nichts weiter zu tun, sofern diese Konfiguration verwendet werden soll.</p>
 <p>Alternativ kann auch mit einer Standard-Konfiguration begonnen werden:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
-# cp GENERIC LOCKDOC</code></pre>
+# cp GENERIC LOCKDOC
+</code></pre>
 <p>Danach kann die Konfiguration angepasst werden, um z.B. einige Sub-Systeme zu entfernen.</p>
 <p><a id="%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees"></a></p>
 <h3 id="übersetzen-außerhalb-des-source-trees">Übersetzen außerhalb des Source-Trees</h3>
@@ -240,23 +262,27 @@ shutdown -r now
 # config -d /opt/kernel/freebsd/obj -I `pwd` `pwd`/LOCKDOC
 # cd /$OBJDIR
 # MODULES_OVERRIDE=&quot;&quot; make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc make install</code></pre>
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc make install
+</code></pre>
 <p>Es ist wichtig, die Variable <code>MODULES_OVERRIDE=""</code> zu setzen. Nur so wird verhindert, dass alle Module gebaut werden - was das Standard-Verhalten ist. Effektiv werden gar keine separaten Kernel-Module gebaut. Alle erforderlichen Treiber und co. werden über die Konfiguration in das Kernel-Image gelinkt. Durch die Variable <code>KODIR</code> teilt man dem Makefile mit, dass der Kernel in <code>/boot/lockdoc</code> installiert werden sollen. Nur wenn den Kernel in dieses Verzeichnis installiert, wird er auch automatisch durch den Bootloader ausgewählt (siehe <code>kernel="..."</code> in <code>/boot/loader.conf</code>). Sollte beim Übersetzen eine Fehlermeldung (<code>line 127: amd64/arm64/i386 kernel requires linker ifunc support</code>) erscheinen, die den Linker nennt, hilft evtl. das Setzen der Variable <code>LD=""</code>: <code>MODULES_OVERRIDE=""  LD=ld.lld make [-j X]</code>.</p>
 <p><a id="%C3%9Cbersetzen-im-source-tree"></a></p>
 <h3 id="übersetzen-im-source-tree">Übersetzen im Source-Tree</h3>
 <p>Möchte man einfach den Kernel innerhalb des FreeBSD-Trees bauen, genügen folgende Befehle:</p>
 <pre><code># cd /usr/src
 # make buildkernel KERNCONF=LOCKDOC
-# make installkernel KERNCONF=LOCKDOC</code></pre>
+# make installkernel KERNCONF=LOCKDOC
+</code></pre>
 <p>Außerdem kann mit dem Flag <code>-DKERNFAST</code> das Übersetzen beschleunigt werden, in dem nur die Übersetzungseinheiten neu gebaut werden, deren Konfiguration oder Quellcode sich geändert hat.</p>
 <pre><code># cd /usr/src
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
-# make installkernel KERNCONF=LOCKDOC</code></pre>
+# make installkernel KERNCONF=LOCKDOC
+</code></pre>
 <p><a id="links-1"></a></p>
 <h2 id="links-1">Links</h2>
 <ul>
 <li><a href="http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html">ausführliche Anleitung zur Konfiguration des Kernels</a></li>
 <li><a href="http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html">ausführliche Anleitung zur Übersetzung des Kernels</a></li>
+<li><a href="https://wiki.freebsd.org/LinuxJails">Ubuntu-Jail unter FreeBSD</a></li>
 </ul>
 <p><a id="freebas-code-abdeckung"></a></p>
 <h1 id="code-abdeckung">Code-Abdeckung</h1>
@@ -266,21 +292,27 @@ shutdown -r now
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-kcov -I `pwd` `pwd`/LOCKDOC_KCOV
 # MODULES_OVERRIDE=&quot;&quot; make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-kcov make install</code></pre>
-<p>Für weitere Details bitte in <code>manuals/vm-linux-32/README.txt</code> im Abschnitt <code>Gather code coverage</code> nachschauen.</p>
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-kcov make install
+</code></pre>
+<p>Für weitere Details bitte in <code>manuals/vm-linux-32/README.txt</code> im Abschnitt <code>Gather code coverage</code> nachschauen. Der dort erklärte Mechanismus (LD_PRELOAD) funktioniert unter FreeBSD, allerdings nur für FreeBSD-Binaries. Aufzeichnungen mit Linux-Binaries funktionieren (noch?) nicht. Daher funktioniert das Skript <code>trace-all-ltp-tests.sh</code> für LTP auch nicht.</p>
 <p><a id="freebsd-code-abdeckung-bestimmen-gcov"></a></p>
 <h2 id="code-abdeckung-bestimmen---gcov">Code-Abdeckung bestimmen - GCOV</h2>
-<p>Achtung ggf. veraltet, da nicht mehr gepflegt: Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
+<p><strong>Achtung:</strong> Ggf. veraltet, da nicht mehr gepflegt!</p>
+<p>Um einen Kernel mit GCOV-Unterstützung zu bauen, sind folgende Befehle nötig:</p>
 <pre><code># cd /opt/kernel/freebsd/src/sys/i386/conf
 # config -d /opt/kernel/freebsd/obj-gcov -I `pwd` `pwd`/LOCKDOC_GOV
 # MK_FORMAT_EXTENSION=no MODULES_OVERRIDE=&quot;&quot; LD=ld.lld CC=gcc7 COMPILER_TYPE=gcc make [-j X]
-# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-gcov LD=ld.lld make install</code></pre>
+# sudo -E MODULES_OVERRIDE=&quot;&quot; KODIR=/boot/lockdoc-gcov LD=ld.lld make install
+</code></pre>
 <p>Achuntg: Damit das Setzen der Umgebungsvariable, wie unten, korrekt funktioniert sollte als Standardshell für <code>root</code> die Bash eingestellt sein. Zunächst das Linux-DebugFS einhängen:</p>
-<pre><code># mount -t debugfs debugfs /mnt</code></pre>
+<pre><code># mount -t debugfs debugfs /mnt
+</code></pre>
 <p>GCOV muss zunaechst mindestens einmal aktiviert werden. Andernfalls existiert das Verzeichnis <code>/mnt/gcov</code> nicht und das Skript <code>gcov-trace.sh</code> bricht ab.</p>
-<pre><code># sysctl debug.gcov.enable=1</code></pre>
+<pre><code># sysctl debug.gcov.enable=1
+</code></pre>
 <p>Die Variable <code>GATHER_COV</code> sorgt dafür, dass das Skript <code>run-bench.sh</code> gewisse Initialisierungsbefehle auslässt. Der erste Parameter von <code>./gcov-trace.sh</code> gibt an, wo der Kernel übersetzt wurde - hier <code>/opt/kernel/freebsd/obj-gcov/</code>. Der dritte Parameter gibt den Namen der Ausgabedatei an.</p>
-<pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;</code></pre>
+<pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;
+</code></pre>
 <p><a id="freebsd-code-abdeckung-links"></a></p>
 <h2 id="links-2">Links</h2>
 <ul>

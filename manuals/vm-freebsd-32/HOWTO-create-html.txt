@@ -14,4 +14,4 @@
 Oder auch ohne einen kommerziellen Texteditor installieren zu müssen, dafür mit
 relativen statt absoluten Bilddatei-Referenzen im Output:
   wget https://pandoc.org/demo/pandoc.css
-  pandoc -s -f markdown_github -t html5 -c pandoc.css -o README.html README.md
+  pandoc -s -f gfm -t html5  --metadata title="FreeBSD Anleitung" -c pandoc.css -o README.html README.md
