@@ -59,8 +59,35 @@ then
 		DEFAULT_USER=1001
 		DEFAULT_GROUP=20
 	fi
-	LTP_CMD="chroot /compat/linux ${LTPROOT}/runltp -q"
+	LTP_CMD="chroot /compat/ubuntu ${LTPROOT}/runltp -q"
 	DEVICE=/dev/ada1
+
+	# Copied from /etc/rc.d/linuc -- BEGIN
+	_emul_path="/compat/ubuntu"
+	if [ -x ${_emul_path}/sbin/ldconfigDisabled ]; then
+		_tmpdir=`mktemp -d -t linux-ldconfig`
+		${_emul_path}/sbin/ldconfig -C ${_tmpdir}/ld.so.cache
+		if ! cmp -s ${_tmpdir}/ld.so.cache ${_emul_path}/etc/ld.so.cache; then
+			cat ${_tmpdir}/ld.so.cache > ${_emul_path}/etc/ld.so.cache
+		fi
+		rm -rf ${_tmpdir}
+	fi
+
+	# Handle unbranded ELF executables by defaulting to ELFOSABI_LINUX.
+#	if [ `sysctl -ni kern.elf64.fallback_brand` -eq "-1" ]; then
+#		sysctl kern.elf64.fallback_brand=3 > /dev/null
+#	fi
+
+	if [ `sysctl -ni kern.elf32.fallback_brand` -eq "-1" ]; then
+		sysctl kern.elf32.fallback_brand=3 > /dev/null
+	fi
+
+	/sbin/mount -t linprocfs linprocfs "${_emul_path}/proc"
+	/sbin/mount -t linsysfs linsysfs "${_emul_path}/sys"
+	/sbin/mount -t devfs devfs "${_emul_path}/dev"
+	/sbin/mount -o linrdlnk -t fdescfs fdescfs "${_emul_path}/dev/fd"
+	/sbin/mount -o mode=1777 -t tmpfs tmpfs "${_emul_path}/dev/shm"
+	# Copied from /etc/rc.d/linuc -- END
 fi
 
 if [ ! -e ${DEVICE} ];
