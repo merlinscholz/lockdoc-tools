@@ -41,7 +41,7 @@
 <li><a href="#weitere-benutzer">Weitere Benutzer</a></li>
 <li><a href="#abschluss">Abschluss</a></li>
 <li><a href="#fertiges-os">Fertiges OS</a></li>
-<li><a href="#links">Links</a></li>
+<li><a href="#links-installation">Links zur Installation</a></li>
 </ul></li>
 </ul></li>
 <li><a href="#freebsd-f%C3%BCr-lockdoc-vorbereiten">FreeBSD für LockDoc vorbereiten</a>
@@ -58,7 +58,7 @@
 <li><a href="#%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees">Übersetzen außerhalb des Source-Trees</a></li>
 <li><a href="#%C3%9Cbersetzen-im-source-tree">Übersetzen im Source-Tree</a></li>
 </ul></li>
-<li><a href="#links-1">Links</a></li>
+<li><a href="#links-kernel-jail">Links zum Kernel und Linux-Jail</a></li>
 </ul></li>
 <li><a href="#freebas-code-abdeckung">Code-Abdeckung</a>
 <ul>
@@ -150,8 +150,8 @@ tunefs -L roots /dev/XXX
 <h3 id="fertiges-os">Fertiges OS</h3>
 <p>Nach dem Neustart können wir uns anmelden:</p>
 <p><img src="./img/install-35.png" alt="alt text" /> <img src="./img/install-36.png" alt="alt text" /> <img src="./img/install-37.png" alt="alt text" /></p>
-<p><a id="links"></a></p>
-<h3 id="links">Links</h3>
+<p><a id="links-installation"></a></p>
+<h3 id="links-zur-installation">Links zur Installation</h3>
 <p>Nützliche Links:</p>
 <ul>
 <li><a href="http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html">http://web.archive.org/web/20180602143516/https://www.freebsd.org/doc/handbook/bsdinstall-start.html</a> Handbuch zu installation von FreeBSD (Achtung: Die Bilder sind etwas veraltert.).</li>
@@ -179,13 +179,21 @@ tunefs -L roots /dev/XXX
 <pre><code>chsh -s /usr/local/bin/bash
 </code></pre>
 <p>Es empfiehlt sich dies ebenfalls als <code>root</code> zu tun.</p>
-<p>Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der <code>/etc/fstab</code> eingetragen werden:</p>
-<pre><code>linproc         /compat/linux/proc  linprocfs  rw,late  0       0
-linsysfs        /compat/linux/sys   linsysfs        rw      0       0
-tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
+<p>Anstatt den automatischen Linux-Kompatibilitätslayer von FreeBSD zu verwenden kommt ein Ubuntu-Chroot zum Einsatz. Hierzu ein Ubuntu-Chroot nach der Anleitung unter <a href="#links-kernel-jail">Links zum Kernel und Jail</a> installieren. Die Eintragungen in der <code>/etc/fstab</code> sind nicht nötig. Nun muss LTP in dem Chroot übersetzt werden:</p>
+<pre><code>sudo chroot /compat/ubuntu/ /bin/bash
+apt install dosfstools e2fsprogs build-essential git-core aptitude autoconf vim util-linux
 </code></pre>
-<p>Zusätzlich kann man noch ein Ubuntu-Chroot mittels <code>debootstrap</code> installieren. Details dazu finden sich dazu im FreeBSD-Wiki -- siehe Links. Ggf. lässt sich damit auch das Problem einer veralteten Libc umgehen -- siehe <a href="#installation-der-benchmark-tools">Installation der Benchmarks-Tools</a>.</p>
-<p>Die dafür nötigen Kernel-Module sollten automatisch geladen werden. Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in <code>/boot/loader.conf</code> ein:</p>
+<p>Anschließend noch die in der LTP-Anleitung in Abschnitt <code>Install the benchmark</code> in <code>$tools/manuals/vm-linux-32/README.txt</code> aufgelisteten Pakete installieren.</p>
+<pre><code>mkdir -p /opt/kernel/ltp/
+cd /opt/kernel/ltp
+git clone git@gitos.cs.tu-dortmund.de:lockdoc/ltp.git src
+cd src
+autoreconf -i
+./configure --prefix=/opt/kernel/ltp/bin
+make -j X
+make install
+</code></pre>
+<p>Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in <code>/boot/loader.conf</code> ein:</p>
 <pre><code>kernel=&quot;lockdoc&quot;                        # Set FreeBSD&#39;s kernel as default
 kernels_autodetect=&quot;YES&quot;                # Detect all installed kernels automatically
 #console=&quot;vidconsole,comconsole&quot;        # Use video or video+com as console
@@ -201,14 +209,13 @@ glabel label swap /dev/vtbd0s1b     # Set label
 <pre><code># Device        Mountpoint      FStype  Options Dump    Pass#
 /dev/vtbd0s1a /               ufs     rw      1       1
 /dev/label/swap none            swap    sw      0       0
-linproc /compat/linux/proc linprocfs rw,late 0 0
-linsysfs /compat/linux/sys linsysfs rw 0 0
-tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0
 </code></pre>
-<p>Damit immmer das richtige rootfs genutzt wird:</p>
+<p>Damit immmer das richtige root-Dateisystem genutzt wird:</p>
 <pre><code>mount                           # Get root partition
 dumpfs -l /dev/vtbd0s1a                 # Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
-vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
+</code></pre>
+<p>Die Ergebnisse in <code>/boot/loader.conf</code> eintragen:</p>
+<pre><code>vfs.root.mountfrom=&quot;ufs:/dev/ufsid/5fa7141d81b1911d&quot;    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
 </code></pre>
 <p>Abschließend erhält die VM noch ein zweites Festplatten-Image mit einer Größe von 5G. Dies wird von LTP Testsuites genutzt. Das Device muss in der Variable DEVICE in <code>/lockdoc/run-bench.sh</code> vermerkt werden. Achtung: Device heißt in QEMU möglicherweise anders als in BOCHS. Bei der Nutzung von KCOV mittels <code>trace-all-ltp-tests.sh</code> muss die Umgebungsvariable DEVICE gesetzt werden, siehe manuals/vm-linux-32/README.txt.</p>
 <p><a id="userland-compilieren"></a></p>
@@ -277,8 +284,8 @@ shutdown -r now
 # make buildkernel -DKERNFAST KERNCONF=LOCKDOC
 # make installkernel KERNCONF=LOCKDOC
 </code></pre>
-<p><a id="links-1"></a></p>
-<h2 id="links-1">Links</h2>
+<p><a id="links-kernel-jail"></a></p>
+<h2 id="links-zum-kernel-und-linux-jail">Links zum Kernel und Linux-Jail</h2>
 <ul>
 <li><a href="http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html">ausführliche Anleitung zur Konfiguration des Kernels</a></li>
 <li><a href="http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html">ausführliche Anleitung zur Übersetzung des Kernels</a></li>
@@ -314,7 +321,7 @@ shutdown -r now
 <pre><code># GATHER_COV=1 GCOV_DIR=/mnt/gcov ./gcov-trace.sh /opt/kernel/freebsd/obj-gcov/ test /lockdoc/run_bench.sh &lt;benchmark&gt;
 </code></pre>
 <p><a id="freebsd-code-abdeckung-links"></a></p>
-<h2 id="links-2">Links</h2>
+<h2 id="links">Links</h2>
 <ul>
 <li><a href="https://01.org/linuxgraphics/gfx-docs/drm/dev-tools/gcov.html#">GCOV on Linux</a></li>
 <li><a href="https://01.org/linuxgraphics/gfx-docs/drm/dev-tools/gcov.html#appendix-b-gather-on-test-sh">Gather GCOV files on test machine</a></li>

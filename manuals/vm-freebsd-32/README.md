@@ -17,7 +17,7 @@
 		- [Weitere Benutzer](#weitere-benutzer)
 		- [Abschluss](#abschluss)
 		- [Fertiges OS](#fertiges-os)
-		- [Links](#links)
+		- [Links zur Installation](#links-installation)
 - [FreeBSD für LockDoc vorbereiten](#freebsd-f%C3%BCr-lockdoc-vorbereiten)
 	- [Erforderliche Pakete installieren](#erforderliche-pakete-installieren)
 	- [Userland einrichten](#userland-einrichten)
@@ -29,7 +29,7 @@
 		- [Konfiguration](#konfiguration-1)
 		- [Übersetzen außerhalb des Source-Trees](#%C3%9Cbersetzen-au%C3%9Ferhalb-des-source-trees)
 		- [Übersetzen im Source-Tree](#%C3%9Cbersetzen-im-source-tree)
-	- [Links](#links-1)
+	- [Links zum Kernel und Linux-Jail](#links-kernel-jail)
 - [Code-Abdeckung](#freebas-code-abdeckung)
 	- [Code-Abdeckung bestimmen - KCOV](#freebsd-code-abdeckung-bestimmen-kcov)
 	- [Code-Abdeckung bestimmen - GCOV](#freebsd-code-abdeckung-bestimmen-gcov)
@@ -210,8 +210,8 @@ Nach dem Neustart können wir uns anmelden:
 ![alt text](./img/install-37.png)
 
 
-<a id="links"></a>
-### Links
+<a id="links-installation"></a>
+### Links zur Installation
 
 Nützliche Links:
 
@@ -256,19 +256,25 @@ chsh -s /usr/local/bin/bash
 ```
 Es empfiehlt sich dies ebenfalls als `root` zu tun.
 
-Für den Linux-Kompatibilitätslayer sind Linux-spezifische Dateisysteme erforderlich. Diese müssen in der `/etc/fstab` eingetragen werden:
-
+Anstatt den automatischen Linux-Kompatibilitätslayer von FreeBSD zu verwenden kommt ein Ubuntu-Chroot zum Einsatz.
+Hierzu muss zunächst ein Ubuntu-Chroot nach der Anleitung unter [Links zum Kernel und Jail](#links-kernel-jail) installiert wird. Die Eintragungen in der `/etc/fstab` sind nicht nötig.
+Nun muss LTP in dem Chroot übersetzt werden:
 ```
-linproc         /compat/linux/proc  linprocfs  rw,late  0       0
-linsysfs        /compat/linux/sys   linsysfs        rw      0       0
-tmpfs           /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
+sudo chroot /compat/ubuntu/ /bin/bash
+apt install dosfstools e2fsprogs build-essential git-core aptitude autoconf vim util-linux
+```
+Anschließend noch die in der LTP-Anleitung in Abschnitt `Install the benchmark` in `$tools/manuals/vm-linux-32/README.txt` aufgelisteten Pakete installieren.
+```
+mkdir -p /opt/kernel/ltp/
+cd /opt/kernel/ltp
+git clone git@gitos.cs.tu-dortmund.de:lockdoc/ltp.git src
+cd src
+autoreconf -i
+./configure --prefix=/opt/kernel/ltp/bin
+make -j X
+make install
 ```
 
-Zusätzlich kann man noch ein Ubuntu-Chroot mittels `debootstrap` installieren. Details dazu finden sich dazu im FreeBSD-Wiki -- siehe Links.
-Ggf. lässt sich damit auch das Problem einer veralteten Libc umgehen -- siehe [Installation der Benchmarks-Tools](#installation-der-benchmark-tools).
-
-
-Die dafür nötigen Kernel-Module sollten automatisch geladen werden.
 Abschließend muss der Bootloader noch passend konfiguriert werden. Dazu trägt man folgenden Inhalt in ```/boot/loader.conf``` ein:
 ```
 kernel="lockdoc"                        # Set FreeBSD's kernel as default
@@ -289,15 +295,15 @@ Außerdem muss die `/etc/fstab` noch angepasst werden. Dies kann z.B. so aussehe
 # Device        Mountpoint      FStype  Options Dump    Pass#
 /dev/vtbd0s1a /               ufs     rw      1       1
 /dev/label/swap none            swap    sw      0       0
-linproc /compat/linux/proc linprocfs rw,late 0 0
-linsysfs /compat/linux/sys linsysfs rw 0 0
-tmpfs /compat/linux/dev/shm tmpfs rw,mode=1777 0 0
 ```
 
-Damit immmer das richtige rootfs genutzt wird:
+Damit immmer das richtige root-Dateisystem genutzt wird:
 ```
 mount 							# Get root partition
 dumpfs -l /dev/vtbd0s1a					# Get UFS id, e.g., /dev/ufsid/5fa7141d81b1911d
+```
+Die Ergebnisse in `/boot/loader.conf` eintragen:
+```
 vfs.root.mountfrom="ufs:/dev/ufsid/5fa7141d81b1911d"    # Use labels to detects the rootfs. Enables easy switching of disk technologies, e.g. scsi, ide, or virtio
 ```
 
@@ -421,8 +427,8 @@ geändert hat.
 # make installkernel KERNCONF=LOCKDOC
 ```
 
-<a id="links-1"></a>
-## Links
+<a id="links-kernel-jail"></a>
+## Links zum Kernel und Linux-Jail
 
 - [ausführliche Anleitung zur Konfiguration des Kernels](http://web.archive.org/web/20180602150338/https://www.freebsd.org/doc/handbook/kernelconfig-config.html)
 - [ausführliche Anleitung zur Übersetzung des Kernels](http://web.archive.org/web/20180602152745/https://www.freebsd.org/doc/handbook/kernelconfig-building.html)
