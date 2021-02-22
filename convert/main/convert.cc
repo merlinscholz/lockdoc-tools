@@ -340,11 +340,13 @@ static unsigned long long addMemberName(const char *member_name) {
 	return ret;
 }
 
-static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stacktracesOFile, char delimiter, unsigned long long instrPtr, std::string stacktrace) {
+static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stacktracesOFile, char delimiter, unsigned long long instrPtr, std::string &stacktrace) {
 	unsigned long long ret;
 
 	// Remove the last character since it always is a comma.
-	stacktrace.pop_back();
+	if (!stacktrace.empty() && stacktrace.find_last_of(',') != string::npos) {
+		stacktrace.pop_back();
+	}
 	auto itStacktrace = stacktraces.emplace(instrPtr,map<std::string,unsigned long long>());
 	auto &subStacktraces = itStacktrace.first->second;
 	// Do we know that substacktrace?
@@ -353,7 +355,10 @@ static unsigned long long addStacktrace(const char *kernelBaseDir, ostream &stac
 	if (itSubStacktrace == subStacktraces.cend()) {
 		int sequence = 0;
 		stringstream ss;
-		ss << hex << showbase << instrPtr << "," << stacktrace;
+		ss << hex << showbase << instrPtr;
+		if (!stacktrace.empty()) {
+		       ss << "," << stacktrace;
+		}
 		std::string token;
 
 		ret = curStacktraceID++;
