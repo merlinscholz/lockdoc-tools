@@ -934,7 +934,7 @@ int main(int argc, char *argv[]) {
 
 		// Sanity check
 		if (lineElems.size() != 4) {
-			cerr << "Ignoring invalid function blacklist entry, line " << (lineCounter + 1)
+			cerr << "Ignoring invalid function blacklist entry, line " << dec << (lineCounter + 1)
 				<< ": " << inputLine << endl;
 			continue;
 		}
