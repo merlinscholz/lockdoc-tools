@@ -954,7 +954,7 @@ int main(int argc, char *argv[]) {
 			if (isRealSubclass) {
 				auto itSubclass = subclass2id.find(subclassName);
 				if (itSubclass == subclass2id.end()) {
-					cerr << "Unknown subclass in function blacklist, line " << (lineCounter + 1)
+					cerr << "Unknown subclass in function blacklist, line " << dec << (lineCounter + 1)
 						<< ": " << subclassName << endl;
 					continue;
 				}
@@ -962,7 +962,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				auto itType = type2id.find(dataTypeName);
 				if (itType == type2id.end()) {
-					cerr << "Unknown data type in function blacklist, line " << (lineCounter + 1)
+					cerr << "Unknown data type in function blacklist, line " << dec << (lineCounter + 1)
 						<< ": " << dataTypeName << endl;
 					continue;
 				}
@@ -976,7 +976,7 @@ int main(int argc, char *argv[]) {
 		if (lineElems.at(1) != "\\N") {
 			auto itMember = memberNames.find(lineElems.at(1));
 			if (itMember == memberNames.end()) {
-				cerr << "Unknown member name in function blacklist, line " << (lineCounter + 1)
+				cerr << "Unknown member name in function blacklist, line " << dec << (lineCounter + 1)
 					<< ": " << lineElems.at(1) << endl;
 				continue;
 			}
@@ -1014,7 +1014,7 @@ int main(int argc, char *argv[]) {
 
 		// Sanity check
 		if (lineElems.size() != 2) {
-			cerr << "Ignoring invalid member blacklist entry, line " << (lineCounter + 1)
+			cerr << "Ignoring invalid member blacklist entry, line " << dec << (lineCounter + 1)
 				<< ": " << inputLine << endl;
 			continue;
 		}
@@ -1035,7 +1035,7 @@ int main(int argc, char *argv[]) {
 			if (isRealSubclass) {
 				auto itSubclass = subclass2id.find(subclassName);
 				if (itSubclass == subclass2id.end()) {
-					cerr << "Unknown subclass in member blacklist, line " << (lineCounter + 1)
+					cerr << "Unknown subclass in member blacklist, line " <<  dec << (lineCounter + 1)
 						<< ": " << subclassName << endl;
 					continue;
 				}
@@ -1043,7 +1043,7 @@ int main(int argc, char *argv[]) {
 			} else {
 				auto itType = type2id.find(dataTypeName);
 				if (itType == type2id.end()) {
-					cerr << "Unknown data type in member blacklist, line " << (lineCounter + 1)
+					cerr << "Unknown data type in member blacklist, line " << dec << (lineCounter + 1)
 						<< ": " << dataTypeName << endl;
 					continue;
 				}
@@ -1055,7 +1055,7 @@ int main(int argc, char *argv[]) {
 
 		auto itMember = memberNames.find(lineElems.at(1));
 		if (itMember == memberNames.end()) {
-			cerr << "Unknown member in member blacklist, line " << (lineCounter + 1)
+			cerr << "Unknown member in member blacklist, line " << dec <<  (lineCounter + 1)
 				<< ": " << lineElems.at(1) << endl;
 			continue;
 		}
