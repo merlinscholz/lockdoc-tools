@@ -21,6 +21,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
 	parser.add_argument('-r', '--rejected', action='store_true', help='Print tuples that have accesses but the prediction does not match the ground truth')
+	parser.add_argument('-c', '--comparable', action='store_true', help='Print every tuple including YES/NO for a correct prediction to stderr')
 	parser.add_argument('gtruthCSV', help='Input file containing the ground truth')
 	parser.add_argument('hypoAllCSV', help='Input file containing preditions made by the hypothesizer (all hypotheses)')
 	parser.add_argument('hypoWinnerCSV', help='Input file containing preditions made by the hypothesizer (winning hypotheses only)')
@@ -60,9 +61,16 @@ if __name__ == '__main__':
 			locksHeld = list(locksHeldDict.keys())[0]
 			if re.match('^' + lockingRule + '$',locksHeld):
 				matchedRules = matchedRules + 1
-			elif args.rejected:
-				print("Rejected: {0}".format(key), file = sys.stderr)
+				if args.comparable:
+					print("YES:{0}".format(key), file = sys.stderr)
+			else:
+				if args.comparable:
+					print("NO :{0}".format(key), file = sys.stderr)
+				if args.rejected:
+					print("Rejected: {0}".format(key), file = sys.stderr)
 		elif key in hypoAllDict:
+			if args.comparable:
+				print("NO :{0}".format(key), file = sys.stderr)
 			totalRules = totalRules + 1
 	print("totalrules;matched;percentage")
 	print("%d;%d;%3.2f" % (totalRules, matchedRules, util.calcPercentage(totalRules, matchedRules)))
