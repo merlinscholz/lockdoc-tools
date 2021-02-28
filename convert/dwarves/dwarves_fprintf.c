@@ -189,7 +189,7 @@ static bool type__fprintf(struct tag *type, const struct cu *cu,
 			    const char *name, FILE *fp, struct dwarves_convert_ext *ext,
 				const char *cm_name, uint32_t offset);
 
-static void array_type__fprintf(const struct tag *tag,
+static bool array_type__fprintf(const struct tag *tag,
 				  const struct cu *cu, const char *name,
 				  FILE *fp, struct dwarves_convert_ext *ext)
 {
@@ -202,8 +202,16 @@ static void array_type__fprintf(const struct tag *tag,
 		tag__id_not_found_fprintf(fp, tag->type);
 	}
 
-	// FIXME: expansion of embedded struct arrays does not work yet
-	type__fprintf(type, cu, name, fp, ext, NULL, 0);
+	// FIXME: handle at->dimensions >= 1
+	if (type__fprintf(type, cu, name, fp, ext, name, 0) && at->dimensions == 1) {
+		// We found an array of structs, and recursed into it, e.g., struct foo bar[42];
+		// Fake the rest of the array elements.
+		int tag_size = tag__size(type, cu);
+		for (i = 1; i < at->nr_entries[0]; i++) {
+			type__fprintf(type, cu, name, fp, ext, name, i * tag_size);
+		}
+		return true;
+	}
 	for (i = 0; i < at->dimensions; ++i) {
 		if (at->is_vector) {
 			/*
@@ -232,6 +240,7 @@ static void array_type__fprintf(const struct tag *tag,
 		fprintf(fp, " __attribute__ ((__vector_size__ (%llu)))",
 				   flat_dimensions * tag__size(type, cu));
 	}
+	return false;
 }
 
 static const char *tag__prefix(const struct cu *cu, const uint32_t tag)
@@ -468,7 +477,7 @@ static bool type__fprintf(struct tag *type, const struct cu *cu,
 			ftype__fprintf(tag__ftype(type), cu, name, 0, 0, fp);
 			break;
 		case DW_TAG_array_type:
-			array_type__fprintf(type, cu, name, fp, ext);
+			return array_type__fprintf(type, cu, name, fp, ext);
 			break;
 		case DW_TAG_class_type:
 		case DW_TAG_structure_type:
