@@ -76,7 +76,7 @@ def main():
 			continue
 		for i in numpy.arange(params['start'], params['end'] + params['step'], params['step']):
 			if args.keep:
-				fname = "eval-%s-%.2f-hypothesizer.csv" % (key, i, i)
+				fname = "eval-%s-%.2f-hypothesizer.csv" % (key, i)
 				tempWinnerCSV = open(os.path.join(args.keep, fname), 'w')
 			else:
 				tempWinnerCSV = tempfile.NamedTemporaryFile()
