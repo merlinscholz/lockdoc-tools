@@ -65,6 +65,8 @@ inode;\N;debug_fill_super;\N
 inode;\N;devpts_mount;\N
 inode:ext4;\N;ext4_fill_super;\N
 inode:ext4;\N;ext4_set_aops;\N
+inode:ext4;\N;ext4_init_acl;\N
+inode:ext4;\N;__ext4_iget;0
 inode;\N;inode_init_always;\N
 inode;\N;inode_init_once;\N
 inode;\N;inode_init_owner;\N
@@ -77,8 +79,6 @@ inode:proc;\N;proc_get_inode;\N
 inode;\N;ramfs_get_inode;\N
 inode;\N;shmem_get_inode;\N
 inode;\N;simple_fill_super;\N
-inode:ext4;\N;ext4_iget;\N
-inode:ext4;\N;ext4_iget_normal;\N
 inode;\N;sock_alloc;\N
 inode;\N;shmem_fill_super;\N
 inode;\N;hugetlbfs_fill_super;\N
@@ -131,6 +131,7 @@ block_device;\N;ramfs_fill_super;\N
 block_device;\N;proc_fill_super;\N
 block_device;\N;simple_fill_super;\N
 block_device;\N;mqueue_fill_super;\N
+block_device;\N;bdget;\N
 journal_t;\N;jbd2_journal_init_inode;\N
 journal_t;\N;journal_init_common;\N
 journal_t;\N;ext4_fill_super;\N
@@ -146,6 +147,7 @@ transaction_t;\N;start_this_handle;\N
 journal_head;\N;jbd2_journal_add_journal_head;\N
 journal_head;\N;__journal_remove_journal_head;\N
 dentry;\N;__d_alloc;\N
+dentry;\N;d_alloc_cursor;\N
 dentry;\N;d_free;\N
 dentry;\N;__d_free;\N
 dentry;\N;__d_free_external;\N
@@ -158,3 +160,4 @@ buffer_head;\N;create_empty_buffers;\N
 buffer_head;\N;link_dev_buffers;\N
 buffer_head;\N;create_page_buffers;\N
 buffer_head;\N;init_page_buffers;\N
+jbd2_inode;\N;jbd2_journal_init_jbd_inode(;\N

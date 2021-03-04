@@ -26,9 +26,15 @@ super_block;s_umount
 super_block;s_sync_lock
 backing_dev_info;wb.list_lock
 backing_dev_info;wb.work_lock
+backing_dev_info;wb.completions
+backing_dev_info;wb.rcu
+backing_dev_info;wb_waitq
 block_device;bd_mutex
 block_device;bd_fsfreeze_mutex
 pipe_inode_info;mutex
 bdi_writeback;list_lock
 bdi_writeback;work_lock
+bdi_writeback;completions
+bdi_writeback;rcu
 dentry;d_lockref.anonymous_0.lock
+dentry;d_u.d_rcu
