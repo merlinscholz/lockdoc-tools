@@ -3,7 +3,10 @@ lockdoc_ring_buffer
 vnode
 mount
 bufobj
+buf
 bufv
+bufqueue
+bufdomain
 cdev
 cdev_priv
 pipepair
