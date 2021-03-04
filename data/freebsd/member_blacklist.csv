@@ -4,6 +4,7 @@ vnode;v_interlock
 vnode;v_vnlock
 vnode;v_bufobj.bo_lock
 mount;mnt_mtx
+mount;mnt_listmtx
 mount;mnt_explock
 pipepair;pp_mtx
 nc_vnodelocks;vnode_lock
@@ -11,3 +12,11 @@ vpollinfo;vpi_lock
 devfs_mount;dm_lock
 neglist;nl_lock
 bucket_locks;bucket_lock
+buf;b_lock
+buf;b_fsprivate1
+buf;b_fsprivate2
+buf;b_fsprivate3
+bufqueue;bq_lock
+bufdomain;bd_run_lock
+bufdomain;bd_dirtyq.bq_lock
+bufdomain;bd_subq.bq_lock
