@@ -157,7 +157,7 @@ for LOCK in "$@"; do
 		then
 			LOCKDATATYPE=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f1`
 			LOCKSUBCLASS=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f2`
-			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${SUBCLASS}'"
+			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${LOCKSUBCLASS}'"
 		else
 			LOCKDATATYPE=${LOCKCOMBINEDDT}
 			LOCKSUBCLASS_FILTER=""
@@ -218,7 +218,7 @@ EOT
 		then
 			LOCKDATATYPE=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f1`
 			LOCKSUBCLASS=`echo ${LOCKCOMBINEDDT} | cut -d ":" -f2`
-			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${SUBCLASS}'"
+			LOCKSUBCLASS_FILTER=" AND l_sc_sbh${LOCKNR}.name = '${LOCKSUBCLASS}'"
 		else
 			LOCKDATATYPE=${LOCKCOMBINEDDT}
 			LOCKSUBCLASS_FILTER=""
