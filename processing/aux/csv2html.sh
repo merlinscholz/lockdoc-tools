@@ -6,6 +6,6 @@ while read INPUT ; do
 	    echo "<tr><th>$INPUT" | sed -e 's/:[^,]*\(,\|$\)/<\/th><th>/g'
 		print_header=false
 	fi
-	echo "<tr><td>${INPUT//	/</td><td>}</td></tr>" ;
+	echo "<tr><td>${INPUT//;/</td><td>}</td></tr>" ;
 done;
 echo "</table>"
