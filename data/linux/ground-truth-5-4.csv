@@ -159,3 +159,15 @@ jbd2_inode;i_dirty_start;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/li
 jbd2_inode;i_dirty_start;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421
 jbd2_inode;i_dirty_end;r;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421
 jbd2_inode;i_dirty_end;w;EMBOTHER\(journal_t.j_list_lock\[[rw]\]\);;include/linux/jbd2.h:421
+backing_dev_info;wb.b_dirty;r;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_dirty;w;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_io;r;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_io;w;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_more_io;r;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_more_io;w;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_dirty_time;r;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.b_dirty_time;w;EMBSAME\(backing_dev_info.wb.list_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.work_list;r;EMBSAME\(backing_dev_info.wb.work_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.work_list;w;EMBSAME\(backing_dev_info.wb.work_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.dwork;r;EMBSAME\(backing_dev_info.wb.work_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
+backing_dev_info;wb.dwork;w;EMBSAME\(backing_dev_info.wb.work_lock\[[rw]\]\);;include/linux/backing-dev-defs.h:130
