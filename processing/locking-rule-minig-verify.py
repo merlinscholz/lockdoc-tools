@@ -45,22 +45,23 @@ if __name__ == '__main__':
 	tempFile.close()
 	LOGGER.debug('Read %d locking rules from "%s"', len(groundtruthDict), args.gtruthCSV)
 
-	totalRules = 0
-	matchedRules = 0
+	results = dict()
 	for key, lockingRule in groundtruthDict.items():
 		if key in hypoWinnerDict and key not in hypoAllDict:
 			LOGGER.error("key '%s' is present in winner csv but not in the overall list" % (key))
 			continue
+		if key[0] not in results:
+			results[key[0]] = { 'totalRules': 0.0, 'matchedRules': 0.0 }
 		if key in hypoWinnerDict:
 			locksHeldDict = hypoWinnerDict[key]['locks']
 			if len(locksHeldDict) > 1 :
 				LOGGER.error('More than one lock hypothesis for %s', key)
-			totalRules = totalRules + 1
+			results[key[0]]['totalRules'] += 1
 			if len(locksHeldDict.keys()) > 1 :
 				LOGGER.error("More than one hypotheses for %s" % (key))
 			locksHeld = list(locksHeldDict.keys())[0]
 			if re.match('^' + lockingRule + '$',locksHeld):
-				matchedRules = matchedRules + 1
+				results[key[0]]['matchedRules'] += 1
 				if args.comparable:
 					print("YES:{0}".format(key), file = sys.stderr)
 			else:
@@ -71,6 +72,13 @@ if __name__ == '__main__':
 		elif key in hypoAllDict:
 			if args.comparable:
 				print("NO :{0}".format(key), file = sys.stderr)
-			totalRules = totalRules + 1
-	print("totalrules;matched;percentage")
-	print("%d;%d;%3.2f" % (totalRules, matchedRules, util.calcPercentage(totalRules, matchedRules)))
+			results[key[0]]['totalRules'] += 1
+
+	totalRules = 0.0
+	matchedRules = 0.0
+	print("data_type;totalrules;matched;percentage")
+	for key, values in results.items():
+		print("%s;%d;%d;%3.2f" % (key, values['totalRules'], values['matchedRules'], util.calcPercentage(values['totalRules'], values['matchedRules'])))
+		totalRules += values['totalRules']
+		matchedRules += values['matchedRules']
+	print("total;%d;%d;%3.2f" % (totalRules, matchedRules, util.calcPercentage(totalRules, matchedRules)))
