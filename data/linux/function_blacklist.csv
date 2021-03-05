@@ -83,7 +83,9 @@ inode;\N;sock_alloc;\N
 inode;\N;shmem_fill_super;\N
 inode;\N;hugetlbfs_fill_super;\N
 inode;\N;mount_pseudo;\N
-inode;\N;proc_pid_instantiate;0
+inode;\N;proc_pid_instantiate;\N
+inode;\N;proc_ns_instantiate;\N
+inode;\N;proc_task_instantiate;\N
 inode;\N;__ext4_new_inode;\N
 inode;\N;shmem_evict_inode;\N
 inode;\N;shmem_free_inode;\N
@@ -120,6 +122,7 @@ super_block;\N;ramfs_fill_super;\N
 super_block;\N;proc_fill_super;\N
 super_block;\N;simple_fill_super;\N
 super_block;\N;mqueue_fill_super;\N
+super_block;\N;get_empty_dquot;\N
 pipe_inode_info;\N;get_pipe_inode;\N
 pipe_inode_info;\N;create_pipe_files;\N
 pipe_inode_info;\N;free_pipe_info;\N
