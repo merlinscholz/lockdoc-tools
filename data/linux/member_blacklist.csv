@@ -7,6 +7,8 @@ inode;i_data.i_mmap_mutex
 inode;i_data.i_mmap_rwsem
 inode;i_data.private_lock
 inode;i_data.tree_lock
+inode;i_data.i_pages
+inode;i_dir_seq
 journal_t;j_checkpoint_mutex
 journal_t;j_list_lock
 journal_t;j_revoke_lock
