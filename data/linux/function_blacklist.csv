@@ -162,4 +162,4 @@ buffer_head;\N;create_empty_buffers;\N
 buffer_head;\N;link_dev_buffers;\N
 buffer_head;\N;create_page_buffers;\N
 buffer_head;\N;init_page_buffers;\N
-jbd2_inode;\N;jbd2_journal_init_jbd_inode(;\N
+jbd2_inode;\N;jbd2_journal_init_jbd_inode;\N
