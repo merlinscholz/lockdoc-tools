@@ -89,10 +89,11 @@ fi
 
 cat <<EOT
 
-SELECT dt_name, sl_member, ac_type, stacktrace, (CASE WHEN locks_held IS NULL OR locks_held='([])@@:' THEN 'nolocks' ELSE locks_held END) AS locks_held, 
-		string_agg(cast(ac_id AS TEXT), ';' ORDER BY ac_id) AS accesses,
-		string_agg(cast(m_bl AS TEXT), ';' ORDER BY ac_id) AS m_bl,
-		string_agg(cast(fn_bl AS TEXT), ';' ORDER BY ac_id) AS fn_bl, COUNT(*) AS num
+SELECT dt_name, sl_member, ac_type, stacktrace, locks_held, 
+		COUNT(ac_id) AS totalNum,
+		bool_or(hidden_access) AS hidden_access,
+		bool_or(flatten_access) AS flatten_accesses,
+		string_agg(CONCAT(cast(ac_id AS TEXT), '@hidden:', hidden_access, '@flatten:', flatten_access), ',' ORDER BY ac_id) AS accesses
 FROM
 (
 	SELECT
@@ -102,74 +103,93 @@ FROM
 		ac_type,
 		string_agg(
 		CASE
+			WHEN lh.txn_id IS NULL
+				THEN 'nolocks'
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
 				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
 				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', CONCAT(lock_dt.name, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.helper_offset THEN mn_lock_member.name ELSE CONCAT(mn_lock_member.name, '?') END)), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
-			ELSE CONCAT('EMBOTHER', '(',  CONCAT(lock_dt.name, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.helper_offset THEN mn_lock_member.name ELSE CONCAT(mn_lock_member.name, '?') END)), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
+				THEN CONCAT('EMBSAME(', CONCAT((CASE WHEN lock_sc.name IS NULL THEN lock_dt.name ELSE CONCAT(lock_dt.name, ':', lock_sc.name) END) , '.', (CASE WHEN l.address - lock_a.base_address = lock_member.helper_offset THEN mn_lock_member.name ELSE CONCAT(mn_lock_member.name, '?') END)), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+			ELSE CONCAT('EMBOTHER', '(',  CONCAT((CASE WHEN lock_sc.name IS NULL THEN lock_dt.name ELSE CONCAT(lock_dt.name, ':', lock_sc.name) END), '.', (CASE WHEN l.address - lock_a.base_address = lock_member.helper_offset THEN mn_lock_member.name ELSE CONCAT(mn_lock_member.name, '?') END)), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
 --			ELSE CONCAT('EMB:', l.id, '(',  CONCAT(lock_dt.name, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.helper_offset THEN mn_lock_member.name ELSE CONCAT(mn_lock_member.name, '?') END)), ')', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other
 			END
 		, ' -> ' ORDER BY lh.start) AS locks_held,
 		stacktrace,
-		m_bl,
-		fn_bl
+		hidden_access,
+		flatten_access
 	FROM
 	(
-		-- Get all accesses. Add information about the accessed member, data type, and the function the memory has been accessed from.
-		-- Filter out every function that is on our function blacklist.
-		SELECT
-			ac.id AS ac_id,
-			ac.txn_id AS ac_txn_id,
-			ac.alloc_id AS alloc_id,
-			ac.type AS ac_type,
-			mn.name AS sl_member,
-			(CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END) AS dt_name,
-			string_agg(
-				CONCAT(lower(to_hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line,
+		SELECT	r.ac_id,
+			r.ac_txn_id,
+			r.alloc_id,
+			r.ac_type,
+			r.dt_name,
+			r.sl_member,
+			r.stacktrace,
+			bool_or(ac_par.ac_type = 'w' AND r.ac_type = 'r') AS hidden_access,
+			bool_or((ac_par.ac_type = 'r' AND r.ac_type = 'r') OR (ac_par.ac_type = 'w' AND r.ac_type = 'w')) AS flatten_access
+		FROM
+		(
+			-- Get all accesses. Add information about the accessed member, data type, and the function the memory has been accessed from.
+			-- Filter out every function that is on our function blacklist.
+			SELECT
+				ac.id AS ac_id,
+				ac.txn_id AS ac_txn_id,
+				ac.alloc_id AS alloc_id,
+				ac.type AS ac_type,
+				mn.name AS sl_member,
+				(CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, ':', sc.name) END) AS dt_name,
+				string_agg(
+					CONCAT(lower(to_hex(st.instruction_ptr)), '@', st.function, '@', st.file, ':', st.line,
 					'@m_bl:', (CASE WHEN m_bl.subclass_id IS NOT NULL THEN 1 ELSE 0 END), '@fn_bl:', (CASE WHEN fn_bl.fn IS NOT NULL THEN 1 ELSE 0 END))
-			, ',' ORDER BY st.sequence) AS stacktrace,
-			(CASE WHEN bool_or(m_bl.subclass_id IS NOT NULL) THEN 1 ELSE 0 END) AS m_bl,
-			(CASE WHEN bool_or(fn_bl.fn IS NOT NULL) THEN 1 ELSE 0 END) AS fn_bl
-		FROM accesses AS ac
-		INNER JOIN allocations AS a
-		  ON a.id = ac.alloc_id
-		INNER JOIN subclasses AS sc
-		  ON sc.id = a.subclass_id
-		INNER JOIN data_types AS dt
-		  ON dt.id = sc.data_type_id
-		INNER JOIN stacktraces AS st
-		  ON ac.stacktrace_id = st.id
-		LEFT JOIN structs_layout_flat sl
-		  ON sc.data_type_id = sl.data_type_id
-		 AND ac.address - a.base_address = sl.helper_offset
-		LEFT JOIN member_names AS mn
-		  ON mn.id = sl.member_name_id
-		LEFT JOIN member_blacklist m_bl
-		  ON m_bl.subclass_id = a.subclass_id
-		 AND m_bl.member_name_id = sl.member_name_id
-		LEFT JOIN function_blacklist fn_bl
-		  ON fn_bl.fn = st.function
-		 AND 
-		 (
-		   (
-		      (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
-		      OR
-		      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
-		      OR
-		      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
-		   )
-		   AND
-		   (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence) -- for functions that appear at a certain position within the trace				 )
-		 )
-		WHERE True
-			-- Name the data type of interest here
-			${DATATYPE_FILTER}
-			${MEMBER_FILTER}
-			${ACCESS_TYPE_FILTER}
-			${FUNCTION_BLACKLIST_FILTER}
-		GROUP BY ac.id, ac.txn_id, ac.alloc_id, ac.type, mn.name, dt_name -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
+				, ',' ORDER BY st.sequence) AS stacktrace
+			FROM accesses AS ac
+			INNER JOIN allocations AS a
+			  ON a.id = ac.alloc_id
+			INNER JOIN subclasses AS sc
+			  ON sc.id = a.subclass_id
+			INNER JOIN data_types AS dt
+			  ON dt.id = sc.data_type_id
+			INNER JOIN stacktraces AS st
+			  ON ac.stacktrace_id = st.id
+			LEFT JOIN structs_layout_flat sl
+			  ON sc.data_type_id = sl.data_type_id
+			 AND ac.address - a.base_address = sl.helper_offset
+			LEFT JOIN member_names AS mn
+			  ON mn.id = sl.member_name_id
+			LEFT JOIN member_blacklist m_bl
+			  ON m_bl.subclass_id = a.subclass_id
+			 AND m_bl.member_name_id = sl.member_name_id
+			LEFT JOIN function_blacklist fn_bl
+			  ON fn_bl.fn = st.function
+			 AND 
+			 (
+			   (
+			      (fn_bl.subclass_id IS NULL  AND fn_bl.member_name_id IS NULL) -- globally blacklisted function
+			      OR
+			      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id IS NULL) -- for this data type blacklisted
+			      OR
+			      (fn_bl.subclass_id = a.subclass_id AND fn_bl.member_name_id = sl.member_name_id) -- for this member blacklisted
+			   )
+			   AND
+			   (fn_bl.sequence IS NULL OR fn_bl.sequence = st.sequence) -- for functions that appear at a certain position within the trace				 )
+			 )
+			WHERE True
+				-- Name the data type of interest here
+				${DATATYPE_FILTER}
+				${MEMBER_FILTER}
+				${ACCESS_TYPE_FILTER}
+				${FUNCTION_BLACKLIST_FILTER}
+			GROUP BY ac.id, ac.txn_id, ac.alloc_id, ac.type, mn.name, dt_name -- Remove duplicate entries. Some accesses might be mapped to more than one member, e.g., an union.
+		) r
+		LEFT JOIN accesses_flat AS ac_par
+		  ON ac_par.ac_id != r.ac_id
+		 AND ac_par.txn_id = r.ac_txn_id
+		 AND ac_par.alloc_id = r.alloc_id
+--		 AND ac_par.ac_type != r.ac_type
+--		 AND ac_par.ac_type = 'w'
+		GROUP BY r.ac_id, r.ac_txn_id, r.alloc_id, r.ac_type, r.sl_member, r.dt_name, r.stacktrace
 	) s
 	LEFT JOIN locks_held AS lh
 	  ON lh.txn_id = ac_txn_id
@@ -186,9 +206,9 @@ FROM
 	  AND l.address - lock_a.base_address = lock_member.helper_offset
 	LEFT JOIN member_names mn_lock_member
 	  ON mn_lock_member.id = lock_member.member_name_id
-	GROUP BY ac_id, dt_name, sl_member, ac_type, stacktrace, m_bl, fn_bl
+	GROUP BY ac_id, dt_name, sl_member, ac_type, stacktrace, hidden_access, flatten_access
 ) t
 -- Since we want a detailed view about where an access happenend, the result is additionally grouped by ac_fn and st_instrptr.
 GROUP BY dt_name, sl_member, ac_type, stacktrace, locks_held
-ORDER BY dt_name, sl_member, ac_type, stacktrace, locks_held, num DESC;
+ORDER BY dt_name, sl_member, ac_type, stacktrace, locks_held, totalNum DESC;
 EOT
