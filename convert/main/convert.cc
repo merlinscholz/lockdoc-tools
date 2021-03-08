@@ -425,7 +425,7 @@ int main(int argc, char *argv[]) {
 	long ctx = 0;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:upg:c")) != -1) {
+	while ((param = getopt(argc,argv,"k:b:m:t:svhd:ug:c")) != -1) {
 		switch (param) {
 		case 'c':
 			ctxTracing = 1;
