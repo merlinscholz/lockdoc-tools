@@ -54,6 +54,12 @@ datatype;datatype_member;fn;sequence
 vnode;\N;vdropl_final;\N
 vnode;\N;getnewvnode;\N
 vnode;\N;freevnode;\N
+vnode;\N;pfs_vncache_alloc;0
+vnode;\N;ext2_vget;0
+vnode;\N;ffs_vgetf;0
+vnode;\N;devfs_allocv;0
+vnode;\N;tmpfs_alloc_vp;0
+vnode;\N;ext2_valloc;\N
 fifoinfo;\N;fifo_cleanup;\N
 fifoinfo;\N;fifo_open;\N
 mount;\N;vfs_mount_alloc;\N
@@ -61,6 +67,7 @@ mount;\N;vfs_mountroot_parse;\N
 pipepair;\N;pipe_paircreate;\N
 pipepair;\N;pipe_named_ctor;\N
 pipepair;\N;pipeclose;\N
+pipepair;\N;pipespace_new;\N
 vpollinfo;\N;v_addpollinfo;\N
 vpollinfo;\N;destroy_vpollinfo;\N
 mount;\N;vfs_mount_alloc;\N
