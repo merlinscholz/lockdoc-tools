@@ -156,10 +156,12 @@ static void printUsageAndExit(const char *elf) {
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
+		" -h  Print this help\n"
 		" -d  delimiter used in input.csv, and used for the output csv files later on\n"
 		" -u  include non-static locks with unknown allocation in output\n"
 		"     (these will be assigned to a pseudo allocation with ID 1)\n"
 		" -g  The kernel source tree, default: " << kernelBaseDir << "\n"
+		" -c  Use one TXN stack per contex\n"
 		" -h  help\n";
 	exit(EXIT_FAILURE);
 }
