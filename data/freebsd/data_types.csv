@@ -7,17 +7,7 @@ buf
 bufv
 bufqueue
 bufdomain
-cdev
-cdev_priv
 pipepair
 pipe
 fifoinfo
-namecache
-namecache_ts
-namecache_aux
 nc_vnodelocks
-vpollinfo
-neglist
-devfs_mount
-devfs_dirent
-bucket_locks
