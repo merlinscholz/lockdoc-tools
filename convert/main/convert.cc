@@ -304,6 +304,7 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
+		*pMemAccessOFile << delimiter << tempAccess.ctx;
 		*pMemAccessOFile << "\n";
 		// count memory accesses for the current TXN if there's one active
 		if (lockManager->hasActiveTXN(tempAccess.ctx)) {
@@ -570,7 +571,8 @@ int main(int argc, char *argv[]) {
 	accessOFile << "id" << delimiter << "alloc_id" << delimiter << "txn_id" << delimiter;
 	accessOFile << "ts" << delimiter;
 	accessOFile << "type" << delimiter << "size" << delimiter << "address" << delimiter;
-	accessOFile << "stacktrace_id" << delimiter << "fn" << endl;
+	accessOFile << "stacktrace_id" << delimiter << "fn" << delimiter;
+	accessOFile << "context" << endl;
 
 	locksOFile << "id" << delimiter << "address" << delimiter;
 	locksOFile << "embedded_in" << delimiter << "lock_type_name" << delimiter;

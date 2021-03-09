@@ -1,4 +1,4 @@
-SELECT ac.id AS ac_id, ac.txn_id, ac.alloc_id, ac.type AS ac_type, a.subclass_id, dt.id AS data_type_id, ac.stacktrace_id, mn.id AS member_name_id, sl.byte_offset
+SELECT ac.id AS ac_id, ac.txn_id, ac.alloc_id, ac.type AS ac_type, ac.context, a.subclass_id, dt.id AS data_type_id, ac.stacktrace_id, mn.id AS member_name_id, sl.byte_offset
 INTO TABLE accesses_flat
 FROM accesses ac
 JOIN allocations a

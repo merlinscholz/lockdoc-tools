@@ -39,6 +39,7 @@ CREATE TABLE accesses (
   size smallint CHECK (size > 0) NOT NULL,		-- How many bytes were written?
   address bigint CHECK (address > 0) NOT NULL,		-- The start address of this access
   stacktrace_id int CHECK (stacktrace_id > 0) NOT NULL,		-- References a stacktrace
+  context int NOT NULL,		-- Context where an access happened, e.g., thread, or IRQ
   PRIMARY KEY (id)
 ) 
 ;
