@@ -68,7 +68,7 @@ def main():
 		LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
 		sys.exit(1)
 
-	print("strategy;parameter;data_type;totalrules;matched;percentage", file = outFile)
+	print("strategy;parameter;data_type;totalrules;matched;matched_r;matched_w;percentage;percentage_r;percentage_w", file = outFile)
 
 	for key in strategies.keys():
 		params = strategies[key]
