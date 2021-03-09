@@ -4,8 +4,8 @@
 # 
 TOOLS_PATH=`dirname ${0}`
 CONFIGFILE="convert.conf"
-STACK_USAGE=(0 1)
-SUBCLASS_USAGE=(0 1)
+STACK_USAGE=(0)
+SUBCLASS_USAGE=(0)
 DURATION_CSV="post-processing-durations.csv"
 STATS_CSV="post-processing-stats.csv"
 
@@ -150,6 +150,16 @@ then
 fi
 
 PREFIX="all-txns-members-locks"
+
+if [ ! -z ${USE_STACK} ] && [ ${USE_STACK} == 1 ];
+then
+	STACK_USAGE=(0 1)
+fi
+
+if [ ! -z ${USE_SUBCLASSES} ] && [ ${USE_SUBCLASSES} == 1 ];
+then
+	SUBCLASS_USAGE=(0 1)
+fi
 
 for USE_STACK in "${STACK_USAGE[@]}"
 do

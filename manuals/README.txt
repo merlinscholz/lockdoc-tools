@@ -136,6 +136,9 @@ DELIMITER='#'
 ACCEPT_THRESHOLD=99.0
 SELECTION_STRATEGY=bottomup
 REDUCTION_FACTOR=5.0
+#USE_STACK=1
+#USE_SUBCLASSES=1
+Uncomment the proper variables if you want stack and/or subclass processing. Without them, the variant nostack-nosubclasses is analysed.
 - Run the post processing script: $PATH_TO_TOOLS_REPO/post-process-trace.sh DATABASE_NAME 2>&1 | tee post-process-trace.out
 	+ post-process-trace.sh will do the rest for you including calling convert
 		* The convert tool (see convert/) converts the trace into the relational database
