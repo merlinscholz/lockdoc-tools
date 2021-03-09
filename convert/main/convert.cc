@@ -735,11 +735,7 @@ int main(int argc, char *argv[]) {
 					instrPtr = std::stoull(lineElems.at(11),NULL,16);
 					stacktrace = lineElems.at(14);
 					preemptCount = -1;
-					if (ctxTracing) {
-						ctx = std::stoul(lineElems.at(16),NULL,10);
-					} else {
-						ctx = 0;
-					}
+					ctx = std::stoul(lineElems.at(16),NULL,10);
 					break;
 				}
 			}
