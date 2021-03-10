@@ -21,6 +21,8 @@ shift
 MEMBER=${1}
 shift
 USE_SUBCLASSES=${1:-0}
+shift
+USE_WOR=${1:-0}
 
 if [ ! -z ${DATATYPE} ] && [ "${DATATYPE}" != "any" ];
 then
@@ -103,7 +105,7 @@ FROM
 	(
 		-- GROUP_CONCAT all member accesses within a TXN and a specific allocation
 		SELECT fac.${TYPE_ID_COLUMN}, ${TYPE_NAME_COLUMN} AS type_name, fac.alloc_id, fac.txn_id,
-			string_agg(CONCAT(fac.type, ':', mn.name), ',' ORDER BY fac.byte_offset) AS members_accessed
+			string_agg(CONCAT(fac.type, ':', mn.name), ',' ORDER BY fac.byte_offset, fac.type) AS members_accessed
 		FROM
 
 		(
@@ -112,7 +114,18 @@ FROM
 			-- access is a write, otherwise a read.
 			-- NOTE: The above property does *NOT* apply if the the results are grouped by stacktrace_id.
 			-- NOTE: This does not fold accesses to two different allocations.
+EOT
+if [ ${USE_WOR} -eq 0 ];
+then
+cat<<EOT
+			SELECT DISTINCT ac.alloc_id, ac.txn_id, ac.ac_type AS type, ac.subclass_id AS subclass_id, ac.member_name_id, ac.byte_offset, ac.data_type_id
+EOT
+else
+cat<<EOT
 			SELECT ac.alloc_id, ac.txn_id, MAX(ac.ac_type) AS type, ac.subclass_id AS subclass_id, ac.member_name_id, ac.byte_offset, ac.data_type_id
+EOT
+fi
+cat<<EOT
 			FROM accesses_flat ac
 			WHERE True
 			${DATATYPE_FILTER}
@@ -121,7 +134,18 @@ FROM
 			AND ac.txn_id IS NOT NULL
 			-- The fields ac.alloc_id, ac.txn_id, and ac.byte_offset matter for the result.
 			-- The remaining fields are just listed to silence the PostgreSQL engine.
+EOT
+if [ ${USE_WOR} -eq 0 ];
+then
+cat<<EOT
+			GROUP BY ac.alloc_id, ac.txn_id, ac.ac_type, ac.byte_offset, ac.data_type_id, ac.subclass_id, ac.member_name_id
+EOT
+else
+cat<<EOT
 			GROUP BY ac.alloc_id, ac.txn_id, ac.byte_offset, ac.data_type_id, ac.subclass_id, ac.member_name_id
+EOT
+fi
+cat<<EOT
 		) AS fac -- = Folded ACcesses
 
 		LEFT JOIN member_names mn
