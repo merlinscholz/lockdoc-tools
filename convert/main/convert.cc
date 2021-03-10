@@ -299,16 +299,22 @@ static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream
 
 	// write memory accesses to disk and associate them with the current TXN
 	for (auto&& tempAccess : *pMemAccesses) {
+		long ctx;
+		if (ctxTracing) {
+			ctx = tempAccess.ctx;
+		} else {
+			ctx = DUMMY_EXECUTION_CONTEXT;
+		}
 		*pMemAccessOFile << dec << tempAccess.id << delimiter << tempAccess.alloc_id;
-		*pMemAccessOFile << delimiter << (lockManager->hasActiveTXN(tempAccess.ctx) ? std::to_string(lockManager->getActiveTXN(tempAccess.ctx).id) : "\\N");
+		*pMemAccessOFile << delimiter << (lockManager->hasActiveTXN(ctx) ? std::to_string(lockManager->getActiveTXN(ctx).id) : "\\N");
 		*pMemAccessOFile << delimiter << tempAccess.ts;
 		*pMemAccessOFile << delimiter << tempAccess.action << delimiter << dec << tempAccess.size;
 		*pMemAccessOFile << delimiter << tempAccess.address << delimiter << tempAccess.stacktrace_id;
 		*pMemAccessOFile << delimiter << tempAccess.ctx;
 		*pMemAccessOFile << "\n";
 		// count memory accesses for the current TXN if there's one active
-		if (lockManager->hasActiveTXN(tempAccess.ctx)) {
-			lockManager->getActiveTXN(tempAccess.ctx).memAccessCounter += 1;
+		if (lockManager->hasActiveTXN(ctx)) {
+			lockManager->getActiveTXN(ctx).memAccessCounter += 1;
 		}
 	}
 
@@ -679,7 +685,7 @@ int main(int argc, char *argv[]) {
 					if (ctxTracing) {
 						ctx = std::stoul(lineElems.at(16),NULL,10);
 					} else {
-						ctx = 0;
+						ctx = DUMMY_EXECUTION_CONTEXT;
 					}
 					switch(temp) {
 						case LOCK_NONE:
