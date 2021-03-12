@@ -99,8 +99,7 @@ void RWLock::writeTransition(
 					// not match its starting P()!) and continues the
 					// enclosing one
 					if (!lockManager->hasActiveTXN(ctx) ||
-					    !(lockManager->getActiveTXN(ctx).lock == this &&
-					      lockManager->getActiveTXN(ctx).subLock == WRITER_LOCK)) {
+						!lockManager->isOnTXNStack(ctx, this, WRITER_LOCK)) {
 						ctx = lockManager->findTXN(this, WRITER_LOCK, ctx);
 						if (ctx == ctxOld && !lockManager->hasActiveTXN(ctx)) {
 							PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");
@@ -224,8 +223,7 @@ void RWLock::readTransition(
 					// not match its starting P()!) and continues the
 					// enclosing one
 					if (!lockManager->hasActiveTXN(ctx) ||
-					    !(lockManager->getActiveTXN(ctx).lock == this &&
-					      lockManager->getActiveTXN(ctx).subLock == READER_LOCK)) {
+						!lockManager->isOnTXNStack(ctx, this, READER_LOCK)) {
 						ctx = lockManager->findTXN(this, READER_LOCK, ctx);
 						if (ctx == ctxOld && !lockManager->hasActiveTXN(ctx)) {
 							PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "TXN: V() but no running TXN!");

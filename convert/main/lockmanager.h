@@ -67,6 +67,7 @@ struct LockManager {
 	 */
 	struct TXN& getActiveTXN(long ctx);
 	bool hasActiveTXN(long ctx);
+	bool isOnTXNStack(long ctx, RWLock *lock, enum SUB_LOCK subLock);
 	void closeAllTXNs(unsigned long long ts);
 	RWLock* findLock(unsigned long long address);
 	void deleteLockByArea(unsigned long long address, unsigned long long size);

@@ -66,6 +66,14 @@ void LockManager::closeAllTXNs(unsigned long long ts) {
 	}
 }
 
+bool LockManager::isOnTXNStack(long ctx, RWLock *lock, enum SUB_LOCK subLock) {
+	for (auto& elem : m_activeTXNs[ctx]) {
+		if (elem.lock == lock && elem.subLock == subLock) {
+			return true;
+		}
+	}
+	return false;
+}
 
 /**
  * Releases a lock, and finishes the corresponding TXN.
