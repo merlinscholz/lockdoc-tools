@@ -9,9 +9,10 @@ long LockManager::findTXN(RWLock *lock, enum SUB_LOCK subLock, long ctx) {
 		if (!this->hasActiveTXN(kv.first)) {
 			continue;
 		}
-		auto& topTXN = this->getActiveTXN(kv.first);
-		if (topTXN.lock == lock && topTXN.subLock == subLock) {
-			return kv.first;
+		for (auto& elem : kv.second) {
+			if (elem.lock == lock && elem.subLock == subLock) {
+				return kv.first;
+			}
 		}
 	}
 	return ctx;
