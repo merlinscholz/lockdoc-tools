@@ -87,6 +87,7 @@ void RWLock::writeTransition(
 				tempLockPos.lastPreemptCount = preemptCount;
 				tempLockPos.lastIRQSync = irqSync;
 
+				PRINT_DEBUG(this->toString(WRITER_LOCK, lockOP, ts), "P_WRITE in ctx " << ctx);
 				// a P() suspends the current TXN and creates a new one
 				lockManager->startTXN(this, ts, WRITER_LOCK, ctx);
 				break;
@@ -98,6 +99,7 @@ void RWLock::writeTransition(
 					// a V() finishes the current TXN (even if it does
 					// not match its starting P()!) and continues the
 					// enclosing one
+					PRINT_DEBUG(this->toString(WRITER_LOCK, lockOP, ts), "ctx=" << ctx << ", active=" <<lockManager->hasActiveTXN(ctx) << ", isOnStack=" <<  lockManager->isOnTXNStack(ctx, this, WRITER_LOCK));
 					if (!lockManager->hasActiveTXN(ctx) ||
 						!lockManager->isOnTXNStack(ctx, this, WRITER_LOCK)) {
 						ctx = lockManager->findTXN(this, WRITER_LOCK, ctx);
@@ -119,6 +121,7 @@ void RWLock::writeTransition(
 					PRINT_ERROR(this->toString(WRITER_LOCK, lockOP, ts), "Lock has already been released.");
 				} else {
 					this->writer_count--;
+					PRINT_DEBUG(this->toString(WRITER_LOCK, lockOP, ts), "V_WRITE in ctx " << ctx);
 				}
 				break;
 			}
@@ -210,6 +213,7 @@ void RWLock::readTransition(
 				tempLockPos.lastFn = fn;
 				tempLockPos.lastPreemptCount = preemptCount;
 				tempLockPos.lastIRQSync = irqSync;
+				PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "P_READ in ctx " << ctx);
 
 				// a P() suspends the current TXN and creates a new one
 				lockManager->startTXN(this, ts, READER_LOCK, ctx);
@@ -222,6 +226,7 @@ void RWLock::readTransition(
 					// a V() finishes the current TXN (even if it does
 					// not match its starting P()!) and continues the
 					// enclosing one
+					PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "ctx=" << ctx << ", active=" <<lockManager->hasActiveTXN(ctx) << ", isOnStack=" <<  lockManager->isOnTXNStack(ctx, this, READER_LOCK));
 					if (!lockManager->hasActiveTXN(ctx) ||
 						!lockManager->isOnTXNStack(ctx, this, READER_LOCK)) {
 						ctx = lockManager->findTXN(this, READER_LOCK, ctx);
@@ -245,6 +250,7 @@ void RWLock::readTransition(
 					PRINT_ERROR(this->toString(READER_LOCK, lockOP, ts), "Lock has already been released.");
 				} else {
 					this->reader_count--;
+					PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "V_READ in ctx " << ctx);
 				}
 				break;
 			}
