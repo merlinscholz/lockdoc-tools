@@ -52,21 +52,27 @@ REDUCTION_FACTOR=${1};shift
 HOST=${1};shift
 USER=${1};shift
 
-HYPO_INPUT=${PREFIX}-db-${VARIANT}.csv
+HYPO_NOWOR_INPUT=${PREFIX}-nowor-db-${VARIANT}.csv
+HYPO_WOR_INPUT=${PREFIX}-wor-db-${VARIANT}.csv
 DURATION_FILE=`mktemp /tmp/output.XXXXX`
 
 if [ ${SKIP_QUERY} -eq 0 ];
 then
-	echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_INPUT}'."
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_INPUT}"
+	echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_NOWOR_INPUT}'."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} 0 | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_NOWOR_INPUT}"
 	EXEC_TIME=`cat ${DURATION_FILE}`
 	echo "Generating hypothesizer input took ${EXEC_TIME} secs."
+	echo "Retrieving txns members locks (${VARIANT}). Storing results in '${HYPO_WOR_INPUT}'."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} bash -c "${TOOLS_PATH}/queries/create-txn-members-locks.sh ${USE_STACK} any any ${USE_SUBCLASSES} 1 | psql -A -F $'\t' --pset footer=off --echo-errors -h ${HOST} -U ${USER} ${DB} > ${HYPO_WOR_INPUT}"
+	echo "Generating hypothesizer input took ${EXEC_TIME} secs. Not added to total time."
 fi
 
 if [ ${SKIP_EXEC} -eq 0 ];
 then
-	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_INPUT} ${VARIANT} ${PREFIX} ${SELECTION_STRATEGY} ${ACCEPT_THRESHOLD} ${REDUCTION_FACTOR}
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_NOWOR_INPUT} ${VARIANT} ${PREFIX}-nowor ${SELECTION_STRATEGY} ${ACCEPT_THRESHOLD} ${REDUCTION_FACTOR}
 	EXEC_TIME=`cat ${DURATION_FILE}`
+	echo "Hypothesizer took ${EXEC_TIME} secs."
+	/usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/run-hypothesizer.sh ${HYPO_WOR_INPUT} ${VARIANT} ${PREFIX}-wor ${SELECTION_STRATEGY} ${ACCEPT_THRESHOLD} ${REDUCTION_FACTOR}
 	echo "Hypothesizer took ${EXEC_TIME} secs."
 fi
 rm ${DURATION_FILE}
