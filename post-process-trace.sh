@@ -203,7 +203,7 @@ do
 		for data_type in ${DATA_TYPES}
 		do
 			echo "Retrieving counterexamples for '${data_type}'..."
-			SKIP_QUERIES=${SKIP_CEX_QUERIES} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-hypo-bugs-${VARIANT}.txt ${PREFIX}-hypo-winner-${VARIANT}.csv ${VARIANT} ${PSQL_HOST} ${PSQL_USER}
+			SKIP_QUERIES=${SKIP_CEX_QUERIES} /usr/bin/time -f "%e" -o ${DURATION_FILE} ${TOOLS_PATH}/processing/get-process-cex.sh ${DB} ${data_type} ${PREFIX}-nowor-hypo-bugs-${VARIANT}.txt ${PREFIX}-nowor-hypo-winner-${VARIANT}.csv ${VARIANT} ${PSQL_HOST} ${PSQL_USER}
 			if [ ${?} -ne 0 ];
 			then
 				echo "Cannot run get-process-cex.sh for ${VARIANT}!">&2
