@@ -343,12 +343,10 @@ if __name__ == '__main__':
 	parser.add_argument('-c', '--cachedir', help='Activate caching of JS and CSS files. Specifies the directory where the downloaded files are stored.', default=None)
 	parser.add_argument('-d', '--display-mode', choices=[GRAPH, TREE, DYNAMIC], help='Display mode of the callgraph: graph vs. tree', default=TREE)
 	parser.add_argument('cexcsv', help='Input file containing the ground truth')
-	parser.add_argument('vmlinux', help='VMLINUX')
 	parser.add_argument('hypothesescsv', help='Input file containing preditions made by the hypothesizer (winner hypotheses only)')
 	args = parser.parse_args()
 
 	cexCSV = args.cexcsv
-	vmlinux = args.vmlinux
 	crossRefURL = args.crossrefurl
 	if crossRefURL.endswith('/'):
 		crossRefURL = crossRefURL[0:len(crossRefURL) - 1]

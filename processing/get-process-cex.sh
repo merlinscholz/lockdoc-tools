@@ -37,12 +37,6 @@ then
 fi
 . ${CONFIGFILE}
 
-if [ -z ${KERNEL} ];
-then
-	echo "Variable KERNEL is not set!" >&2
-	exit 1
-fi
-
 if [ ${DATA_TYPE} == "any" ];
 then
 	CEX_CSV="cex-${OUTPUT_SUFFIX}.csv"
@@ -78,7 +72,7 @@ then
 	exit 0
 fi
 
-${TOOLS_PATH}/pretty-print-cex.py -c cex-temp/ -d ${DISPLAY_VARIANT} -u ${BASE_URL} ${CEX_CSV} ${KERNEL} ${INPUT_WINNER} > ${CEX_HTML}
+${TOOLS_PATH}/pretty-print-cex.py -c cex-temp/ -d ${DISPLAY_VARIANT} -u ${BASE_URL} ${CEX_CSV} ${INPUT_WINNER} > ${CEX_HTML}
 if [ ${?} -ne 0 ];
 then
 	echo "Cannot run pretty-print-cex.py!">&2 
