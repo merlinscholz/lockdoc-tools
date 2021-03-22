@@ -14,6 +14,8 @@ from pprint import pprint
 import logging
 import subprocess
 import util
+import time
+from random import seed, randint
 
 logging.basicConfig()
 maxInt = sys.maxsize
@@ -216,6 +218,7 @@ def addPseudoNodes(child, num, treeID):
 
 def adjustSubtreeDepth(curTree, maxDepth, curDepth):
 	leafs = list()
+	seed(int(time.time()))
 	for child in curTree['children'].values():
 		# Found a leaf?
 		if len(child['children']) == 0:
@@ -223,8 +226,10 @@ def adjustSubtreeDepth(curTree, maxDepth, curDepth):
 		else:
 			adjustSubtreeDepth(child, maxDepth, curDepth + 1)
 	for nodeName in leafs:
-		pseudoTree = addPseudoNodes(curTree['children'][nodeName], maxDepth - (curDepth + 2), curTree['id'])
-		del curTree['children'][nodeName]
+		to_move = curTree['children'].pop(nodeName)
+		pseudoTree = addPseudoNodes(to_move, maxDepth - (curDepth + 2), curTree['id'])
+		while pseudoTree['name'] in curTree['children']:
+			pseudoTree['name'] = 'pseudo_node_%d' % (randint(0,1000))
 		curTree['children'][pseudoTree['name']] = pseudoTree
 
 def findTree(curTree, treeName):
@@ -316,6 +321,7 @@ def emplaceGraphNode(nodeDict, traceElem):
 	codePos['file'] = elems[2].split(':')[0]
 	codePos['line'] = elems[2].split(':')[1]
 	codePos['fn'] = elems[1]
+	codePos['addr'] = elems[0]
 
 	nodeID = toGraphNodeID(codePos)
 	if nodeID in nodeDict:
@@ -744,19 +750,22 @@ a:visited {
 			codePos['file'] = elems[2].split(':')[0]
 			codePos['line'] = elems[2].split(':')[1]
 			codePos['fn'] = elems[1]
+			codePos['addr'] = elems[0]
 			parentID = toTreeNodeID(codePos)
 			parentIter = findTree(treeIter, parentID)
 
 			# Found another root node
 			if parentIter is None:
 				parentIter = createInitTreeNode(parentID, codePos, tree['id'])
-				tree['children'][parentID] = parentIter
+				treeIter['children'][parentID] = parentIter
 			treeIter = parentIter
 
 			elems = traceElems[i + 1].split('@')
+			codePos = dict()
 			codePos['file'] = elems[2].split(':')[0]
 			codePos['line'] = elems[2].split(':')[1]
 			codePos['fn'] = elems[1]
+			codePos['addr'] = elems[0]
 			childID = toTreeNodeID(codePos)
 			if childID in parentIter['children']:
 				childIter = parentIter['children'][childID]
