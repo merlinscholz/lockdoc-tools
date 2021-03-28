@@ -73,9 +73,6 @@ mount;\N;vfs_mount_destroy;\N
 nc_vnodelocks;\N;nchinit;\N
 nc_vnodelocks;\N;cache_neg_init;\N
 buf;\N;buf_alloc;\N
-buf;\N;buf_free;\N
-buf;\N;bufinit;\N
-buf;\N;cluster_rbuild;\N
 bufdomain;\N;bd_init;\N
 bufdomain;\N;bufinit;\N
 bufqueue;\N;bq_init;\N
