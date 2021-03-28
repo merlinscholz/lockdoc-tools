@@ -186,7 +186,7 @@ if __name__ == '__main__':
 					 resultsEntry['notfound']))
 		elif args.machine_output == 'detailed':
 			membersDict = resultsEntry['members']
-			for key, memberEntry in membersDict.iteritems():
+			for key, memberEntry in membersDict.items():
 			# key = (member,accesstype)
 				print('%s,%s,%s,%s,' %
 					(datatype, key[0], key[1],

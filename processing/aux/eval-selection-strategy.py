@@ -41,6 +41,7 @@ def main():
 	parser = argparse.ArgumentParser(prog='PROG')
 	parser.add_argument('--groundtruth-csv', help='CSV containing the documented locking rules', required=True)
 	parser.add_argument('--hypothesizer-input', help='Input for the hypothesizer', required=True)
+	parser.add_argument('--all-csv', help='A csv file containing all hypotheses', required=True)
 	parser.add_argument('--selection-strategy', help='Just evaluate a particular selections strategy')
 	parser.add_argument('--keep', help='Keep temp files')
 	parser.add_argument('--output', help='Redirect output to the given file')
@@ -50,23 +51,13 @@ def main():
 	groundtruthCSV = args.groundtruth_csv
 	hypoInput = args.hypothesizer_input
 	selStrategy = args.selection_strategy
+	allCSV = args.all_csv
 	if args.output:
 		outFile = args.output
 	else:
 		outFile = sys.stdout
 	if args.verbose:
 		LOGGER.setLevel(logging.DEBUG)
-
-	tempAllCSV = tempfile.NamedTemporaryFile()
-	cmd = basedir + '/../../hypothesizer/hypothesizer -t 0.0 -s member -r csv %s' % (hypoInput)
-	LOGGER.debug("Running '%s'" % (cmd))
-	hypothesizer = subprocess.Popen(cmd.split(),
-						stdout = tempAllCSV,
-						stderr = subprocess.PIPE)
-	stdout, stderr = hypothesizer.communicate()
-	if hypothesizer.returncode != 0:
-		LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
-		sys.exit(1)
 
 	print("strategy;parameter;data_type;totalrules;matched;matched_r;matched_w;percentage;percentage_r;percentage_w", file = outFile)
 
@@ -89,7 +80,7 @@ def main():
 			if hypothesizer.returncode != 0:
 				LOGGER.error("Error running: '%s'\n%s" % (cmd, stderr.decode()))
 				continue
-			cmd = basedir + '/../locking-rule-minig-verify.py %s %s %s' % (groundtruthCSV, tempAllCSV.name, tempWinnerCSV.name)
+			cmd = basedir + '/../locking-rule-minig-verify.py %s %s %s' % (groundtruthCSV, allCSV, tempWinnerCSV.name)
 			LOGGER.debug("Running '%s'" % (cmd))
 			lock_verify = subprocess.Popen(cmd.split(),
 							stdout = subprocess.PIPE,
@@ -105,7 +96,6 @@ def main():
 				print("%s;%.2f;%s" % (key, i, line), file = outFile)
 			outFile.flush()
 			tempWinnerCSV.close()
-	tempAllCSV.close()
 
 if __name__ == "__main__":
 	main()
