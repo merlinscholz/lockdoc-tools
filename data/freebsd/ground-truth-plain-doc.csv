@@ -27,14 +27,14 @@ vnode;v_cache_dst.tqh_last;r;EMBOTHER\(nc_vnodelocks.vnode_lock\[[rw]\]\);;sys/s
 vnode;v_cache_dst.tqh_last;w;EMBOTHER\(nc_vnodelocks.vnode_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_cache_dd;r;EMBOTHER\(nc_vnodelocks.vnode_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_cache_dd;w;EMBOTHER\(nc_vnodelocks.vnode_lock\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_vnodelist.tqe_next;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_vnodelist.tqe_next;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_vnodelist.tqe_prev;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_vnodelist.tqe_prev;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_lazylist.tqe_next;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_lazylist.tqe_next;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_lazylist.tqe_prev;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_lazylist.tqe_prev;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
+vnode;v_vnodelist.tqe_next;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_vnodelist.tqe_next;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_vnodelist.tqe_prev;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_vnodelist.tqe_prev;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_lazylist.tqe_next;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_lazylist.tqe_next;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_lazylist.tqe_prev;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_lazylist.tqe_prev;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_ops;r;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_ops;w;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_object;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
@@ -77,8 +77,8 @@ vnode;v_iflag;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_iflag;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_vflag;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_vlfag;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_mflag;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
-vnode;v_mlfag;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_free_list_mtx:)?[0-9]*\(mtx\));;sys/sys/vnode.h:98
+vnode;v_mflag;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
+vnode;v_mlfag;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
 vnode;v_dbatchcpu;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_dbatchcpu;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_writecount;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
@@ -151,12 +151,12 @@ buf;b_blkno;r;EMBSAME\(buf.b_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_blkno;w;EMBSAME\(buf.b_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_offset;r;EMBSAME\(buf.b_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_offset;w;EMBSAME\(buf.b_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_bobufs.tqe_next;r;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_bobufs.tqe_next;w;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_bobufs.tqe_prev;r;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_bobufs.tqe_prev;w;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_vflags;r;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
-buf;b_vflags;w;EMBOTHER\(vnode.bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_bobufs.tqe_next;r;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_bobufs.tqe_next;w;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_bobufs.tqe_prev;r;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_bobufs.tqe_prev;w;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_vflags;r;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
+buf;b_vflags;w;EMBOTHER\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_qindex;r;EMBOTHER\(bufdomain.bd_subq.bq_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_qindex;w;EMBOTHER\(bufdomain.bd_subq.bq_lock\[[rw]\]\);;sys/sys/buf.h:99
 buf;b_domain;r;EMBOTHER\(bufdomain.bd_subq.bq_lock\[[rw]\]\);;sys/sys/buf.h:99
