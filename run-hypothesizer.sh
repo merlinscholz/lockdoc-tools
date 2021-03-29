@@ -26,8 +26,7 @@ ACCEPT_THRESHOLD=${1};shift
 REDUCTION_FACTOR=${1};shift
 
 echo "Running hypothesizer (${VARIANT})..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.txt        &
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-winner-${VARIANT}.csv &
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > ${PREFIX}-hypo-bugs-${VARIANT}.txt   &
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.csv   &
-wait
+${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-winner-${VARIANT}.csv
+${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > ${PREFIX}-hypo-bugs-${VARIANT}.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.csv
