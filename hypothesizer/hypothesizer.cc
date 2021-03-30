@@ -27,12 +27,13 @@
 // OMP_NUM_THREADS environment variable.
 
 const double accept_threshold_default = .9, nolock_threshold_default = .05, cutoff_threshold_default = .1, confidence_threshold_default = 50.0, reduction_factor_default = .05;
+const unsigned max_hypo_len_default = 0;
 
 enum SelectionStrategy { TOPDOWN, BOTTOMUP, SHARPEN, LOCKSET };
 enum optionIndex { UNKNOWN, HELP,
 	REDUCTIONFACTOR, SELECTIONSTRATEGY,
 	NOLOCKTHRESHOLD, ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
-	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD };
+	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD, MAXHYPOLEN };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -83,6 +84,10 @@ const option::Descriptor usage[] = {
   CONFIDENCETHRESHOLD, 0, "c", "confidence-threshold", Arg::Required,
   "-c/--confidence-threshold n  \tSet observations threshold for assuming a hypothesis is trustworthy to n (default: 50). "
   "Values below lead to a scaled relative support of the respective hypothesis."
+}, {
+  MAXHYPOLEN, 0, "l", "hypothesis-length", Arg::Required,
+  "-l/--hypothesis-length n  \tLimit length of derived hypothesis to n locks (default: 0). "
+  "0 means no limit."
 }, {0,0,0,0,0,0}
 };
 
@@ -700,7 +705,7 @@ void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned nex
 	}
 }
 
-void find_hypotheses(Member& member)
+void find_hypotheses(Member& member, unsigned max_hypo_len)
 {
 	std::vector<myid_t> cur;
 
@@ -721,7 +726,12 @@ void find_hypotheses(Member& member)
 		}
 
 		// if no additional hypotheses with requested depth found, we're done
-		if (prev_hypothesis_count == member.hypotheses.size()) {
+		if (prev_hypothesis_count == member.hypotheses.size() || (max_hypo_len > 0 && depth >= max_hypo_len)) {
+#ifdef DEBUG
+			if (max_hypo_len == 0) {
+				std::cerr << member.datatype << "." << member.accesstype << ":" << member.name << ": max. len " << depth << std::endl;
+			}
+#endif
 			break;
 		}
 	}
@@ -1040,6 +1050,16 @@ int main(int argc, char **argv)
 		}
 	}
 
+	unsigned max_hypo_len = max_hypo_len_default;
+	if (options[MAXHYPOLEN]) {
+		try {
+			max_hypo_len = std::stod(options[MAXHYPOLEN].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse max hypothesis length value " << options[MAXHYPOLEN].last()->arg << std::endl;
+			return 1;
+		}
+	}
+
 	std::set<std::string> accepted_datatypes;
 	for (option::Option *o = options[DATATYPE]; o; o = o->next()) {
 		accepted_datatypes.insert(o->arg);
@@ -1237,6 +1257,9 @@ int main(int argc, char **argv)
 		std::cerr << "unknown";
 	}
 	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << 100 * accept_threshold << ", and reduction factor " << 100 * reduction_factor << std::endl;
+	if (max_hypo_len) {
+		std::cerr << "Limiting hypothesis length to max " << max_hypo_len << " locks." << std::endl;
+	}
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
@@ -1270,7 +1293,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		find_hypotheses(member);
+		find_hypotheses(member, max_hypo_len);
 		switch (selection_strategy) {
 			case SelectionStrategy::SHARPEN:
 				determine_winning_hypothesis(member, &reduction_factor, evaluate_hypothesis_sharpen, NULL);
