@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <cstdint>
@@ -12,6 +13,7 @@
 #include <iomanip>
 #include <deque>
 #include <assert.h>
+#include <boost/container_hash/hash.hpp>
 
 #include "optionparser.h"
 #include "optionparser_ext.h"
@@ -27,12 +29,13 @@
 // OMP_NUM_THREADS environment variable.
 
 const double accept_threshold_default = .9, nolock_threshold_default = .05, cutoff_threshold_default = .1, confidence_threshold_default = 50.0, reduction_factor_default = .05;
+const unsigned max_hypo_len_default = 0;
 
 enum SelectionStrategy { TOPDOWN, BOTTOMUP, SHARPEN, LOCKSET };
 enum optionIndex { UNKNOWN, HELP,
 	REDUCTIONFACTOR, SELECTIONSTRATEGY,
 	NOLOCKTHRESHOLD, ACCEPTTHRESHOLD, CUTOFFTHRESHOLD,
-	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD };
+	DATATYPE, MEMBER, SORT, REPORT, BUGSQL, CONFIDENCETHRESHOLD, MAXHYPOLEN };
 const option::Descriptor usage[] = {
 {
   UNKNOWN, 0, "", "", Arg::None,
@@ -83,6 +86,10 @@ const option::Descriptor usage[] = {
   CONFIDENCETHRESHOLD, 0, "c", "confidence-threshold", Arg::Required,
   "-c/--confidence-threshold n  \tSet observations threshold for assuming a hypothesis is trustworthy to n (default: 50). "
   "Values below lead to a scaled relative support of the respective hypothesis."
+}, {
+  MAXHYPOLEN, 0, "l", "hypothesis-length", Arg::Required,
+  "-l/--hypothesis-length n  \tLimit length of derived hypothesis to n locks (default: 0). "
+  "0 means no limit."
 }, {0,0,0,0,0,0}
 };
 
@@ -164,6 +171,21 @@ struct LockingHypothesisMatches {
 	std::map<std::vector<myid_t>, uint64_t> matches;
 };
 
+struct HypothesisHasher {
+	std::size_t operator()(const std::vector<myid_t>& h) const {
+#if 0
+		return boost::hash_range(h.begin(), h.end());
+#else
+		myid_t hash_value = 0;
+		std::hash<myid_t> hasher;
+		for (myid_t value : h) {
+			hash_value ^= hasher(value);
+		}
+		return hash_value;
+#endif
+	}
+};
+
 struct Member {
 	static const std::vector<myid_t> root_node;
 	Member(std::string datatype, std::string combined_name) : datatype(datatype)
@@ -194,8 +216,8 @@ struct Member {
 	uint64_t occurrences = 0; // counts all accesses to this member
 	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
-	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
-	std::map<std::vector<myid_t>, std::set<std::vector<myid_t>>> graph;
+	std::unordered_map<std::vector<myid_t>, LockingHypothesisMatches, HypothesisHasher> hypotheses;
+	std::unordered_map<std::vector<myid_t>, std::set<std::vector<myid_t>>, HypothesisHasher> graph;
 	/*
 	 * Store equal hypotheses
 	 * Two hypotheses are considered equal if the same amount of locks
@@ -700,7 +722,7 @@ void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned nex
 	}
 }
 
-void find_hypotheses(Member& member)
+void find_hypotheses(Member& member, unsigned max_hypo_len)
 {
 	std::vector<myid_t> cur;
 
@@ -721,7 +743,12 @@ void find_hypotheses(Member& member)
 		}
 
 		// if no additional hypotheses with requested depth found, we're done
-		if (prev_hypothesis_count == member.hypotheses.size()) {
+		if (prev_hypothesis_count == member.hypotheses.size() || (max_hypo_len > 0 && depth >= max_hypo_len)) {
+#ifdef DEBUG
+			if (max_hypo_len == 0) {
+				std::cerr << member.datatype << "." << member.accesstype << ":" << member.name << ": max. len " << depth << std::endl;
+			}
+#endif
 			break;
 		}
 	}
@@ -1040,6 +1067,16 @@ int main(int argc, char **argv)
 		}
 	}
 
+	unsigned max_hypo_len = max_hypo_len_default;
+	if (options[MAXHYPOLEN]) {
+		try {
+			max_hypo_len = std::stod(options[MAXHYPOLEN].last()->arg);
+		} catch (const std::exception& e) {
+			std::cerr << "Cannot parse max hypothesis length value " << options[MAXHYPOLEN].last()->arg << std::endl;
+			return 1;
+		}
+	}
+
 	std::set<std::string> accepted_datatypes;
 	for (option::Option *o = options[DATATYPE]; o; o = o->next()) {
 		accepted_datatypes.insert(o->arg);
@@ -1237,6 +1274,9 @@ int main(int argc, char **argv)
 		std::cerr << "unknown";
 	}
 	std::cerr << "' with acceptance threshold " << std::fixed << std::setprecision(2) << 100 * accept_threshold << ", and reduction factor " << 100 * reduction_factor << std::endl;
+	if (max_hypo_len) {
+		std::cerr << "Limiting hypothesis length to max " << max_hypo_len << " locks." << std::endl;
+	}
 
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
@@ -1270,7 +1310,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		find_hypotheses(member);
+		find_hypotheses(member, max_hypo_len);
 		switch (selection_strategy) {
 			case SelectionStrategy::SHARPEN:
 				determine_winning_hypothesis(member, &reduction_factor, evaluate_hypothesis_sharpen, NULL);
