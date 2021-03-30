@@ -25,8 +25,13 @@ SELECTION_STRATEGY=${1};shift
 ACCEPT_THRESHOLD=${1};shift
 REDUCTION_FACTOR=${1};shift
 
+if [ ! -z ${MAX_HYPO_LEN} ];
+then
+	MAX_HYPO_LEN_PARAM="-l ${MAX_HYPO_LEN}"
+fi
+
 echo "Running hypothesizer (${VARIANT})..."
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.txt
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-winner-${VARIANT}.csv
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > ${PREFIX}-hypo-bugs-${VARIANT}.txt
-${TOOLS_PATH}/hypothesizer/hypothesizer -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.csv
+${TOOLS_PATH}/hypothesizer/hypothesizer ${MAX_HYPO_LEN_PARAM} -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member          ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer ${MAX_HYPO_LEN_PARAM} -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csvwinner -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-winner-${VARIANT}.csv
+${TOOLS_PATH}/hypothesizer/hypothesizer ${MAX_HYPO_LEN_PARAM} -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r normal    -s member --bugsql ${HYPO_INPUT} > ${PREFIX}-hypo-bugs-${VARIANT}.txt
+${TOOLS_PATH}/hypothesizer/hypothesizer ${MAX_HYPO_LEN_PARAM} -g ${SELECTION_STRATEGY} -f ${REDUCTION_FACTOR} -a ${ACCEPT_THRESHOLD} -r csv       -s member -t 0.0   ${HYPO_INPUT} > ${PREFIX}-hypo-${VARIANT}.csv
