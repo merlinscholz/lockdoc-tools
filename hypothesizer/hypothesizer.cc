@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 #include <cstdint>
@@ -12,6 +13,7 @@
 #include <iomanip>
 #include <deque>
 #include <assert.h>
+#include <boost/container_hash/hash.hpp>
 
 #include "optionparser.h"
 #include "optionparser_ext.h"
@@ -169,6 +171,21 @@ struct LockingHypothesisMatches {
 	std::map<std::vector<myid_t>, uint64_t> matches;
 };
 
+struct HypothesisHasher {
+	std::size_t operator()(const std::vector<myid_t>& h) const {
+#if 0
+		return boost::hash_range(h.begin(), h.end());
+#else
+		myid_t hash_value = 0;
+		std::hash<myid_t> hasher;
+		for (myid_t value : h) {
+			hash_value ^= hasher(value);
+		}
+		return hash_value;
+#endif
+	}
+};
+
 struct Member {
 	static const std::vector<myid_t> root_node;
 	Member(std::string datatype, std::string combined_name) : datatype(datatype)
@@ -199,8 +216,8 @@ struct Member {
 	uint64_t occurrences = 0; // counts all accesses to this member
 	uint64_t occurrences_with_locks = 0; // counts accesses to this member with at least one lock held
 	std::vector<LockCombination> combinations;
-	std::map<std::vector<myid_t>, LockingHypothesisMatches> hypotheses;
-	std::map<std::vector<myid_t>, std::set<std::vector<myid_t>>> graph;
+	std::unordered_map<std::vector<myid_t>, LockingHypothesisMatches, HypothesisHasher> hypotheses;
+	std::unordered_map<std::vector<myid_t>, std::set<std::vector<myid_t>>, HypothesisHasher> graph;
 	/*
 	 * Store equal hypotheses
 	 * Two hypotheses are considered equal if the same amount of locks
