@@ -715,7 +715,22 @@ void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned nex
 		return;
 	}
 	for (unsigned lockpos = next_lockpos; lockpos < lc.locks_held_sorted.size(); ++lockpos) {
-		if (!cur.empty() && cur.back() == lc.locks_held_sorted[lockpos]) {
+		/*
+		 * Does the current hypothesis already contain this lock (lockpos)?
+		 * If so, move on to the next lock (lockpos + 1).
+		 * It is no use to the user, if a hypothesis contains
+		 * EO(x) or ES(y) multiple times.
+		 * We cannot say which instances are meant by EO(x) -> EO(x), for example.
+		 * For ES(y) it doesn't make sense either to acquire it more than once.
+		 */
+		bool found = false;
+		for (auto lock_id : cur) {
+			if (lock_id == lc.locks_held_sorted[lockpos]) {
+				found = true;
+				break;
+			}
+		}
+		if (found) {
 			continue;
 		}
 		cur.push_back(lc.locks_held_sorted[lockpos]);
