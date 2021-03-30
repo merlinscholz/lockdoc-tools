@@ -715,6 +715,9 @@ void find_hypotheses_rek(Member& member, const LockCombination& lc, unsigned nex
 		return;
 	}
 	for (unsigned lockpos = next_lockpos; lockpos < lc.locks_held_sorted.size(); ++lockpos) {
+		if (!cur.empty() && cur.back() == lc.locks_held_sorted[lockpos]) {
+			continue;
+		}
 		cur.push_back(lc.locks_held_sorted[lockpos]);
 		//std::cout << "TESTING:" << locks2string(cur, " + ") << std::endl;
 		find_hypotheses_rek(member, lc, lockpos + 1, cur, depth - 1);
