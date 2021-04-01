@@ -63,8 +63,10 @@ if __name__ == '__main__':
 			if re.match('^' + lockingRule + '$',locksHeld):
 				if key[2] == 'w':
         				results[key[0]]['matchedRulesW'] += 1
-				else:
+				elif key[2] == 'r':
         				results[key[0]]['matchedRulesR'] += 1
+				else:
+					print("Unknown access type: %s" % (key[2]))
 				if args.comparable:
 					print("YES:{0}".format(key), file = sys.stderr)
 			else:
@@ -85,9 +87,9 @@ if __name__ == '__main__':
 		totalMatched = values['matchedRulesR'] + values['matchedRulesW']
 		print("%s;%d;%d;%d;%d;%3.2f;%3.2f;%3.2f" %
 				(key, values['totalRules'],
+				 totalMatched,
 				 values['matchedRulesR'],
 				 values['matchedRulesW'],
-				 totalMatched,
 				 util.calcPercentage(values['totalRules'], totalMatched),
 				 util.calcPercentage(values['totalRules'], values['matchedRulesR']),
 				 util.calcPercentage(values['totalRules'], values['matchedRulesW'])))
