@@ -59,7 +59,7 @@ def main():
 	if args.verbose:
 		LOGGER.setLevel(logging.DEBUG)
 
-	print("strategy;parameter;data_type;totalrules;matched;matched_r;matched_w;percentage;percentage_r;percentage_w", file = outFile)
+	print("strategy;parameter;data_type;observedrules;observedrules_r;observedrules_w;matched;matched_r;matched_w;percentage;percentage_r;percentage_w", file = outFile)
 
 	for key in strategies.keys():
 		params = strategies[key]
