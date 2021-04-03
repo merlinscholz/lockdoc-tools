@@ -87,7 +87,11 @@ def readHypothesesDict(hypothesesCSV):
 				temp = 0
 			else:
 				temp = float(line['confidence'])
-			locksHeldEntry = {'occurrences': int(line['occurrences']), 'total': int(line['total']), 'percentage': float(line['percentage']), 'accepted': int(line['accepted']), 'confidence': temp, 'counterexample-parameters': line['counterexample-parameters']}
+			if len(line['conflictlist']) == 0:
+				conflictList = []
+			else:
+				conflictList = line['conflictlist'].split(',')
+			locksHeldEntry = {'occurrences': int(line['occurrences']), 'total': int(line['total']), 'percentage': float(line['percentage']), 'accepted': int(line['accepted']), 'confidence': temp, 'counterexample-parameters': line['counterexample-parameters'], 'conflictlist': conflictList}
 			hypothesesEntry['locks'][line['locks']] = locksHeldEntry
 		else:
 			LOGGER.error('Lock combination (%s) does already exist for key %s', line['locks'], key)
