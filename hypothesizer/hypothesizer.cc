@@ -916,8 +916,19 @@ void print_hypotheses(const Member& member,
 					std::cout << member.datatype << ";"
 						<< member.name << ";"
 						<< member.accesstype << ";"
-						<< locks2string(match.first) << ";"
-						<< match.second << ";"
+						<< locks2string(match.first) << ";";
+					if (this_is_the_winner) {
+						for (auto it = member.conflict_list.begin(); it != member.conflict_list.end(); it++) {
+							if (it->second == match.first) {
+								continue;
+							}
+							std::cout << locks2string(it->second);
+							if (it + 1 != member.conflict_list.end()) {
+								std::cout << ",";
+							}
+						}
+					}
+					std::cout << ";" << match.second << ";"
 						<< member.occurrences << ";"
 						<< std::setprecision(5)
 						<< relative_support * 100 << ";"
@@ -1299,7 +1310,7 @@ int main(int argc, char **argv)
 	std::cerr << "Synthesizing lock hypotheses ..." << std::endl;
 
 	if (reportmode == ReportMode::CSV || reportmode == ReportMode::CSVWINNER) {
-		std::cout << "type;member;accesstype;locks;occurrences;total;percentage;accepted;confidence;counterexample-parameters\n";
+		std::cout << "type;member;accesstype;locks;conflictlist;occurrences;total;percentage;accepted;confidence;counterexample-parameters\n";
 	}
 
 #pragma omp parallel for
