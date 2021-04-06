@@ -5,6 +5,8 @@ vnode;v_vnlock
 vnode;v_lockf
 vnode;v_rl
 vnode;v_bufobj.bo_lock
+vnode;v_bufobj.bo_domain
+vnode;v_bufobj.bo_bsize
 mount;mnt_mtx
 mount;mnt_listmtx
 mount;mnt_explock
