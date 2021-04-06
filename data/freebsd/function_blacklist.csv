@@ -51,15 +51,12 @@ datatype;datatype_member;fn;sequence
 \N;\N;atomic_fetchadd_long;\N
 \N;\N;atomic_testandset_int;\N
 \N;\N;atomic_testandclear_int;\N
-vnode;\N;vdropl_final;\N
 vnode;\N;getnewvnode;\N
 vnode;\N;freevnode;\N
 vnode;\N;pfs_vncache_alloc;0
 vnode;\N;ext2_vget;0
-vnode;\N;ffs_vgetf;0
 vnode;\N;devfs_allocv;0
-vnode;\N;tmpfs_alloc_vp;0
-vnode;\N;ext2_valloc;\N
+vnode;\N;mntfs_allocvp;\N
 fifoinfo;\N;fifo_cleanup;\N
 fifoinfo;\N;fifo_open;\N
 mount;\N;vfs_mount_alloc;\N
@@ -73,6 +70,7 @@ mount;\N;vfs_mount_destroy;\N
 nc_vnodelocks;\N;nchinit;\N
 nc_vnodelocks;\N;cache_neg_init;\N
 buf;\N;buf_alloc;\N
+buf;\N;pbuf_ctor;\N
 bufdomain;\N;bd_init;\N
 bufdomain;\N;bufinit;\N
 bufqueue;\N;bq_init;\N
