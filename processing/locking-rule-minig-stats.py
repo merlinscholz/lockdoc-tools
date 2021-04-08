@@ -43,9 +43,9 @@ def main():
 
 	dataTypes = dict()
 
-	query = 'SELECT t.dt_name, COUNT(*) AS num
-		FROM
-		(
+	query = 'SELECT t.dt_name, COUNT(*) AS num \
+		FROM \
+		( \
 		 SELECT (CASE WHEN sc.name IS NULL THEN dt.name ELSE CONCAT(dt.name, \':\', sc.name) END) AS dt_name, mn.name AS member_name \
 		 FROM subclasses AS sc \
 		 INNER JOIN data_types AS dt \
@@ -55,8 +55,8 @@ def main():
 		 INNER JOIN member_names AS mn \
 		    ON sl.member_name_id = mn.id \
 		 WHERE dt.name != \'task_struct\' \
-		 GROUP BY sc.id, sc.name, dt.name, member_name
-		)t
+		 GROUP BY sc.id, sc.name, dt.name, member_name \
+		)t \
 		GROUP BY t.dt_name'
 
 	try:
