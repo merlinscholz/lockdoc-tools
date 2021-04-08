@@ -196,18 +196,19 @@ EOT
 		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
 		if [ ${SUBLOCK} == "r" ];
 		then
-			SUBLOCK_COND="(l_sbh${LOCKNR}.sub_lock = 'r' OR l_sbh${LOCKNR}.sub_lock = 'w')"
-		else
-			SUBLOCK_COND="l_sbh${LOCKNR}.sub_lock = '${SUBLOCK}'"
+			# If the rule states the read lock is needed, using the write lock is *not* an CEX.
+			# Therefore, both sub locks can be used.
+			# Since each sub lock gets an individual ID, using the default sub lock condition doesn't work. See above.
+			# We must find the ids of both sub locks, and use them in the join clausjoin clause.
+			LOCKID="SELECT l2.id FROM locks l1 INNER JOIN locks l2 on l2.address = l1.address WHERE l1.id = $LOCKID"
 		fi
 		cat <<EOT
 					-- lock #$LOCKNR
 					JOIN locks_held lh_sbh${LOCKNR}
 					  ON lh_sbh${LOCKNR}.txn_id = s_ac.txn_id
-					 AND lh_sbh${LOCKNR}.lock_id = $LOCKID
+					 AND lh_sbh${LOCKNR}.lock_id  in ($LOCKID)
 					JOIN locks l_sbh${LOCKNR}
 					  ON l_sbh${LOCKNR}.id = lh_sbh${LOCKNR}.lock_id
-					 AND ${SUBLOCK_COND}
 EOT
 	elif echo $LOCK | grep -q '^EMBOTHER'; then # e.g., EMBOTHER(i_mutex)
 		LOCKCOMBINEDDT=$(echo $LOCK | sed -e 's/^.*(\([a-zA-Z0-9_:]\+\)\.\(.*\)\[\([rw]\)\])$/\1/')

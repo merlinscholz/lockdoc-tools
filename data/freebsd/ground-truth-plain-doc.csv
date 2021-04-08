@@ -59,10 +59,6 @@ vnode;v_bufobj.bo_numoutput;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys
 vnode;v_bufobj.bo_numoutput;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_flag;r;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_bufobj.bo_flag;w;EMBSAME\(vnode.v_bufobj.bo_lock\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_domain;r;\(no locks held\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_domain;w;\(no locks held\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_bsize;r;\(no locks held\);;sys/sys/vnode.h:98
-vnode;v_bufobj.bo_bsize;w;\(no locks held\);;sys/sys/vnode.h:98
 vnode;v_pollinfo;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_pollinfo;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_cstart;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
