@@ -92,8 +92,8 @@ cat <<EOT
 SELECT dt_name, sl_member, ac_type, stacktrace, locks_held, 
 		COUNT(ac_id) AS totalNum,
 		bool_or(hidden_access) AS hidden_access,
-		bool_or(flatten_access) AS flatten_accesses,
-		string_agg(CONCAT(cast(ac_id AS TEXT), '@hidden:', hidden_access, '@flatten:', flatten_access), ',' ORDER BY ac_id) AS accesses
+		bool_or(flatten_access) AS flatten_accesses
+--		string_agg(CONCAT(cast(ac_id AS TEXT), '@hidden:', hidden_access, '@flatten:', flatten_access), ',' ORDER BY ac_id) AS accesses
 FROM
 (
 	SELECT
@@ -127,8 +127,8 @@ FROM
 			r.dt_name,
 			r.sl_member,
 			r.stacktrace,
-			bool_or(ac_par.ac_type = 'w' AND r.ac_type = 'r') AS hidden_access,
-			bool_or((ac_par.ac_type = 'r' AND r.ac_type = 'r') OR (ac_par.ac_type = 'w' AND r.ac_type = 'w')) AS flatten_access
+			bool_or(ac_par.ac_type IS NOT NULL AND ac_par.ac_type = 'w' AND r.ac_type = 'r') AS hidden_access,
+			bool_or(ac_par.ac_type IS NOT NULL AND (ac_par.ac_type = 'r' AND r.ac_type = 'r') OR (ac_par.ac_type = 'w' AND r.ac_type = 'w')) AS flatten_access
 		FROM
 		(
 			-- Get all accesses. Add information about the accessed member, data type, and the function the memory has been accessed from.
