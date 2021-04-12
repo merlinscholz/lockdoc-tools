@@ -88,6 +88,8 @@ then
 	/sbin/mount -o linrdlnk -t fdescfs fdescfs "${_emul_path}/dev/fd"
 	/sbin/mount -o mode=1777 -t tmpfs tmpfs "${_emul_path}/dev/shm"
 	# Copied from /etc/rc.d/linuc -- END
+	export LTPROOT_UBUNTU=/compat/ubuntu/opt/kernel/ltp/bin
+	export PATH=${LTPROOT_UBUNTU}/testcases/bin:${LTPROOT_UBUNTU}/bin:$PATH
 fi
 
 if [ ! -e ${DEVICE} ];
