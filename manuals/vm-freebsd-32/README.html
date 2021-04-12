@@ -171,6 +171,10 @@ tunefs -L roots /dev/XXX
 <p><strong>Achtung</strong> Ggf. muss der Versions-String für einzelne Pakete angepasst werden. Dann kann mit <code>pkg search</code> nach dem betreffenden Paket gesucht werden.</p>
 <p><a id="userland-einrichten"></a></p>
 <h2 id="userland-einrichten">Userland einrichten</h2>
+<p>Symlinks erstellen, damit <code>run-bench.sh</code> unter Linux und FreeBSD gleichermaßen funktioniert</p>
+<pre><code>ln -s /usr/local/bin/bash /bin/bash
+ln -s /usr/local/bin/sysbench /usr/bin/sysbench
+</code></pre>
 <p>Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe <code>wheel</code> sein.</p>
 <pre><code>pw groupmod -m al -n wheel
 </code></pre>
@@ -179,7 +183,7 @@ tunefs -L roots /dev/XXX
 <pre><code>chsh -s /usr/local/bin/bash
 </code></pre>
 <p>Es empfiehlt sich dies ebenfalls als <code>root</code> zu tun.</p>
-<p>Anstatt den automatischen Linux-Kompatibilitätslayer von FreeBSD zu verwenden kommt ein Ubuntu-Chroot zum Einsatz. Hierzu ein Ubuntu-Chroot nach der Anleitung unter <a href="#links-kernel-jail">Links zum Kernel und Jail</a> installieren. Die Eintragungen in der <code>/etc/fstab</code> sind nicht nötig. Nun muss LTP in dem Chroot übersetzt werden:</p>
+<p>Anstatt den automatischen Linux-Kompatibilitätslayer von FreeBSD zu verwenden kommt ein Ubuntu-Chroot zum Einsatz. Hierzu muss zunächst ein Ubuntu-Chroot nach der Anleitung unter <a href="#links-kernel-jail">Links zum Kernel und Jail</a> installiert wird. Die Eintragungen in der <code>/etc/fstab</code> sind nicht nötig. Nun muss LTP in dem Chroot übersetzt werden:</p>
 <pre><code>sudo chroot /compat/ubuntu/ /bin/bash
 apt install dosfstools e2fsprogs build-essential git-core aptitude autoconf vim util-linux
 </code></pre>

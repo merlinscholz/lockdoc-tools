@@ -243,6 +243,12 @@ Ggf. muss der Versions-String für einzelne Pakete angepasst werden. Dann kann m
 
 <a id="userland-einrichten"></a>
 ## Userland einrichten
+Symlinks erstellen, damit `run-bench.sh` unter Linux und FreeBSD gleichermaßen funktioniert
+```
+ln -s /usr/local/bin/bash /bin/bash
+ln -s /usr/local/bin/sysbench /usr/bin/sysbench
+```
+
 Analog zu Linux kann man einem Nutzer ermöglichen, root-Rechte zu erlangen. Hierzu muss der Nutzer Mitglied der Gruppe `wheel` sein.
 
 ```
