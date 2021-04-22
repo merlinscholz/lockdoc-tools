@@ -57,9 +57,9 @@ if __name__ == '__main__':
 			if len(locksHeldDict) > 1 :
 				LOGGER.error('More than one lock hypothesis for %s', key)
 			if key[2] == 'w':
-				results[key[0]]['observedRulesR'] += 1
-			elif key[2] == 'r':
 				results[key[0]]['observedRulesW'] += 1
+			elif key[2] == 'r':
+				results[key[0]]['observedRulesR'] += 1
 			else:
 				print("Unknown access type: %s" % (key[2]), file = sys.stderr)
 				sys.exit(1)
@@ -93,9 +93,9 @@ if __name__ == '__main__':
 			if args.comparable:
 				print("NO :{0}".format(key), file = sys.stderr)
 			if key[2] == 'w':
-				results[key[0]]['observedRulesR'] += 1
-			elif key[2] == 'r':
 				results[key[0]]['observedRulesW'] += 1
+			elif key[2] == 'r':
+				results[key[0]]['observedRulesR'] += 1
 			else:
 				print("Unknown access type: %s" % (key[2]), file = sys.stderr)
 				sys.exit(1)
@@ -132,5 +132,5 @@ if __name__ == '__main__':
 			 allMatchedR,
 			 allMatchedW,
 			 util.calcPercentage(allObservedRules, allMatchedR + allMatchedW),
-			 util.calcPercentage(allObservedRules, allMatchedR),
-			 util.calcPercentage(allObservedRules, allMatchedW)))
+			 util.calcPercentage(allObservedR, allMatchedR),
+			 util.calcPercentage(allObservedW, allMatchedW)))
