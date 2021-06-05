@@ -77,8 +77,8 @@ vnode;v_mflag;r;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\
 vnode;v_mlfag;w;(EMBOTHER\(mount.mnt_listmtx\[[rw]\]\)|(vnode_list_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\));;sys/sys/vnode.h:98
 vnode;v_dbatchcpu;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_dbatchcpu;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_writecount;r;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
-vnode;v_writecount;w;EMBSAME\(vnode.v_lock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_writecount;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
+vnode;v_writecount;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_seqc_users;r;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 vnode;v_seqc_users;w;EMBSAME\(vnode.v_interlock\[[rw]\]\);;sys/sys/vnode.h:98
 mount;mnt_list.tqe_prev;r;(mountlist_mtx:)?[0-9]*\(sleep mutex\[[rw]\]\);;sys/sys/mount.h:189
