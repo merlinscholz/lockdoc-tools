@@ -56,4 +56,5 @@ cat <<EOT
 pdf(file = "euler.pdf", width = 3, height = 3, family = "Helvetica", title = "euler")
 plot(fit, quantities = TRUE)
 dev.off()
+embedFonts("euler.pdf", "pdfwrite")
 EOT
