@@ -246,16 +246,16 @@ static void find_address_in_section (bfd *kernelBfd, asection *section, void *da
 		return;
 	}
 
-	if ((bfd_get_section_flags (kernelBfd, section) & SEC_ALLOC) == 0) {
+	if ((bfd_section_flags (section) & SEC_ALLOC) == 0) {
 		return;
 	}
 
-	vma = bfd_get_section_vma (kernelBfd, section);
+	vma = bfd_section_vma (section);
 	if (bfdSearchCtx->pc < vma) {
 		return;
 	}
 
-	size = bfd_get_section_size (section);
+	size = bfd_section_size (section);
 	if (bfdSearchCtx->pc >= vma + size) {
 		return;
 	}
@@ -347,9 +347,9 @@ int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uin
 		bfd_close(kernelBfd);
 		return 1;
 	}
-	bssStart = bfd_section_vma(kernelBfd, bsSection);
-	bssSize = bfd_section_size(kernelBfd, bsSection);
-	cout << bfd_section_name(kernelBFD,bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
+	bssStart = bfd_section_vma(bsSection);
+	bssSize = bfd_section_size(bsSection);
+	cout << bfd_section_name(bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
 
 	dataSection = bfd_get_section_by_name(kernelBfd,".data");
 	if (bsSection == NULL) {
@@ -357,9 +357,9 @@ int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uin
 		bfd_close(kernelBfd);
 		return 1;
 	}
-	dataStart = bfd_section_vma(kernelBfd, dataSection);
-	dataSize = bfd_section_size(kernelBfd,dataSection);
-	cout << bfd_section_name(kernelBFD,dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
+	dataStart = bfd_section_vma(dataSection);
+	dataSize = bfd_section_size(dataSection);
+	cout << bfd_section_name(dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
 
 	return 0;
 }
