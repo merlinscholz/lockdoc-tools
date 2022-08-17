@@ -110,8 +110,8 @@ Fail
 	+ Copy all files from manuals/bochs/* to that directory
 	+ Adapt the path to your hdd image in your BOCHSRC
 	+ Make sure you have shut down your VM, before launching FAIL*. It will start it's own VM using BOCHS.
-	+ /path_to_fail_src/build/bin/fail-client -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
-		Example: /home/al/fail/build/bin/fail-client -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
+	+ /path_to_fail_src/build/bin/fail-client -Wf,--os=<OS> -Wf,--benchmark=<benchmark> -Wf,--port=<TCP port> -Wf,--vmlinux=/path/to/vmlinux -q -f <bochsrc> 2>&1 | tee out.txt
+		Example: /home/al/fail/build/bin/fail-client -Wf,--os=linux -Wf,--benchmark=lockdoc-test -Wf,--port=4711 -Wf,--vmlinux=/home/al/experiments/vmlinux-4-10-0-20191105-00115-gad4d2ad86498-gcc73 -q -f ./bochsrc 2>&1 | tee out.txt
 
 Post Processing
 ===============
@@ -126,8 +126,8 @@ IP address of the PostgreSQL host:5432:*:username:passwort
 - Change into that directory
 - Create the config file 'convert.conf':
 DATA=path to the output produced by FAIL*, e.g., actions.csv.gz. The precise name can be obtained by reading the output of fail-client.
-KERNEL=path to the vmlinux (outside the VM)
-KERNEL_TREE=directory where the kernel tree is located within your VM
+	KERNEL=path to the vmlinux (outside the VM)
+	KERNEL_TREE=directory where the kernel tree is located within your VM
 BASE_URL=base URL to the elixir instance, it is used by the bug report generator: e.g. https://ess.cs.tu-dortmund.de/lockdoc-elixir/linux-lockdoc/lockdoc-v5.4.0-rc4-0.2/source
 GUEST_OS=guest OS type, linux or freebsd
 PSQL_HOST=IP of the PostgreSQL host
