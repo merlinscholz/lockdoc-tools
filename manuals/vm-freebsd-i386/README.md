@@ -5,8 +5,12 @@
 ⚠️ This README uses FreeBSD 12. The provided LockDoc kernel source code currently does not successfully compile on FreeBSD 13.
 
 1. Set up an **i386** VM (qemu/libvirt or VirtualBox) for the FreeBSD installation.
-    * Disk size: 25G
-    * Disk type: RAW `qemu-img create -f raw freebsd.img 25G` (if possible. On VirtualBox the image has to be converted later)
+    * Main `/`disk:
+        * Disk size: 25G
+        * Disk type: RAW `qemu-img create -f raw freebsd.img 25G` (if possible. On VirtualBox the image has to be converted later)
+    * Second disk used for LTP:
+        * Disk size: 5G
+        * Disk type: RAW `qemu-img create -f raw ltp.img 5G` (this image does not need to be attached to the VM at all times)
     * Working networking
 2. Install FreeBSD 12.3 with the [FreeBSD-12.3-RELEASE-i386-disc1.iso](https://download.freebsd.org/releases/i386/i386/ISO-IMAGES/12.3/FreeBSD-12.3-RELEASE-i386-disc1.iso) installation medium.
     * Choose UFS as file system
@@ -83,7 +87,7 @@
         mount # look for the disk that is mounted on "/"
         dumpfs -l /dev/vtbd0s1a # Adapt disk as neccessary
         ```
-    * Bootloader `/boot/loader.conf`: TODO DISK LABEL
+    * Bootloader `/boot/loader.conf`:
         ```conf
         kernel="lockdoc" # Set FreeBSD's kernel as default
         kernels_autodetect="YES" # Detect all installed kernels automatically
@@ -96,7 +100,12 @@
         ```
         From this point on, if you want to revert to the normal Kernel, you have to press "6" at the bootloader prompt.
 
-At this point, upon rebooting the VM, it should automatically start the benchmark **when the kernel is installed** (and unless a key is pressed when prompted to do so). The image can now be used to run the LockDoc experiments in FAIL*/bochs. If you are using VirtualBox (or another virtualization software that doesn't support raw disk images), you have to convert the disk image before using fail*. On the VM host: ```qemu-img convert -f qcow2 -O raw freebsd.qcow2 freebsd.raw```
+    * Prepare the test disk to run LTP on:
+
+        LTP requires a separate disk image to actually run the test suites on. The device has to be noted in `/lockdoc/run-bench.sh`, the default there is `DEVICE=/dev/ada1`. Please note that the device path may differ when running the system in your usual hypervisor vs running it in BOCHS. If you're planing to run the experiments with KCOV enabled, you have to insert this path also when analyzing the logs (see point "KCOV" further down for details).
+
+
+At this point, upon rebooting the VM, it should automatically start the benchmark **when the kernel is installed** (and unless a key is pressed when prompted to do so). The image can now be used to run the LockDoc experiments in FAIL*/BOCHS. If you are using VirtualBox (or another virtualization software that doesn't support raw disk images), you have to convert the disk image before using fail*. On the VM host: ```qemu-img convert -f qcow2 -O raw freebsd.qcow2 freebsd.raw```
 
 6. Building the Kernel
     * On the target system (in-tree)
@@ -112,8 +121,11 @@ At this point, upon rebooting the VM, it should automatically start the benchmar
         sudo -E MODULES_OVERRIDE="" KODIR=/boot/lockdoc make install
         ```
     * Cross-compiling
+
         Cross-compiling from other POSIX operating systems is not (yet) supported on FreeBSD
     Regardless of the build process, remember to save the `kernel.debug` file (usually in `/opt/kernel/freebsd/obj/kernel.debug`) outside of the VM, as it is a requirement for the FAIL* framework to work.
 
 7. KCOV
+
     To build the kernel with KCOV support, you can use the LOCKDOC_KCOV config instead of LOCKDOC. Remember to adapt the Kernel name.
+    Furthermore, you have to add the proper `DEVICE` environment variable upon running `trace-all-ltp-tests.sh`
