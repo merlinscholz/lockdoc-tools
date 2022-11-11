@@ -12,10 +12,10 @@ For Linux, the appropriate config file resides in the root folder of the kernel 
 
 # VM
 
-- Each VM has two serial consoles
-	+ The *first* console is used for logging: VM -> FAIL*-Experiment
-	+ The *second* console tells the guest OS which benchmark to run: FAIL*-Experiment -> VM 
-- For setting up the individual VMs, please have a look at the respective manuals: vm-*-32/README*
+* Each VM has two serial consoles
+	* The *first* console is used for logging: VM -> FAIL*-Experiment
+	* The *second* console tells the guest OS which benchmark to run: FAIL*-Experiment -> VM
+* For setting up the individual VMs, please have a look at the respective manuals: vm-\*/README.md
 
 # Benchmarks
 
@@ -73,7 +73,7 @@ The following benchmarks are available:
 * A sample BOCHSRC is located in this directory. You may want to change:
 	* `display_library`: Enabling a GUI makes the process easier to debug in case anything goes wrong
 	* `ata0-master`: To point to the correct, prepared OS disk image
-	* `ata0-slave`:  To point to the correct, LTP disk image
+	* `ata0-slave`:  To point to the correct LTP disk image
 * Create a temporary directory where you can run the fail client
 * Copy all files from manuals/bochs/* and your modified BOCHSRC to that directory
 * Run the test:
