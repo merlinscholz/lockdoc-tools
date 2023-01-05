@@ -1,2 +1,2 @@
 #!/bin/sh
-/usr/local/bin/bash /lockdoc/boot.init.bash.sh
+/usr/pkg/bin/bash /lockdoc/boot.init.bash.sh
