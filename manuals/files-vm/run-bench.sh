@@ -90,6 +90,29 @@ then
 	# Copied from /etc/rc.d/linuc -- END
 	export LTPROOT_UBUNTU=/compat/ubuntu/opt/kernel/ltp/bin
 	export PATH=${LTPROOT_UBUNTU}/testcases/bin:${LTPROOT_UBUNTU}/bin:$PATH
+elif [ ${OS} == "NetBSD" ];
+then
+	INDEV=/dev/tty01 # TODO Check numbering
+	OUTDEV=/dev/tty00
+	if [ ${GATHER_COV} -eq 0 ];
+	then
+		echo "Remount RW" | tee ${OUTDEV}
+		mount -u -o rw /
+		#zfs set readonly=off ${POOL}/ROOT/default
+
+		LOCKDOC_TEST_CTL="/dev/lockdoc/control"
+		LOCKDOC_TEST_ITER="/dev/lockdoc/iterations"
+		DEFAULT_ITERATIONS=`cat ${LOCKDOC_TEST_ITER}`
+		DEFAULT_USER=1001
+		DEFAULT_GROUP=20
+	fi
+	LTP_CMD="chroot /compat/ubuntu ${LTPROOT}/runltp -q"
+	DEVICE=/dev/wd1 # TODO Change
+
+	mount_procfs -o linux procfs /emul/linux/proc
+
+	export LTPROOT_UBUNTU=/compat/ubuntu/opt/kernel/ltp/bin
+	export PATH=${LTPROOT_UBUNTU}/testcases/bin:${LTPROOT_UBUNTU}/bin:$PATH
 fi
 
 if [ ! -e ${DEVICE} ];
@@ -275,6 +298,15 @@ then
 elif [ "${BENCH}" == "startup" ];
 then
 	echo "Doing nothing!" | tee ${OUTDEV}
+elif [[ ${BENCH} =~ ^atf-.*$ ]];
+then
+	if [ ${OS} != "NetBSD" ];
+	then
+		echo "ATF benchmark is only supported on NetBSD!"
+	else
+		cd /usr/tests/
+		atf-run | atf-report
+	fi
 else
 	echo "Unknown benchmark: "${BENCH} | tee ${OUTDEV}
 fi
@@ -292,6 +324,11 @@ then
 	#POOL=`zpool list -o name -H`
 	#zfs set readonly=on ${POOL}/ROOT/default
 	mount -u -o ro /
+elif [ ${OS} == "NetBSD" ];
+then
+	#POOL=`zpool list -o name -H`
+	#zfs set readonly=on ${POOL}/ROOT/default
+	mount -u -o ro /
 fi
 
 echo "Syncing" | tee ${OUTDEV}
@@ -305,6 +342,9 @@ if [ ${OS} == "Linux" ];
 then
 	/usr/lib/klibc/bin/poweroff
 elif [ ${OS} == "FreeBSD" ];
+then
+	/sbin/poweroff
+elif [ ${OS} == "NetBSD" ];
 then
 	/sbin/poweroff
 fi

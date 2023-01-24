@@ -1,7 +1,6 @@
 #!/usr/local/bin/bash
 echo "PRE-INIT SCRIPT"
-IDENT=`uname -v`
-if grep -Fq "LOCKDOC" ${IDENT};
+if uname -v | grep "LOCKDOC";
 then
 	echo "Please press a character key to start normal"
 	sleep 1
