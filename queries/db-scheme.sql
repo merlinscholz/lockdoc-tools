@@ -144,5 +144,5 @@ CREATE TABLE member_blacklist (			-- A per datatype list of blacklisted function
 ) 
 ;
 
-CREATE INDEX fk_subclass_id ON member_blacklist (subclass_id);
+-- CREATE INDEX fk_subclass_id ON member_blacklist (subclass_id);
 
