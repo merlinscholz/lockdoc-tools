@@ -190,10 +190,10 @@ cat <<EOT
 					  ON lock_member_name_sbh${LOCKNR}.id = l_sbh${LOCKNR}.member_name_id
 					 AND lock_member_name_sbh${LOCKNR}.name = '$LOCKNAME'
 EOT
-
-	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
-		 LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
-		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
+# globale locks (nicht embedded) smmescho
+	elif echo $LOCK | grep -q '^\(EMB:\|[A-Za-z0-9_]\+:\)\?[0-9]\+('; then # e.g., EMB:123(i_mutex) or 34(spinlock_t), or console_sem:4711(mutex)
+		 LOCKID=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z0-9_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\2/') # 2st numeric sequence in $LOCK
+		SUBLOCK=$(echo $LOCK | sed -e 's/^\(EMB:\|[A-Za-z0-9_]\+:\)\?\([0-9]\+\)(.*\[\([rw]\)\])$/\3/')
 		if [ ${SUBLOCK} == "r" ];
 		then
 			# If the rule states the read lock is needed, using the write lock is *not* an CEX.

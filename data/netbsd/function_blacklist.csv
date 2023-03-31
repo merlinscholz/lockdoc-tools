@@ -1,0 +1,9 @@
+datatype;datatype_member;fn;sequence
+\N;\N;atomic_add;\N
+\N;\N;atomic_and;\N
+\N;\N;atomic_cas;\N
+\N;\N;atomic_dec;\N
+\N;\N;atomic_inc;\N
+\N;\N;atomic_or;\N
+\N;\N;atomic_swap;\N
+\N;\N;in_multi_unlock;\N
