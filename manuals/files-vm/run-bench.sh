@@ -98,7 +98,6 @@ then
 	then
 		echo "Remount RW" | tee ${OUTDEV}
 		mount -u -o rw /
-		#zfs set readonly=off ${POOL}/ROOT/default
 
 		LOCKDOC_TEST_CTL="/dev/lockdoc/control"
 		LOCKDOC_TEST_ITER="/dev/lockdoc/iterations"
@@ -160,6 +159,9 @@ then
 	elif [ ${OS} == "FreeBSD" ];
 	then
 		BENCH_OUTDEV=/dev/ttyu0
+	elif [ ${OS} == "NetBSD" ];
+	then
+		BENCH_OUTDEV=/dev/tty00
 	fi
 fi
 
