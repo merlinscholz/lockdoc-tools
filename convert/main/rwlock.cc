@@ -31,7 +31,7 @@ void RWLock::writeTransition(
 					// Flush all reader
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts,  READER_LOCK, true, ctx)) {
+					if (lockManager->finishTXN(this, ts,  READER_LOCK, true, ctx, ctxOld)) {
 						// finishTXN has cleaned up all all TXNs. We must now deconstruct der last pos stack.
 						while (!lastNPos.empty()) {
 							this->reader_count--;
@@ -54,7 +54,7 @@ void RWLock::writeTransition(
 						// the corresponding V()
 						// For more information about using the return value of finishTXN(), and why it is important,
 						// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-						if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx)) {
+						if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx, ctxOld)) {
 							// forget locking position because this kind of
 							// lock can officially only be held once
 							this->lastNPos.pop();
@@ -111,7 +111,7 @@ void RWLock::writeTransition(
 					}
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx)) {
+					if (lockManager->finishTXN(this, ts, WRITER_LOCK, false, ctx, ctxOld)) {
 						this->lastNPos.pop();
 					}
 				} else {
@@ -174,7 +174,7 @@ void RWLock::readTransition(
 					// Flush all writer
 					// For more information about using the return value of finishTXN(), and why it is important,
 					// have a look at RWLock::readTransition() in V_READ case (approx. line 181).
-					if (lockManager->finishTXN(this, ts, WRITER_LOCK, true, ctx)) {
+					if (lockManager->finishTXN(this, ts, WRITER_LOCK, true, ctx, ctxOld)) {
 						// finishTXN has cleaned up all all TXNs. We must now deconstruct der last pos stack.
 						while (!lastNPos.empty()) {
 							this->writer_count--;
@@ -240,7 +240,7 @@ void RWLock::readTransition(
 					// In rare corner cases where the trace does *not* contain a valid sequence of P()s and V()s
 					// finishTXN() might fail. If so, we are *not* allowed to remove top element of lastNPos.
 					// Otherwise, lastNPos and activeTXNs get out-of-sync.
-					if (lockManager->finishTXN(this, ts, READER_LOCK, false, ctx)) {
+					if (lockManager->finishTXN(this, ts, READER_LOCK, false, ctx, ctxOld)) {
 						this->lastNPos.pop();
 					}
 				} else {

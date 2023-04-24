@@ -62,7 +62,7 @@ void LockManager::closeAllTXNs(unsigned long long ts) {
 			cerr << "TXN[" << kv.first << "]: There are still " << m_activeTXNs[kv.first].size() << " TXNs active, flushing the topmost one." << endl;
 			// pretend there's a V() matching the top-most TXN's starting (P())
 			// lock at the last seen timestamp
-			this->finishTXN(txn.lock, ts, txn.subLock, false, kv.first);
+			this->finishTXN(txn.lock, ts, txn.subLock, false, kv.first, kv.first);
 		}
 	}
 }
@@ -84,7 +84,7 @@ bool LockManager::isOnTXNStack(long ctx, RWLock *lock, enum SUB_LOCK subLock) {
  * @param m_txnsOFile      ofstream for txns.csv
  * @param m_locksHeldOFile ofstream for locks_held.csv
  */
-bool LockManager::finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, long ctx) {
+bool LockManager::finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, long ctx, long ctxOld) {
 	// We have to differentiate two cases:
 	//
 	// 1. The lock we're seeing a V() on (lockPtr) belongs to the top-most,
@@ -107,8 +107,10 @@ bool LockManager::finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK s
 		if (!SKIP_EMPTY_TXNS || this->getActiveTXN(ctx).memAccessCounter > 0) {
 			// Record this TXN
 			m_txnsOFile << this->getActiveTXN(ctx).id << delimiter;
-			m_txnsOFile << this->getActiveTXN(ctx).start << delimiter;
-			m_txnsOFile << ts << "\n";
+			m_txnsOFile << this->getActiveTXN(ctx).start_ts << delimiter;
+			m_txnsOFile << this->getActiveTXN(ctx).start_ctx << delimiter;
+			m_txnsOFile << ts << delimiter;
+			m_txnsOFile << ctxOld << "\n";
 
 			// Note which locks were held during this TXN by looking at all
 			// TXNs "below" it (the order does not matter because we record the
@@ -203,8 +205,9 @@ bool LockManager::finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK s
 		m_activeTXNs[ctx].pop_back();
 		// give TXN a new ID + timestamp + memAccessCounter
 		restartTXNs.front().id = m_nextTXNID++;
-		restartTXNs.front().start = ts;
+		restartTXNs.front().start_ts = ts;
 		restartTXNs.front().memAccessCounter = 0;
+		restartTXNs.front().start_ctx = ctx;
 	}
 
 	// sanity check whether m_activeTXNs is not empty -- this should never happen
@@ -223,7 +226,8 @@ void LockManager::startTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK su
 	m_activeTXNs[ctx].push_back(TXN());
 	auto& curTXN = this->getActiveTXN(ctx);
 	curTXN.id = m_nextTXNID++;
-	curTXN.start = ts;
+	curTXN.start_ts = ts;
+	curTXN.start_ctx = ctx;
 	curTXN.memAccessCounter = 0;
 	curTXN.lock = lock;
 	curTXN.subLock = subLock;

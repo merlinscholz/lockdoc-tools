@@ -18,7 +18,8 @@
  */
 struct TXN {
 	unsigned long long id;										// ID
-	unsigned long long start;									// Timestamp when this TXN started
+	unsigned long long start_ts;									// Timestamp when this TXN started
+	unsigned long long start_ctx;									// Context where this TXN started
 	unsigned long long memAccessCounter;						// Memory accesses in this TXN (allows suppressing empty TXNs in the output)
 	RWLock *lock;
 	enum SUB_LOCK subLock;	
@@ -50,7 +51,7 @@ struct LockManager {
 	std::ofstream& m_txnsOFile;
 	std::ofstream& m_locksHeldOFile;
 	void startTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, long ctx);
-	bool finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, long ctx);
+	bool finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK subLock, bool removeReader, long ctx, long ctxOld);
 	long findTXN(RWLock *lck, enum SUB_LOCK subLock, long ctx);
 	public:
 	friend struct RWLock;

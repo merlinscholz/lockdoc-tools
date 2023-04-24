@@ -82,7 +82,9 @@ CREATE INDEX fk_txn_id ON locks_held (txn_id);
 CREATE TABLE txns (				-- Transactions: sets of memory accesses between a P/V and the next P/V (while at least one lock is held)
   id int CHECK (id > 0) NOT NULL,		-- ID
   start_ts bigint DEFAULT NULL,		-- Timestamp of the first P or V
+  start_ctx bigint DEFAULT NULL,	-- Context of the first P or V
   end_ts bigint DEFAULT NULL,		-- Timestamp of the second P or V
+  end_ctx bigint DEFAULT NULL,		-- Context of the first P or V
   PRIMARY KEY (id)
 ) 
 ;

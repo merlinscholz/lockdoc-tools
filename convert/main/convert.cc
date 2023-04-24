@@ -590,7 +590,9 @@ int main(int argc, char *argv[]) {
 	locksHeldOFile << "last_file" << delimiter << "last_line" << delimiter << "last_fn" << delimiter;
 	locksHeldOFile << "last_preempt_count" << delimiter << "last_irq_sync" << endl;
 
-	txnsOFile << "id" << delimiter << "start" << delimiter << "end" << endl;
+	txnsOFile << "id" << delimiter << "start_ts" << delimiter;
+	txnsOFile << "start_ctx" << delimiter << "end_ts" << delimiter;
+	txnsOFile << "end_ctx" << endl;
 
 	fnblacklistOFile << "id" << delimiter << "subclass_id" << delimiter << "member_name_id"
 		<< delimiter << "fn" << endl;
