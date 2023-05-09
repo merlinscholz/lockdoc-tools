@@ -6,4 +6,5 @@ datatype;datatype_member;fn;sequence
 \N;\N;atomic_inc;\N
 \N;\N;atomic_or;\N
 \N;\N;atomic_swap;\N
-\N;\N;in_multi_unlock;\N
+\N;\N;cache_purge1;\N
+
