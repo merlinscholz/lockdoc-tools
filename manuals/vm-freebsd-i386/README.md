@@ -29,7 +29,7 @@
         ```
     * Install required packages:
         ```sh
-        pkg install nano git bash sysbench sudo e2fsprogs gcc gmake debootstrap rsync tmux
+        pkg install nano git bash sysbench sudo e2fsprogs gcc gmake debootstrap tmux
         ```
     * Fix paths and shell for `run-bench.sh`:
         ```sh
@@ -66,7 +66,7 @@
         ```sh
         git clone https://git.cs.tu-dortmund.de/lockdoc/ltp.git /opt/kernel/ltp/src
         git clone https://git.cs.tu-dortmund.de/lockdoc/tools.git /opt/kernel/tools
-        cp /opt/kernel/tools/manuals/vm-linux-32/scripts/fs-custom /opt/kernel/tools/manuals/vm-linux-32/scripts/syscalls-custom /opt/kernel/ltp/src/runtest
+        cp /opt/kernel/tools/manuals/vm-linux-i386/scripts/fs-custom /opt/kernel/tools/manuals/vm-linux-i386/scripts/syscalls-custom /opt/kernel/ltp/src/runtest
         cd /opt/kernel/ltp/src
         aclocal
         make autotools
@@ -79,8 +79,8 @@
         ```sh
             mkdir -p /lockdoc/bench-out
             cp /compat/ubuntu/opt/kernel/tools/manuals/vm-freebsd-i386/scripts/* /lockdoc
-            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-32/scripts/run-bench.sh /lockdoc
-            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-32/scripts/fork.c /lockdoc/bench-out
+            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-i386/scripts/run-bench.sh /lockdoc
+            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-i386/scripts/fork.c /lockdoc/bench-out
         ```
     * Find out the UFS ID of your `/` partition:
         ```sh
