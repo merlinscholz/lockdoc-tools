@@ -66,7 +66,7 @@
         ```sh
         git clone https://git.cs.tu-dortmund.de/lockdoc/ltp.git /opt/kernel/ltp/src
         git clone https://git.cs.tu-dortmund.de/lockdoc/tools.git /opt/kernel/tools
-        cp /opt/kernel/tools/manuals/vm-linux-i386/scripts/fs-custom /opt/kernel/tools/manuals/vm-linux-i386/scripts/syscalls-custom /opt/kernel/ltp/src/runtest
+        cp /opt/kernel/tools/manuals/files-vm/fs-custom /opt/kernel/tools/manuals/files-vm/syscalls-custom /opt/kernel/ltp/src/runtest
         cd /opt/kernel/ltp/src
         aclocal
         make autotools
@@ -78,9 +78,7 @@
     * Init script:
         ```sh
             mkdir -p /lockdoc/bench-out
-            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-freebsd-i386/scripts/* /lockdoc
-            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-i386/scripts/run-bench.sh /lockdoc
-            cp /compat/ubuntu/opt/kernel/tools/manuals/vm-linux-i386/scripts/fork.c /lockdoc/bench-out
+            cp /compat/ubuntu/opt/kernel/tools/manuals/files-vm/* /lockdoc
         ```
     * Find out the UFS ID of your `/` partition:
         ```sh
@@ -124,6 +122,8 @@ At this point, upon rebooting the VM, it should automatically start the benchmar
 
         Cross-compiling from other POSIX operating systems is not (yet) supported on FreeBSD
     Regardless of the build process, remember to save the `kernel.debug` file (usually in `/opt/kernel/freebsd/obj/kernel.debug`) outside of the VM, as it is a requirement for the FAIL* framework to work.
+
+⚠️ The following steps may be optional, depending on what you're trying to analyze.
 
 7. KCOV
 

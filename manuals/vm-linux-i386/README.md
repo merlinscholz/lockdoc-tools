@@ -27,7 +27,7 @@
 	mkdir -p /opt/kernel/ltp
 	git clone https://git.cs.tu-dortmund.de/lockdoc/ltp.git /opt/kernel/ltp/src
 	git clone https://git.cs.tu-dortmund.de/lockdoc/tools.git /opt/kernel/tools
-	cp /opt/kernel/tools/manuals/vm-linux-i386/scripts/fs-custom /opt/kernel/tools/manuals/vm-linux-i386/scripts/syscalls-custom /opt/kernel/ltp/src/runtest
+	cp /opt/kernel/tools/manuals/files-vm/fs-custom /opt/kernel/tools/manuals/files-vm/syscalls-custom /opt/kernel/ltp/src/runtest
 	cd /opt/kernel/ltp/src
 	aclocal
 	make autotools
@@ -41,9 +41,9 @@
 		```sh
 		mkdir -p /lockdoc/bench-out
 		```
-		* Copy 'run-bench.sh' and fork.c from manuals/vm-linux-i386/scripts to /lockdoc:
+		* Copy 'run-bench.sh' and fork.c from manuals/files-vm to /lockdoc:
 		```sh
-		cp /opt/kernel/tools/manuals/vm-linux-i386/scripts/run-bench.sh /opt/kernel/tools/manuals/vm-linux-i386/scripts/run-bench.sh /lockdoc 
+		cp /opt/kernel/tools/manuals/files-vm/run-bench.sh /opt/kernel/tools/manuals/files-vm/run-bench.sh /lockdoc 
 		```
 	* Bootloader
 		* Set variable GRUB_DEFAULT to saved in /etc/default/grub, i.e., `GRUB_DEFAULT=saved`
@@ -186,3 +186,30 @@ At this point, upon rebooting the VM, it should automatically start the benchmar
 		./bin/syz-trace2syz -deserialize TARGET_DIR -dir INPUT_DIR -vv 2
 		./bin/syz-db pack TARGET_DIR foo.db
 		```
+
+9. GCOV
+
+⚠️ This part of the documentation is outdated since GCOV has been replaced with KCOV. It is kept here unchanged (apart from formatting).
+
+* Checkout the kernel tree again in a separate directory, e.g., linux-i386-gcov. For now, please stick to branch lockdebugging-4-10.
+* `cp config-lockdebugging .config`
+* `make menuconfig`
+	* Uncheck "Enable ESS lock analysis facility"
+	* "General Setup" --> "Local version - append to kernel release" --> Enter "gcov"
+	* "General Setup" --> "GCOV-based kernel profiling" --> "Enable gcov-based kernel profiling" |
+							    --> "Specify GCOV format" --> "Autodetect"
+* "Exit" --> "Save config"
+* `make -j$(nproc)`
+* `make install`
+* On reboot, select the GCOV kernel. The GRUB entry should end with "-gcov".
+* Ensure the debugfs is mounted. Otherwise, run as root: `mount -t debugfs none /sys/kernel/debug`
+* Copy `processing/gcov-trace.sh` to your VM
+* Gather profiling information using gcov-trace.sh
+	* Become root, e.g., sudo u
+	* `./gcov-trace.sh PATH_TO_YOUR_KERNEL_TREE OUTPUT_FILE COMMAND ARGS`
+	* Example for profiling `sleep 5`: `./gcov-trace.sh /opt/kernel/linux-i386-gcov test.trace sleep 5`
+* Copy the output to your host
+* To retrieve the code coverage from the output file, use processing/gcov-summary.py
+	* `./gcov-summary.py --kernel-directory PATH_TO_YOUR_KERNEL_TREE_IN_VM --per-directory [--filter 'REGEX']`
+	* Example: Summarize code coverage for each directory containing fs, expect fs/proc
+		* `gcov-summary.py --kernel-directory /opt/kernel/linux-i386-gcov/ --per-directory --filter '^fs(?!/proc)' test.trace`
