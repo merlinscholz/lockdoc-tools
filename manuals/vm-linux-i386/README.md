@@ -41,9 +41,9 @@
 		```sh
 		mkdir -p /lockdoc/bench-out
 		```
-		* Copy 'run-bench.sh' and fork.c from manuals/files-vm to /lockdoc:
+		* Copy `run-bench.sh` and fork.c from manuals/files-vm to /lockdoc:
 		```sh
-		cp /opt/kernel/tools/manuals/files-vm/run-bench.sh /opt/kernel/tools/manuals/files-vm/run-bench.sh /lockdoc 
+		cp /opt/kernel/tools/manuals/files-vm/run-bench.sh /opt/kernel/tools/manuals/files-vm/fork.c /lockdoc 
 		```
 	* Bootloader
 		* Set variable GRUB_DEFAULT to saved in /etc/default/grub, i.e., `GRUB_DEFAULT=saved`
