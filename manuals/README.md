@@ -80,8 +80,10 @@ The following benchmarks are available:
 * Compile the hypothesizer (`cd hypothesizer && make`)
 * For the PostgreSQL cmdline tool to work properly, create the `.pgpass`-file in your home directory:
 	```sh
-	echo "host_ip:5432:*:username:password" >> ~/.pgpass && chmod 0600 ~/.pgpass
+	echo "host_ip:5432:*:username:password" >> ~/.pgpass
+	chmod 0600 ~/.pgpass
 	```
+	
 * Do not forget to create the database, and grant your user the proper permissions. The recommended naming scheme is described in the Database section
 * Create a directory for the results of the post processing
 * In there, create the config file 'convert.conf':
