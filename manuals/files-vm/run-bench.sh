@@ -300,14 +300,24 @@ then
 elif [ "${BENCH}" == "startup" ];
 then
 	echo "Doing nothing!" | tee ${OUTDEV}
-elif [[ ${BENCH} =~ ^atf-.*$ ]];
+elif [[ ${BENCH} == "atf" ]];
 then
 	if [ ${OS} != "NetBSD" ];
 	then
 		echo "ATF benchmark is only supported on NetBSD!"
 	else
 		cd /usr/tests/
-		atf-run | atf-report
+		run_cmd atf-run | atf-report
+	fi
+elif [[ ${BENCH} =~ ^atf-.*$ ]];
+then
+	if [ ${OS} != "NetBSD" ];
+	then
+		echo "ATF benchmark is only supported on NetBSD!"
+	else
+		TESTSUITE=${BENCH#atf-}
+		cd /usr/tests/
+		run_cmd atf-run ${TESTSUITE} | atf-report
 	fi
 else
 	echo "Unknown benchmark: "${BENCH} | tee ${OUTDEV}
