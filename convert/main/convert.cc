@@ -116,7 +116,13 @@ static map<unsigned long long, map<string,unsigned long long> > stacktraces;
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
-static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0, dataCachelineAlignedStart = 0, dataCachelineAlignedSize = 0;
+static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
+
+/**
+ * Start address and size of additional sections. All information is read from the dwarf information during startup.
+ */
+ static vector<uint64_t> addlStart = {}, addlSize = {};
+
 /**
  * Enable context tracing?
  * Enabled via cmdline argument -c. Disabled by default.
@@ -183,6 +189,30 @@ static void dumpTXNs(const std::deque<TXN>& txns)
 }
 #endif
 
+static bool checkLockInSections(
+	uint64_t lockAddress,
+	uint64_t bssStart,
+	uint64_t bssSize,
+	uint64_t dataStart,
+	uint64_t dataSize,
+	vector<uint64_t> addlStart,
+	vector<uint64_t> addlSize
+	)
+{
+	if(lockAddress >= bssStart && lockAddress <= (bssStart + bssSize))
+		return true;
+	
+	if(lockAddress >= dataStart && lockAddress <= (dataStart + dataSize))
+		return true;
+	
+	unsigned int addlSectionsSize = addlStart.size();
+	for(unsigned int i=0; i<addlSectionsSize; i++){
+		if(lockAddress >= addlStart[i] && lockAddress <= (addlStart[i] + addlSize[i]))
+			return true;
+	}
+
+	return false;
+}
 
 /* handle P() / V() events */
 static void handlePV(
@@ -221,10 +251,8 @@ static void handlePV(
 			}
 		}
 		if (allocation_id == 0) {
-			if ((lockAddress >= bssStart && lockAddress < bssStart + bssSize) ||
-				(lockAddress >= dataStart && lockAddress < dataStart + dataSize) ||
-				(lockAddress >= dataCachelineAlignedStart && lockAddress < dataCachelineAlignedStart + dataCachelineAlignedSize) ||
-				(lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
+			if ((lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))
+				|| checkLockInSections(lockAddress, bssStart, bssSize, dataStart, dataSize, addlStart, addlSize)) {
 				// static lock which resides either in the bss segment or in the data segment
 				// or global static lock aka rcu lock
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found static lock.");
@@ -502,7 +530,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Examine Kernel ELF: retrieve .bss, .data and .data.cacheline_aligned segment locations
-	if (readSections(bssStart, bssSize, dataStart, dataSize, dataCachelineAlignedStart, dataCachelineAlignedSize)) {
+	if (readSections(bssStart, bssSize, dataStart, dataSize, addlStart, addlSize)) {
 		return EXIT_FAILURE;
 	}
 

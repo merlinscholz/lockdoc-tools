@@ -30,7 +30,7 @@ struct DataType {
 int binaryread_init(const char *vmlinuxName);
 void binaryread_destroy(void);
 const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, uint64_t addr);
-int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize, uint64_t& dataCachelineAlignedStart, uint64_t& dataCachelineAlignedSize);
+int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize, vector<uint64_t>& adllStart, vector<uint64_t>& addlSize);
 const char* getGlobalLockVar(uint64_t addr);
 int extractStructDefs(const char *outFname, char delimiter, std::vector<DataType> *types, expand_type_fn expand_type, add_member_name_fn add_member_name);
 #endif // __BINARYREAD_H__
