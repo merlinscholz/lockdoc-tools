@@ -116,7 +116,7 @@ static map<unsigned long long, map<string,unsigned long long> > stacktraces;
 /**
  * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
  */
-static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
+static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0, dataCachelineAlignedStart = 0, dataCachelineAlignedSize = 0;
 /**
  * Enable context tracing?
  * Enabled via cmdline argument -c. Disabled by default.
@@ -223,6 +223,7 @@ static void handlePV(
 		if (allocation_id == 0) {
 			if ((lockAddress >= bssStart && lockAddress < bssStart + bssSize) ||
 				(lockAddress >= dataStart && lockAddress < dataStart + dataSize) ||
+				(lockAddress >= dataCachelineAlignedStart && lockAddress < dataCachelineAlignedStart + dataCachelineAlignedSize) ||
 				(lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
 				// static lock which resides either in the bss segment or in the data segment
 				// or global static lock aka rcu lock
@@ -500,12 +501,12 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	// Examine Linux-kernel ELF: retrieve BSS + data segment locations
-	if (readSections(bssStart, bssSize, dataStart, dataSize)) {
+	// Examine Kernel ELF: retrieve .bss, .data and .data.cacheline_aligned segment locations
+	if (readSections(bssStart, bssSize, dataStart, dataSize, dataCachelineAlignedStart, dataCachelineAlignedSize)) {
 		return EXIT_FAILURE;
 	}
 
-	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
+	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0) {
 		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
 		printUsageAndExit(argv[0]);
 	}

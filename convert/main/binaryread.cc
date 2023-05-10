@@ -337,9 +337,9 @@ const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, u
 	return it->second;
 } 
 
-// find .bss and .data sections
-int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize) {
-	asection *bsSection, *dataSection;
+// find .bss, .data and .data.cacheline_aligned sections
+int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize, uint64_t& dataCachelineAlignedStart, uint64_t& dataCachelineAlignedSize) {
+	asection *bsSection, *dataSection, *dataCachelineAlignedSection;
 
 	bsSection = bfd_get_section_by_name(kernelBfd,".bss");
 	if (bsSection == NULL) {
@@ -353,7 +353,7 @@ int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uin
 
 	dataSection = bfd_get_section_by_name(kernelBfd,".data");
 	if (bsSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
+		bfd_perror("Cannot find section '.data'");
 		bfd_close(kernelBfd);
 		return 1;
 	}
@@ -361,6 +361,16 @@ int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uin
 	dataSize = bfd_section_size(dataSection);
 	cout << bfd_section_name(dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
 
+	dataCachelineAlignedSection = bfd_get_section_by_name(kernelBfd,".data.cacheline_aligned");
+	if (bsSection == NULL) {
+		cout << "Cannot find section '.data.cacheline_aligned'. Ignoring." << endl;
+		dataCachelineAlignedStart = 0;
+		dataCachelineAlignedSize = 0;
+	} else {
+		dataCachelineAlignedStart = bfd_section_vma(dataCachelineAlignedSection);
+		dataCachelineAlignedSize = bfd_section_size(dataCachelineAlignedSection);
+		cout << bfd_section_name(dataCachelineAlignedSection) << ": " << dataCachelineAlignedSize << " bytes @ " << hex << showbase << dataCachelineAlignedStart << dec << noshowbase << endl;
+	}
 	return 0;
 }
 
