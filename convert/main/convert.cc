@@ -184,7 +184,7 @@ static void dumpTXNs(const std::deque<TXN>& txns)
 }
 #endif
 
-static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t, uint64_t>> dataSections)
+static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t, uint64_t>>& dataSections)
 {
 	for (const pair<string, pair<uint64_t, uint64_t>>& section : dataSections) {
     	if(lockAddress >= section.second.first && lockAddress <= (section.second.first + section.second.second)){
