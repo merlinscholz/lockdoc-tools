@@ -337,44 +337,23 @@ const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, u
 	return it->second;
 } 
 
-// find .bss, .data and .data.cacheline_aligned sections
-int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize, vector<uint64_t>& addlStart, vector<uint64_t>& addlSize) {
-	asection *bssSection, *dataSection, *curSection;
-	vector<string> addlSections = ELF_SECTIONS;
-	unsigned int addlSectionsSize = addlSections.size();
+// find in ELF_SECTIONS specified sections in the kernel
+void readSections(map<string, pair<uint64_t, uint64_t>>& dataSections) {
+	asection *curSection;
+	vector<string> sections = ELF_SECTIONS;
 
-	bssSection = bfd_get_section_by_name(kernelBfd,".bss");
-	if (bssSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
-		bfd_close(kernelBfd);
-		return 1;
-	}
-	bssStart = bfd_section_vma(bssSection);
-	bssSize = bfd_section_size(bssSection);
-	cout << bfd_section_name(bssSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
-
-	dataSection = bfd_get_section_by_name(kernelBfd,".data");
-	if (dataSection == NULL) {
-		bfd_perror("Cannot find section '.data'");
-		bfd_close(kernelBfd);
-		return 1;
-	}
-	dataStart = bfd_section_vma(dataSection);
-	dataSize = bfd_section_size(dataSection);
-	cout << bfd_section_name(dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
-
-	for(unsigned int i=0; i < addlSectionsSize; i++){
-		curSection = bfd_get_section_by_name(kernelBfd, addlSections[i].c_str());
+	for (const string section : sections) {
+		curSection = bfd_get_section_by_name(kernelBfd, section.c_str());
 		if (curSection == NULL) {
-			cout << "Cannot find section '" << addlSections[i] << "'. Ignoring." << endl;
+			cout << "Cannot find section '" << section << "'. Ignoring." << endl;
 		} else {
-			addlStart.push_back(bfd_section_vma(curSection));
-			addlSize.push_back(bfd_section_size(curSection));
-			cout << bfd_section_name(curSection) << ": " << addlSize.back() << " bytes @ " << hex << showbase << addlStart.back() << dec << noshowbase << endl;
+			dataSections[bfd_section_name(curSection)] = make_pair(
+				bfd_section_vma(curSection),
+				bfd_section_size(curSection));
+
+			cout << bfd_section_name(curSection) << ": " << dataSections[bfd_section_name(curSection)].second << " bytes @ " << hex << showbase << dataSections[bfd_section_name(curSection)].first << dec << noshowbase << endl;
 		}
 	}
-	
-	return 0;
 }
 
 
