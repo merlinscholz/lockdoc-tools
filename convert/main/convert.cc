@@ -114,9 +114,10 @@ static map<string,unsigned long long> memberNames;
 static map<unsigned long long, map<string,unsigned long long> > stacktraces;
 
 /**
- * Start address and size of the bss and data section. All information is read from the dwarf information during startup.
+ * Pairs of start addresses and sizees of the named data section
  */
-static uint64_t bssStart = 0, bssSize = 0, dataStart = 0, dataSize = 0;
+static map<string, pair<uint64_t, uint64_t>> dataSections;
+
 /**
  * Enable context tracing?
  * Enabled via cmdline argument -c. Disabled by default.
@@ -183,6 +184,16 @@ static void dumpTXNs(const std::deque<TXN>& txns)
 }
 #endif
 
+static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t, uint64_t>>& dataSections)
+{
+	for (const pair<string, pair<uint64_t, uint64_t>>& section : dataSections) {
+    	if(lockAddress >= section.second.first && lockAddress <= (section.second.first + section.second.second)){
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /* handle P() / V() events */
 static void handlePV(
@@ -221,9 +232,8 @@ static void handlePV(
 			}
 		}
 		if (allocation_id == 0) {
-			if ((lockAddress >= bssStart && lockAddress < bssStart + bssSize) ||
-				(lockAddress >= dataStart && lockAddress < dataStart + dataSize) ||
-				(lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
+			if (checkLockInSections(lockAddress, dataSections)
+				|| (lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
 				// static lock which resides either in the bss segment or in the data segment
 				// or global static lock aka rcu lock
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found static lock.");
@@ -500,14 +510,13 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	// Examine Linux-kernel ELF: retrieve BSS + data segment locations
-	if (readSections(bssStart, bssSize, dataStart, dataSize)) {
-		return EXIT_FAILURE;
-	}
+	// Examine Kernel ELF: retrieve .bss, .data and other, optional segment locations
+	readSections(dataSections);
 
-	if (bssStart == 0 || bssSize == 0 || dataStart == 0 || dataSize == 0 ) {
-		cerr << "Invalid values for bss start, bss size, data start or data size!" << endl;
-		printUsageAndExit(argv[0]);
+	if (dataSections[".bss"].first == 0 || dataSections[".bss"].second == 0
+		|| dataSections[".data"].first == 0 || dataSections[".data"].second == 0 ) {
+		cerr << "Invalid values for bss start, bss size, data start or data size! Maybe .bss or .data are missing in ELF_SECTIONS?" << endl;
+		printUsageAndExit(argv[0]); 
 	}
 
 	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
