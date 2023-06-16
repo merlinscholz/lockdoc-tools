@@ -1,3 +1,13 @@
 name
 lockdoc_ring_buffer
 vnode_impl
+vnode
+v_un
+uvm_object
+kmutex_t
+mount
+mnt_stat
+specificdata_reference
+mountlist_entry
+buf
+b_u

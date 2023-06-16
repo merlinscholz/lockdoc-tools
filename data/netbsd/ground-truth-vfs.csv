@@ -1,0 +1,2 @@
+datatype;member;accesstype;rule;comment;origin
+vnode_impl;vi_state;r;EMBOTHER\(kmutex_t.mtxa_owner-s[w]\);;sys/sys/vnode_impl.h:71
