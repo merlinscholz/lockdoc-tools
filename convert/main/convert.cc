@@ -192,6 +192,7 @@ static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t,
 		}
 	}
 
+	PRINT_DEBUG("lockAddress=" << hex << showbase << lockAddress, "Lock could not be found in specified ELF sections");
 	return false;
 }
 

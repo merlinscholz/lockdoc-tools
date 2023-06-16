@@ -1,7 +1,7 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define ELF_SECTIONS {".bss", ".data", ".data.cacheline_aligned"}
+#define ELF_SECTIONS {".bss", ".data", ".data.cacheline_aligned", ".data.read_mostly"}
 #define DELIMITER_CHAR ';'
 #define DELIMITER_BLACKLISTS ';'
 #define MAX_COLUMNS 17

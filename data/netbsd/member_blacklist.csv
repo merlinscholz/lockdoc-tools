@@ -1,2 +1,5 @@
 datatype;datatype_member
 vnode_impl;vi_lock
+mount;mnt_renamelock
+mount;mnt_updating
+

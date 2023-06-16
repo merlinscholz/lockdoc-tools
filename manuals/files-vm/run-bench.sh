@@ -108,7 +108,7 @@ then
 	LTP_CMD="chroot /compat/ubuntu ${LTPROOT}/runltp -q"
 	DEVICE=/dev/wd1 # TODO Change
 
-	mount_procfs -o linux procfs /emul/linux/proc
+	mount_procfs -o linux procfs /compat/ubuntu/proc
 
 	export LTPROOT_UBUNTU=/compat/ubuntu/opt/kernel/ltp/bin
 	export PATH=${LTPROOT_UBUNTU}/testcases/bin:${LTPROOT_UBUNTU}/bin:$PATH
@@ -216,6 +216,7 @@ then
 	fi
 elif [ "${BENCH}" == "mixed-fs" ];
 then
+	# TODO Broken
 	run_cmd fs-bench-test2.sh
 	run_cmd fsstress -d bar -l 1 -n 20 -p 10 -s 4711 -v
 	if [ ! -d foo ];
