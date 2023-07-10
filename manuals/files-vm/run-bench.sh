@@ -308,7 +308,7 @@ then
 		echo "ATF benchmark is only supported on NetBSD!"
 	else
 		cd /usr/tests/
-		run_cmd atf-run | atf-report
+		run_cmd atf-run
 	fi
 elif [[ ${BENCH} =~ ^atf-.*$ ]];
 then
@@ -318,7 +318,7 @@ then
 	else
 		TESTSUITE=${BENCH#atf-}
 		cd /usr/tests/
-		run_cmd atf-run ${TESTSUITE} | atf-report
+		run_cmd atf-run ${TESTSUITE}
 	fi
 else
 	echo "Unknown benchmark: "${BENCH} | tee ${OUTDEV}
