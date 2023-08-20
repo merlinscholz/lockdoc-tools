@@ -241,7 +241,8 @@ RWLock* LockManager::allocLock(unsigned long long lockAddress, unsigned allocID,
 		lockType.compare("bit_spin_lock") == 0 ||
 		lockType.compare("sleep mutex") == 0 ||
 		lockType.compare("spin mutex") == 0 ||
-		lockType.compare("kmutex_t") == 0) {	// NetBSD Kernel mutex
+		lockType.compare("kmutex_t") == 0 ||	// NetBSD Kernel mutex
+		lockType.compare("b_cflags") == 0) {	// NetBSD buf_t BC_BUSY flag hack
 		ret = new WLock(lockAddress, allocID, lockType, lockVarName, flags, this);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");

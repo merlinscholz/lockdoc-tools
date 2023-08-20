@@ -48,6 +48,10 @@ if [ -z ${MEMBER_BLACK_LIST} ];
 then
 	MEMBER_BLACK_LIST=${TOOLS_PATH}/data/${GUEST_OS}/member_blacklist.csv
 fi
+if [ -z ${ADDTL_LOCKS_LIST} ];
+then
+	ADDTL_LOCKS_LIST=${TOOLS_PATH}/data/${GUEST_OS}/addtl_locks.csv
+fi
 
 
 if [ ${PROCESS_CONTEXT} -gt 0 ];
@@ -159,11 +163,11 @@ fi
 #GDB='cgdb --args'
 
 if echo $DATA | egrep -q '.bz2$'; then
-	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -a ${ADDTL_LOCKS_LIST} -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval pbzip2 -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 elif echo $DATA | egrep -q '.gz$'; then
-	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -a ${ADDTL_LOCKS_LIST} -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval gzip -d < $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 elif echo $DATA | egrep -q '.csv$'; then
-	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval cat $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
+	$VALGRIND $GDB ${CONVERT_BINARY} ${CTX_PROCESSING} -g ${KERNEL_TREE} -t ${DATA_TYPES} -k $KERNEL -a ${ADDTL_LOCKS_LIST} -b ${FN_BLACK_LIST} -m ${MEMBER_BLACK_LIST} -d "${DELIMITER}" <( eval cat $DATA ${HEAD_CMD} ) > ${CONV_OUTPUT} 2>&1
 else
 	echo "no idea what to do with filename extension of $DATA" >&2
 	exit 1

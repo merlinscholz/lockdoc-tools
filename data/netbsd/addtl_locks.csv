@@ -1,0 +1,9 @@
+name
+v_interlock
+bufcache_lock
+buffer_lock
+mnt_renamelock
+mnt_vnodelock
+mnt_updating
+namecache_lock
+vmobjlock

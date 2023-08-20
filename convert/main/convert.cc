@@ -102,6 +102,10 @@ static std::vector<Subclass> subclasses;
  */
 static vector<MemAccess> lastMemAccesses;
 /**
+ * Contains the list of additional locks that have to be monitored (by name)
+ */
+static vector<string> addtlLocksList;
+/**
  * A map of all member names found in all data types.
  * The key is the name, and the value is a name's global id.
  */
@@ -153,7 +157,7 @@ char delimiter = DELIMITER_CHAR;
 
 static void printUsageAndExit(const char *elf) {
 	cerr << "usage: " << elf
-		<< " [options] -t path/to/data_types.csv -k path/to/vmlinux -b path/to/function_blacklist.csv -m path/to/member_blacklist.csv input.csv[.gz]\n\n"
+		<< " [options] -a path/to/addtl_locks.csv -t path/to/data_types.csv -k path/to/vmlinux -b path/to/function_blacklist.csv -m path/to/member_blacklist.csv input.csv[.gz]\n\n"
 		"Options:\n"
 		" -s  enable processing of seqlock_t (EXPERIMENTAL)\n"
 		" -v  show version\n"
@@ -184,7 +188,7 @@ static void dumpTXNs(const std::deque<TXN>& txns)
 }
 #endif
 
-static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t, uint64_t>>& dataSections)
+static bool checkLockInSections(uint64_t lockAddress)
 {
 	for (const pair<string, pair<uint64_t, uint64_t>>& section : dataSections) {
     	if(lockAddress >= section.second.first && lockAddress <= (section.second.first + section.second.second)){
@@ -193,6 +197,23 @@ static bool checkLockInSections(uint64_t lockAddress, map<string, pair<uint64_t,
 	}
 
 	PRINT_DEBUG("lockAddress=" << hex << showbase << lockAddress, "Lock could not be found in specified ELF sections");
+	return false;
+}
+
+static bool checkLockInAddtlLocks(string lockName)
+{	
+	string normalizedLockName = lockName.substr(lockName.find_last_of("->") + 1);
+	normalizedLockName = normalizedLockName.substr(normalizedLockName.find_last_of('.') + 1);
+	std::string chars = "&)(";
+	for (char c: chars) {
+		normalizedLockName.erase(std::remove(normalizedLockName.begin(), normalizedLockName.end(), c), normalizedLockName.end());
+	}
+	
+	if (find(addtlLocksList.begin(), addtlLocksList.end(), normalizedLockName) != addtlLocksList.end()) {
+		return true;
+	}
+	
+	PRINT_DEBUG("lockName=" << normalizedLockName, "Lock could not be found in addtl lock list");
 	return false;
 }
 
@@ -233,7 +254,7 @@ static void handlePV(
 			}
 		}
 		if (allocation_id == 0) {
-			if (checkLockInSections(lockAddress, dataSections)
+			if (checkLockInSections(lockAddress)
 				|| (lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
 				// static lock which resides either in the bss segment or in the data segment
 				// or global static lock aka rcu lock
@@ -243,6 +264,9 @@ static void handlePV(
 				if (lockMember.compare("static") != 0) {
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
+			} else if (checkLockInAddtlLocks(lockMember)) {
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock listed in addtl_locks, assigning to pseudo allocation.");
+				allocation_id = pseudoAllocID;
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -438,20 +462,23 @@ int main(int argc, char *argv[]) {
 	map<unsigned long long,Allocation>::iterator itAlloc;
 	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
 	int lineCounter, isGZ, param;
-	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
+	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *addtlLocksName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false;
 	enum IRQ_SYNC irqSync = LOCK_NONE;
 	enum LOCK_OP lockOP = P_WRITE;
 	long ctx = 0;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
 
-	while ((param = getopt(argc,argv,"k:b:m:t:svhd:ug:c")) != -1) {
+	while ((param = getopt(argc,argv,"k:a:b:m:t:svhd:ug:c")) != -1) {
 		switch (param) {
 		case 'c':
 			ctxTracing = 1;
 			break;
 		case 'k':
 			vmlinuxName = optarg;
+			break;
+		case 'a':
+			addtlLocksName = optarg;
 			break;
 		case 'b':
 			fnBlacklistName = optarg;
@@ -481,7 +508,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	}
-	if (!vmlinuxName || !fnBlacklistName || ! memberBlacklistName || !datatypesName || optind == argc) {
+	if (!vmlinuxName || !fnBlacklistName || !addtlLocksName || !memberBlacklistName || !datatypesName || optind == argc) {
 		printUsageAndExit(argv[0]);
 	}
 
@@ -559,6 +586,11 @@ int main(int argc, char *argv[]) {
 		cerr << "Cannot open file: " << fnBlacklistName << endl;
 		return EXIT_FAILURE;
 	}
+	ifstream addtlLocksInfile(addtlLocksName);
+	if (!addtlLocksInfile.is_open()) {
+		cerr << "Cannot open file: " << addtlLocksName << endl;
+		return EXIT_FAILURE;
+	}
 	ifstream memberBlacklistInfile(memberBlacklistName);
 	if (!memberBlacklistInfile.is_open()) {
 		cerr << "Cannot open file: " << memberBlacklistName << endl;
@@ -629,6 +661,21 @@ int main(int argc, char *argv[]) {
 		pseudoAllocID = curAllocID++;
 		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
 		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
+	}
+
+
+	// Process additional lock list
+	for (lineCounter = 0;
+		getline(addtlLocksInfile, inputLine);
+		lineCounter++) {
+
+		// Skip the CSV header
+		if (lineCounter == 0) {
+			continue;
+		}
+
+		std::cout << inputLine << std::endl;
+		addtlLocksList.push_back(inputLine);
 	}
 
 	// Start reading the inputfile
@@ -1012,6 +1059,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	blacklistIDs.clear();
+
 	// Process member blacklist
 	for (lineCounter = 0;
 		getline(memberBlacklistInfile, inputLine);
