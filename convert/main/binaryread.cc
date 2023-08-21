@@ -342,7 +342,7 @@ void readSections(map<string, pair<uint64_t, uint64_t>>& dataSections) {
 	asection *curSection;
 	vector<string> sections = ELF_SECTIONS;
 
-	for (const string section : sections) {
+	for (const string &section : sections) {
 		curSection = bfd_get_section_by_name(kernelBfd, section.c_str());
 		if (curSection == NULL) {
 			cout << "Cannot find section '" << section << "'. Ignoring." << endl;
