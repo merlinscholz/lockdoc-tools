@@ -25,7 +25,7 @@
 #include "gzstream/gzstream.h"
 
 /**
- * Authors: Alexander Lochmann, Horst Schirmeier
+ * Authors: Alexander Lochmann, Horst Schirmeier, Merlin Scholz
  * Attention: This programm has to be compiled with -std=c++11 !
  * This program takes a csv as input, which contains a series of events.
  * Each event might be of the following types: alloc, free, p(acquire), v (release), read, or write.
@@ -105,6 +105,12 @@ static vector<MemAccess> lastMemAccesses;
  * Contains the list of additional locks that have to be monitored (by name)
  */
 static vector<string> addtlLocksList;
+/**
+ * Contains a mapping of additional locks that have been found
+ * to the first found address (so multiple occurrances are treated the same
+ * by the hypothesizer)
+ */
+static map<string, unsigned long long> addtlLocksAddresses;
 /**
  * A map of all member names found in all data types.
  * The key is the name, and the value is a name's global id.
@@ -243,7 +249,15 @@ static void handlePV(
 	long ctx
 	)
 {
+	// Check if this is a normally known lock
 	RWLock *tempLock = lockManager->findLock(lockAddress);
+	string normalizedLockName = normalizeLockName(lockMember);
+	if (tempLock == NULL
+		&& addtlLocksAddresses.find(normalizedLockName) != addtlLocksAddresses.end()) {
+
+		PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found occurrence of existing addtl lock. Rewriting lockAddress to " << hex << showbase << addtlLocksAddresses[normalizedLockName]);
+		tempLock = lockManager->findLock(addtlLocksAddresses[normalizedLockName]);
+	}
 	if (tempLock == NULL) {
 		// categorize currently unknown lock
 		unsigned allocation_id = 0;
@@ -258,7 +272,6 @@ static void handlePV(
 			}
 		}
 		if (allocation_id == 0) {
-			string normalizedLockName = normalizeLockName(lockMember);
 			if (checkLockInSections(lockAddress)
 				|| (lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
 				// static lock which resides either in the bss segment or in the data segment
@@ -270,9 +283,10 @@ static void handlePV(
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
 			} else if (checkLockInAddtlLocks(normalizedLockName)) {
-				// non-static lock, but it's listed in the addtl_locks file
+				// non-static lock, but it's listed in the addtl_locks file and hasn't been seen before
+				addtlLocksAddresses[normalizedLockName] = lockAddress;
 				lockVarName = normalizedLockName.c_str();
-				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock with lockVarName " << lockVarName << " listed in addtl_locks.");
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found first occurrence of addtl lock with lockVarName " << lockVarName << ". Adding it to global map.");
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
