@@ -200,21 +200,25 @@ static bool checkLockInSections(uint64_t lockAddress)
 	return false;
 }
 
-static bool checkLockInAddtlLocks(string lockName)
-{	
-	string normalizedLockName = lockName.substr(lockName.find_last_of("->") + 1);
-	normalizedLockName = normalizedLockName.substr(normalizedLockName.find_last_of('.') + 1);
-	std::string chars = "&)(";
-	for (char c: chars) {
-		normalizedLockName.erase(std::remove(normalizedLockName.begin(), normalizedLockName.end(), c), normalizedLockName.end());
-	}
-	
+static bool checkLockInAddtlLocks(string normalizedLockName)
+{
 	if (find(addtlLocksList.begin(), addtlLocksList.end(), normalizedLockName) != addtlLocksList.end()) {
 		return true;
 	}
 	
 	PRINT_DEBUG("lockName=" << normalizedLockName, "Lock could not be found in addtl lock list");
 	return false;
+}
+
+static string normalizeLockName(string lockName) {
+	string normalizedLockName = lockName.substr(lockName.find_last_of("->") + 1);
+	normalizedLockName = normalizedLockName.substr(normalizedLockName.find_last_of('.') + 1);
+	std::string chars = "&)(";
+	for (char c: chars) {
+		normalizedLockName.erase(std::remove(normalizedLockName.begin(), normalizedLockName.end(), c), normalizedLockName.end());
+	}
+
+	return normalizedLockName;
 }
 
 /* handle P() / V() events */
@@ -254,6 +258,7 @@ static void handlePV(
 			}
 		}
 		if (allocation_id == 0) {
+			string normalizedLockName = normalizeLockName(lockMember);
 			if (checkLockInSections(lockAddress)
 				|| (lockMember.compare(PSEUDOLOCK_VAR) == 0 && RWLock::isPseudoLock(lockAddress))) {
 				// static lock which resides either in the bss segment or in the data segment
@@ -264,9 +269,10 @@ static void handlePV(
 				if (lockMember.compare("static") != 0) {
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
-			} else if (checkLockInAddtlLocks(lockMember)) {
-				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock listed in addtl_locks, assigning to pseudo allocation.");
-				allocation_id = pseudoAllocID;
+			} else if (checkLockInAddtlLocks(normalizedLockName)) {
+				// non-static lock, but it's listed in the addtl_locks file
+				lockVarName = normalizedLockName.c_str();
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock with lockVarName " << lockVarName << " listed in addtl_locks.");
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -674,7 +680,6 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		std::cout << inputLine << std::endl;
 		addtlLocksList.push_back(inputLine);
 	}
 
