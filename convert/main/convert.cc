@@ -106,12 +106,6 @@ static vector<MemAccess> lastMemAccesses;
  */
 static vector<string> addtlLocksList;
 /**
- * Contains a mapping of additional locks that have been found
- * to the first found address (so multiple occurrances are treated the same
- * by the hypothesizer)
- */
-static map<string, unsigned long long> addtlLocksAddresses;
-/**
  * A map of all member names found in all data types.
  * The key is the name, and the value is a name's global id.
  */
@@ -208,6 +202,7 @@ static bool checkLockInSections(uint64_t lockAddress)
 
 static bool checkLockInAddtlLocks(string normalizedLockName)
 {
+	// TODO This should be deprecated again and replaced with reading the important locks out of observed structs
 	if (find(addtlLocksList.begin(), addtlLocksList.end(), normalizedLockName) != addtlLocksList.end()) {
 		return true;
 	}
@@ -249,15 +244,9 @@ static void handlePV(
 	long ctx
 	)
 {
-	// Check if this is a normally known lock
 	RWLock *tempLock = lockManager->findLock(lockAddress);
 	string normalizedLockName = normalizeLockName(lockMember);
-	if (tempLock == NULL
-		&& addtlLocksAddresses.find(normalizedLockName) != addtlLocksAddresses.end()) {
-
-		PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found occurrence of existing addtl lock. Rewriting lockAddress to " << hex << showbase << addtlLocksAddresses[normalizedLockName]);
-		tempLock = lockManager->findLock(addtlLocksAddresses[normalizedLockName]);
-	}
+	
 	if (tempLock == NULL) {
 		// categorize currently unknown lock
 		unsigned allocation_id = 0;
@@ -283,10 +272,48 @@ static void handlePV(
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
 			} else if (checkLockInAddtlLocks(normalizedLockName)) {
-				// non-static lock, but it's listed in the addtl_locks file and hasn't been seen before
-				addtlLocksAddresses[normalizedLockName] = lockAddress;
 				lockVarName = normalizedLockName.c_str();
-				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found first occurrence of addtl lock with lockVarName " << lockVarName << ". Adding it to global map.");
+
+				if (lockOP == P_READ || lockOP == P_WRITE) {
+					PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ", creating new allocation");
+					
+					const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
+						[&normalizedLockName](const Subclass& subclass) { return subclass.name == normalizedLockName; } );
+					int subclass_idx = itSubclass - subclasses.cbegin();
+
+					// Remember that allocation
+					pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
+						activeAllocs.insert(pair<unsigned long long,Allocation>(lockAddress,Allocation()));
+					if (!retAlloc.second) {
+						PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << lockAddress << noshowbase,"Cannot insert allocation into map.");
+					}
+					Allocation& tempAlloc = retAlloc.first->second;
+					tempAlloc.id = curAllocID++;
+					tempAlloc.start = ts;
+					tempAlloc.subclass_idx = subclass_idx;
+					tempAlloc.size = 1;
+					PRINT_DEBUG("ts=" << dec << ts << ",baseAddress=" << showbase << hex << lockAddress << noshowbase << dec <<  ",size=" << 1 << "allocationId=" << tempAlloc.id << ",type=" << normalizedLockName, ", Added improvised allocation");
+
+					allocation_id = tempAlloc.id;
+				} else if (lockOP == V_READ || lockOP == V_WRITE) {
+					PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ", freeing its allocation");
+					// TODO
+
+
+					itAlloc = activeAllocs.find(lockAddress);
+					if (itAlloc == activeAllocs.end()) {
+						PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << lockAddress << noshowbase, "Didn't find active allocation for address.");
+						exit(-1);
+					}
+					//Allocation& tempAlloc = itAlloc->second;
+					// An allocations datatype is
+					//TODO    allocOFile << tempAlloc.id << delimiter << subclasses[tempAlloc.subclass_idx].id << delimiter << lockAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
+					//lockManager->deleteLockByArea(itAlloc->first, tempAlloc.size);
+
+					activeAllocs.erase(itAlloc);
+					PRINT_DEBUG("baseAddress=" << showbase << hex << lockAddress << noshowbase << dec << ",type=" << lockVarName << ",size=" << 1, "Removed allocation");
+				}
+
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -569,6 +596,8 @@ int main(int argc, char *argv[]) {
 
 	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
 		return EXIT_FAILURE;
+	} else {
+		remove("structs_layout.csv");
 	}
 
 	// This is very bad design practise!
@@ -629,6 +658,7 @@ int main(int argc, char *argv[]) {
 	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream stacktracesOFile("stacktraces.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream subclassesOFile("subclasses.csv", std::ofstream::out | std::ofstream::trunc);
+	ofstream structsLayoutOFile("structs_layout.csv", std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << delimiter << "name" << endl;
@@ -666,23 +696,9 @@ int main(int argc, char *argv[]) {
 
 	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
 
+	structsLayoutOFile << "data_type_id" << delimiter << "data_type_name" << delimiter << "member_name_id" << delimiter << "byte_offset" << delimiter << "size" << endl;
+
 	lockManager = new LockManager(txnsOFile, locksHeldOFile);
-
-	for (const auto& type : types) {
-		datatypesOFile << type.id << delimiter << type.name << endl;
-	}
-	
-	for (const auto& memberName : memberNames) {
-		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
-	}
-
-	if (includeAllLocks) {
-		// create pseudo alloc for locks we don't know the alloc they belong to
-		pseudoAllocID = curAllocID++;
-		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
-		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
-	}
-
 
 	// Process additional lock list
 	for (lineCounter = 0;
@@ -695,6 +711,30 @@ int main(int argc, char *argv[]) {
 		}
 
 		addtlLocksList.push_back(inputLine);
+		
+		types.emplace_back(curTypeID, inputLine);
+		subclasses.emplace_back(curSubclassID++, inputLine, curTypeID, false);
+		structsLayoutOFile << curTypeID << delimiter << "kmutex_t *" << delimiter << curMemberNameID << delimiter << 1 << delimiter << 1 << endl;
+		memberNames[inputLine] = curMemberNameID;
+		curTypeID++;
+		curMemberNameID++;
+
+		PRINT_DEBUG("", "subclassid=" << curSubclassID << ", typeid=" << curTypeID);
+	}
+
+	for (const auto& type : types) {
+		datatypesOFile << type.id << delimiter << type.name << endl;
+	}
+
+	for (const auto& memberName : memberNames) {
+		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
+	}
+
+	if (includeAllLocks) {
+		// create pseudo alloc for locks we don't know the alloc they belong to
+		pseudoAllocID = curAllocID++;
+		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
+		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
 	}
 
 	// Start reading the inputfile
