@@ -106,12 +106,6 @@ static vector<MemAccess> lastMemAccesses;
  */
 static vector<string> addtlLocksList;
 /**
- * Contains a mapping of additional locks that have been found
- * to the first found address (so multiple occurrances are treated the same
- * by the hypothesizer)
- */
-static map<string, unsigned long long> addtlLocksAddresses;
-/**
  * A map of all member names found in all data types.
  * The key is the name, and the value is a name's global id.
  */
@@ -252,12 +246,7 @@ static void handlePV(
 	// Check if this is a normally known lock
 	RWLock *tempLock = lockManager->findLock(lockAddress);
 	string normalizedLockName = normalizeLockName(lockMember);
-	if (tempLock == NULL
-		&& addtlLocksAddresses.find(normalizedLockName) != addtlLocksAddresses.end()) {
-
-		PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found occurrence of existing addtl lock. Rewriting lockAddress to " << hex << showbase << addtlLocksAddresses[normalizedLockName]);
-		tempLock = lockManager->findLock(addtlLocksAddresses[normalizedLockName]);
-	}
+	
 	if (tempLock == NULL) {
 		// categorize currently unknown lock
 		unsigned allocation_id = 0;
@@ -283,10 +272,11 @@ static void handlePV(
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
 			} else if (checkLockInAddtlLocks(normalizedLockName)) {
-				// non-static lock, but it's listed in the addtl_locks file and hasn't been seen before
-				addtlLocksAddresses[normalizedLockName] = lockAddress;
+				// non-static lock, but it's listed in the addtl_locks
+				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ". Assigning is to pseudo allocation.");
+
 				lockVarName = normalizedLockName.c_str();
-				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found first occurrence of addtl lock with lockVarName " << lockVarName << ". Adding it to global map.");
+				allocation_id = pseudoAllocID;
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -676,7 +666,7 @@ int main(int argc, char *argv[]) {
 		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
 	}
 
-	if (includeAllLocks) {
+	if (includeAllLocks || addtlLocksList.size() > 0) {
 		// create pseudo alloc for locks we don't know the alloc they belong to
 		pseudoAllocID = curAllocID++;
 		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
