@@ -80,6 +80,21 @@ struct MemAccess {
 };
 
 /**
+ * Represents members of a struct
+ * This is only used for structs hallucinated by addtl_locks, normal structs are
+ * being imported into the DB through binaryread.cc
+ */
+struct Struct {
+	Struct (unsigned long long _id, string _name, unsigned long long _member_name_id, unsigned int _byte_offset, unsigned int _size) :
+		id(_id), name(_name), member_name_id(_member_name_id), byte_offset(_byte_offset), size(_size) {}
+	unsigned long long id;
+	string name;
+	unsigned long long member_name_id;
+	unsigned int byte_offset;
+	unsigned int size;
+};
+
+/**
  * The kernel source tree
  */
 static const char *kernelBaseDir = "/opt/kernel/linux-32-lockdebugging-4-10/";
@@ -121,6 +136,13 @@ static map<unsigned long long, map<string,unsigned long long> > stacktraces;
  * Pairs of start addresses and sizees of the named data section
  */
 static map<string, pair<uint64_t, uint64_t>> dataSections;
+
+/**
+ * List of (hallucinated) strcuts
+ * This is only used for structs hallucinated by addtl_locks, normal structs are
+ * being imported into the DB through binaryread.cc
+ */
+static vector<Struct> struct_layouts;
 
 /**
  * Enable context tracing?
@@ -243,7 +265,6 @@ static void handlePV(
 	long ctx
 	)
 {
-	// Check if this is a normally known lock
 	RWLock *tempLock = lockManager->findLock(lockAddress);
 	string normalizedLockName = normalizeLockName(lockMember);
 	
@@ -272,11 +293,55 @@ static void handlePV(
 					lockVarName = getGlobalLockVar(lockAddress);
 				}
 			} else if (checkLockInAddtlLocks(normalizedLockName)) {
-				// non-static lock, but it's listed in the addtl_locks
-				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ". Assigning is to pseudo allocation.");
-
 				lockVarName = normalizedLockName.c_str();
-				allocation_id = pseudoAllocID;
+
+				if (lockOP == P_READ || lockOP == P_WRITE) {
+					PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ", creating new allocation");
+
+					/**
+					 * The following is mostly copied from "normal" alloc operation handling
+					 */
+					int subclass_idx;
+
+
+					const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
+						[&lockVarName](const Subclass& subclass) { return subclass.name == lockVarName; } );
+					if (itSubclass == subclasses.cend()) {
+						// Do we know that data type?
+						auto itDataType = find_if(types.begin(), types.end(),
+							[&lockVarName](const DataType& type) { return type.name == lockVarName; } );
+						if (itDataType == types.cend()) {
+							// THIS SHOULD NEVER HAPPEN
+							PRINT_ERROR("ts=" << ts,"Found unknown datatype, even though the related addtlLock exists: " << lockVarName);
+							exit(-1);
+						}
+						
+						int data_type_idx = itDataType - types.cbegin();
+						subclasses.emplace_back(curSubclassID++, lockVarName, data_type_idx, false);
+						subclass_idx = subclasses.size() - 1;
+						PRINT_DEBUG("subclass=\"" << subclasses[subclass_idx].name << "\",data_type=\"" << types[data_type_idx].name << "\",idx=" << subclass_idx << ",real_subclass=" << false, "Created subclass");
+					} else {
+						subclass_idx = itSubclass - subclasses.cbegin();
+					}
+
+					// Remember that allocation
+					pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
+						activeAllocs.insert(pair<unsigned long long,Allocation>(lockAddress,Allocation()));
+					if (!retAlloc.second) {
+						PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << lockAddress << noshowbase,"Cannot insert allocation into map.");
+					}
+					Allocation& tempAlloc = retAlloc.first->second;
+					tempAlloc.id = curAllocID++;
+					tempAlloc.start = ts;
+					tempAlloc.subclass_idx = subclass_idx;
+					tempAlloc.size = 8;
+					PRINT_DEBUG("ts=" << dec << ts << ",baseAddress=" << showbase << hex << lockAddress << noshowbase << dec <<  ",size=" << tempAlloc.size << ",allocationId=" << tempAlloc.id << ",type=" << normalizedLockName, ", Added hallucinated allocation");
+
+					allocation_id = tempAlloc.id;
+				} else if (lockOP == V_READ || lockOP == V_WRITE) {
+					PRINT_ERROR("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found unknown addtl lock with lockVarName " << lockVarName << ", trying to be unlocked");
+					return;
+				}
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -543,6 +608,44 @@ int main(int argc, char *argv[]) {
 		types.emplace_back(curTypeID++, inputLine);
 	}
 
+
+	ifstream addtlLocksInfile(addtlLocksName);
+	if (!addtlLocksInfile.is_open()) {
+		cerr << "Cannot open file: " << addtlLocksName << endl;
+		return EXIT_FAILURE;
+	}
+
+	for (lineCounter = 0;
+		getline(addtlLocksInfile, inputLine);
+		ss.clear(), ss.str(""), lineElems.clear(), lineCounter++) {
+		// Skip the CSV header
+		if (lineCounter == 0) {
+			continue;
+		}
+
+		ss << inputLine;
+		// Tokenize each line
+		while (getline(ss, token, DELIMITER_BLACKLISTS)) {
+			lineElems.push_back(token);
+		}
+
+		// Sanity check
+		if (lineElems.size() != 3) {
+			cerr << "Ignoring invalid addtl lock entry, line " << dec << (lineCounter + 1)
+				<< ": " << inputLine << endl;
+			continue;
+		}
+			
+		addtlLocksList.push_back(lineElems.at(0));
+		
+		struct_layouts.emplace_back(curTypeID, lineElems.at(1), curMemberNameID, 0, stoi(lineElems.at(2)));
+		types.emplace_back(curTypeID++, lineElems.at(0));
+		//subclasses.emplace_back(++curSubclassID, inputLine, types.size()-1, false);
+		addMemberName(lineElems.at(0).c_str());
+
+		//curTypeID++;
+	}
+
 	if (binaryread_init(vmlinuxName)) {
 		cerr << "Cannot init binaryread" << endl;
 		return EXIT_FAILURE;
@@ -596,11 +699,6 @@ int main(int argc, char *argv[]) {
 		cerr << "Cannot open file: " << fnBlacklistName << endl;
 		return EXIT_FAILURE;
 	}
-	ifstream addtlLocksInfile(addtlLocksName);
-	if (!addtlLocksInfile.is_open()) {
-		cerr << "Cannot open file: " << addtlLocksName << endl;
-		return EXIT_FAILURE;
-	}
 	ifstream memberBlacklistInfile(memberBlacklistName);
 	if (!memberBlacklistInfile.is_open()) {
 		cerr << "Cannot open file: " << memberBlacklistName << endl;
@@ -619,6 +717,7 @@ int main(int argc, char *argv[]) {
 	ofstream membernamesOFile("member_names.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream stacktracesOFile("stacktraces.csv",std::ofstream::out | std::ofstream::trunc);
 	ofstream subclassesOFile("subclasses.csv", std::ofstream::out | std::ofstream::trunc);
+	ofstream structsLayoutOFile("structs_layout.csv", std::ofstream::out | std::ofstream::trunc);
 
 	// CSV headers
 	datatypesOFile << "id" << delimiter << "name" << endl;
@@ -656,35 +755,28 @@ int main(int argc, char *argv[]) {
 
 	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
 
+	// See comment in extractStructDefs @ binaryread.cc
+	structsLayoutOFile << "id" << delimiter << "name" << delimiter << "member_name" << delimiter << "offset" << delimiter << "size" << endl;
+
 	lockManager = new LockManager(txnsOFile, locksHeldOFile);
 
 	for (const auto& type : types) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
 	}
-	
+
 	for (const auto& memberName : memberNames) {
 		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
 	}
 
-	if (includeAllLocks || addtlLocksList.size() > 0) {
+	for (const auto& struct_layout : struct_layouts) {
+		structsLayoutOFile << struct_layout.id << delimiter << struct_layout.name << delimiter << struct_layout.member_name_id << delimiter << struct_layout.byte_offset << delimiter << struct_layout.size << endl;
+	}
+
+	if (includeAllLocks) {
 		// create pseudo alloc for locks we don't know the alloc they belong to
 		pseudoAllocID = curAllocID++;
 		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
 		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
-	}
-
-
-	// Process additional lock list
-	for (lineCounter = 0;
-		getline(addtlLocksInfile, inputLine);
-		lineCounter++) {
-
-		// Skip the CSV header
-		if (lineCounter == 0) {
-			continue;
-		}
-
-		addtlLocksList.push_back(inputLine);
 	}
 
 	// Start reading the inputfile
