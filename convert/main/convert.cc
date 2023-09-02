@@ -277,9 +277,56 @@ static void handlePV(
 				if (lockOP == P_READ || lockOP == P_WRITE) {
 					PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ", creating new allocation");
 					
-					const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
+					/*const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
 						[&normalizedLockName](const Subclass& subclass) { return subclass.name == normalizedLockName; } );
-					int subclass_idx = itSubclass - subclasses.cbegin();
+					int subclass_idx = itSubclass - subclasses.cbegin();*/
+
+
+
+					int subclass_idx;
+					string subclassName = lockVarName;
+					string dataTypeName = lockVarName;
+					string typeStr = lockVarName;
+					bool realSubclass = false;
+
+
+					const auto itSubclass = find_if(subclasses.cbegin(), subclasses.cend(),
+						[&subclassName](const Subclass& subclass) { return subclass.name == subclassName; } );
+					if (itSubclass == subclasses.cend()) {
+						// Do we know that data type?
+						auto itDataType = find_if(types.begin(), types.end(),
+							[&dataTypeName](const DataType& type) { return type.name == dataTypeName; } );
+						if (itDataType == types.cend()) {
+							// THIS SHOULD NEVER HAPPEN
+							PRINT_ERROR("ts=" << ts,"Found unknown datatype: " << typeStr);
+							exit(-1);
+						}
+						/*
+						* Sanity check: Does this data type have a dummy subclass?
+						* Either *each* allocation/free must specify a subclass
+						* or no memory operations does it.
+						* Mixing it up is not allowed!
+						*/
+						const auto itSubclass_ = find_if(subclasses.cbegin(), subclasses.cend(),
+							[&dataTypeName](const Subclass& subclass) { return subclass.name == dataTypeName; } );
+						if (itSubclass_ != subclasses.cend()) {
+							PRINT_ERROR("ts=" << ts,"Found dummy subclass, although dedicated subclass exists: " << typeStr);
+							exit(-1);
+						}
+						int data_type_idx = itDataType - types.cbegin();
+						subclasses.emplace_back(curSubclassID++, subclassName, data_type_idx, realSubclass);
+						subclass_idx = subclasses.size() - 1;
+						PRINT_DEBUG("subclass=\"" << subclasses[subclass_idx].name << "\",data_type=\"" << types[data_type_idx].name << "\",idx=" << subclass_idx << ",real_subclass=" << realSubclass, "Created subclass");
+					} else {
+						subclass_idx = itSubclass - subclasses.cbegin();
+					}
+
+
+
+
+
+
+
 
 					// Remember that allocation
 					pair<map<unsigned long long,Allocation>::iterator,bool> retAlloc =
@@ -291,29 +338,14 @@ static void handlePV(
 					tempAlloc.id = curAllocID++;
 					tempAlloc.start = ts;
 					tempAlloc.subclass_idx = subclass_idx;
-					tempAlloc.size = 1;
-					PRINT_DEBUG("ts=" << dec << ts << ",baseAddress=" << showbase << hex << lockAddress << noshowbase << dec <<  ",size=" << 1 << "allocationId=" << tempAlloc.id << ",type=" << normalizedLockName, ", Added improvised allocation");
+					tempAlloc.size = 8;
+					PRINT_DEBUG("ts=" << dec << ts << ",baseAddress=" << showbase << hex << lockAddress << noshowbase << dec <<  ",size=" << tempAlloc.size << ",allocationId=" << tempAlloc.id << ",type=" << normalizedLockName, ", Added improvised allocation");
 
 					allocation_id = tempAlloc.id;
 				} else if (lockOP == V_READ || lockOP == V_WRITE) {
-					PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found addtl lock with lockVarName " << lockVarName << ", freeing its allocation");
-					// TODO
-
-
-					itAlloc = activeAllocs.find(lockAddress);
-					if (itAlloc == activeAllocs.end()) {
-						PRINT_ERROR("ts=" << ts << ",baseAddress=" << hex << showbase << lockAddress << noshowbase, "Didn't find active allocation for address.");
-						exit(-1);
-					}
-					//Allocation& tempAlloc = itAlloc->second;
-					// An allocations datatype is
-					//TODO    allocOFile << tempAlloc.id << delimiter << subclasses[tempAlloc.subclass_idx].id << delimiter << lockAddress << delimiter << dec << size << delimiter << dec << tempAlloc.start << delimiter << ts << "\n";
-					//lockManager->deleteLockByArea(itAlloc->first, tempAlloc.size);
-
-					activeAllocs.erase(itAlloc);
-					PRINT_DEBUG("baseAddress=" << showbase << hex << lockAddress << noshowbase << dec << ",type=" << lockVarName << ",size=" << 1, "Removed allocation");
+					PRINT_ERROR("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found unknown addtl lock with lockVarName " << lockVarName << ", trying to be unlocked");
+					return;
 				}
-
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -596,8 +628,6 @@ int main(int argc, char *argv[]) {
 
 	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
 		return EXIT_FAILURE;
-	} else {
-		remove("structs_layout.csv");
 	}
 
 	// This is very bad design practise!
@@ -696,11 +726,12 @@ int main(int argc, char *argv[]) {
 
 	subclassesOFile << "id" << delimiter << "data_type_id" << delimiter << "name" << endl;
 
-	structsLayoutOFile << "data_type_id" << delimiter << "data_type_name" << delimiter << "member_name_id" << delimiter << "byte_offset" << delimiter << "size" << endl;
+	structsLayoutOFile << "id" << delimiter << "aaaa" << delimiter << curMemberNameID << delimiter << "offset" << delimiter << "size" << endl;
 
 	lockManager = new LockManager(txnsOFile, locksHeldOFile);
 
-	// Process additional lock list
+	
+	// Process additional lock list TODO Move to data_types read
 	for (lineCounter = 0;
 		getline(addtlLocksInfile, inputLine);
 		lineCounter++) {
@@ -710,16 +741,30 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		addtlLocksList.push_back(inputLine);
-		
-		types.emplace_back(curTypeID, inputLine);
-		subclasses.emplace_back(curSubclassID++, inputLine, curTypeID, false);
-		structsLayoutOFile << curTypeID << delimiter << "kmutex_t *" << delimiter << curMemberNameID << delimiter << 1 << delimiter << 1 << endl;
-		memberNames[inputLine] = curMemberNameID;
-		curTypeID++;
-		curMemberNameID++;
+		PRINT_DEBUG("subclassid=" << curSubclassID << ", typeid=" << curTypeID << ",types.size=" << types.size(), "Processing addtl lock");
 
-		PRINT_DEBUG("", "subclassid=" << curSubclassID << ", typeid=" << curTypeID);
+		addtlLocksList.push_back(inputLine);
+		structsLayoutOFile << curTypeID << delimiter << "aaaa" << delimiter << curMemberNameID << delimiter << 0 << delimiter << 8 << endl;
+
+		types.emplace_back(curTypeID++, inputLine);
+		//subclasses.emplace_back(++curSubclassID, inputLine, types.size()-1, false);
+		addMemberName(inputLine.c_str());
+
+		//curTypeID++;
+	}
+
+
+
+	// Dump all observed subclasses
+	int asdasdasd = 0;
+	for (const auto &subclass : subclasses) {
+		PRINT_DEBUG("id=" << asdasdasd << ",types[subclass.data_type_idx].id=" << types[subclass.data_type_idx].id << ",subclass.data_type_idx=" << subclass.data_type_idx, "AAAA");
+		asdasdasd++;
+	}
+	asdasdasd = 0;
+	for (const auto &type : types) {
+		PRINT_DEBUG("id=" << asdasdasd << ",type.id" << type.id << ",type.name" << type.name, "AAAA");
+		asdasdasd++;
 	}
 
 	for (const auto& type : types) {

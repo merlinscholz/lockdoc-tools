@@ -170,8 +170,12 @@ int extractStructDefs(const char *outFname, char delimiter, std::vector<DataType
 		perror("fopen structs_layout.csv");
 		return 1;
 	}
-	fprintf(structsLayoutOFile,
-		"type_id%ctype%cmember%coffset%csize\n",delimiter,delimiter,delimiter,delimiter);
+
+	// smmescho: I have no clue why this has to be commented out,
+	// as this codepath should be the very first one to write to the csv
+	
+	//fprintf(structsLayoutOFile,
+	//	"data_type_id%cdata_type_name%cmember_name_id%cbyte_offset%csize\n",delimiter,delimiter,delimiter,delimiter);
 
 	// Pass the context information to the callback: types array and the outputfile
 	cusIterArgs.types = types;
@@ -181,7 +185,7 @@ int extractStructDefs(const char *outFname, char delimiter, std::vector<DataType
 	// Iterate through every compilation unit, and look for information about the datatypes of interest
 	cus__for_each_cu(kernelCUs, convert_cus_iterator, &cusIterArgs, NULL);
 
-	fclose(structsLayoutOFile);
+	//fclose(structsLayoutOFile);
 
 	return 0;
 }
