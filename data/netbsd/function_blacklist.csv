@@ -6,4 +6,14 @@ datatype;datatype_member;fn;sequence
 \N;\N;atomic_inc;\N
 \N;\N;atomic_or;\N
 \N;\N;atomic_swap;\N
-
+vnode_impl;vi_key.vk_key;vcache_reclaim;\N
+vnode_impl;vi_key.vk_key;vcache_new;\N
+vnode_impl;vi_key.vk_key;vcache_get;\N
+vnode_impl;vi_key.vk_key_len;vcache_reclaim;\N
+vnode_impl;vi_key.vk_key_len;vcache_new;\N
+vnode_impl;vi_key.vk_key_len;vcache_get;\N
+vnode_impl;vi_key.vk_mount;vcache_reclaim;\N
+vnode_impl;vi_key.vk_mount;vcache_new;\N
+vnode_impl;vi_key.vk_mount;vcache_get;\N
+vnode_impl;vi_state;vcache_get;\N
+vnode_impl;vi_state;vnis_marker;\N

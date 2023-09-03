@@ -1,9 +1,7 @@
-name
-v_interlock
-bufcache_lock
-buffer_lock
-mnt_renamelock
-mnt_vnodelock
-mnt_updating
-namecache_lock
-vmobjlock
+name;lock;size
+v_interlock;kmutex_t;8
+mnt_renamelock;kmutex_t;8
+mnt_vnodelock;kmutex_t;8
+mnt_updating;kmutex_t;8
+vmobjlock;krwlock_t;8
+b_objlock;kmutex_t;8
