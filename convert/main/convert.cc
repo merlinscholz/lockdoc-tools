@@ -660,10 +660,6 @@ int main(int argc, char *argv[]) {
 		printUsageAndExit(argv[0]); 
 	}
 
-	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
-		return EXIT_FAILURE;
-	}
-
 	// This is very bad design practise!
 	// Only the fstream does have a close() method.
 	// Since the gzstream is a direct subclass of iostream, a ptr of that type
@@ -764,10 +760,6 @@ int main(int argc, char *argv[]) {
 		datatypesOFile << type.id << delimiter << type.name << endl;
 	}
 
-	for (const auto& memberName : memberNames) {
-		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
-	}
-
 	for (const auto& struct_layout : struct_layouts) {
 		structsLayoutOFile << struct_layout.id << delimiter << struct_layout.name << delimiter << struct_layout.member_name_id << delimiter << struct_layout.byte_offset << delimiter << struct_layout.size << endl;
 	}
@@ -777,6 +769,14 @@ int main(int argc, char *argv[]) {
 		pseudoAllocID = curAllocID++;
 		allocOFile << pseudoAllocID << delimiter << 0 << delimiter << 0 << delimiter;
 		allocOFile << 0 << delimiter << 0 << delimiter << "\\N" << "\n";
+	}
+
+	if (extractStructDefs("structs_layout.csv", delimiter, &types, expand_type, addMemberName)) {
+		return EXIT_FAILURE;
+	}
+
+	for (const auto& memberName : memberNames) {
+		membernamesOFile << memberName.second << delimiter << memberName.first << endl;
 	}
 
 	// Start reading the inputfile
