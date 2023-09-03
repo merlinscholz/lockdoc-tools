@@ -1,5 +1,4 @@
 name
-lockdoc_ring_buffer
 vnode_impl
 vcache_key
 vnode
@@ -7,6 +6,8 @@ v_un
 uvm_object
 kmutex_t
 mount
+buf
 mnt_stat
 specificdata_reference
 mountlist_entry
+statvfs
