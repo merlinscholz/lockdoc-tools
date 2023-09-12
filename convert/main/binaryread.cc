@@ -337,31 +337,23 @@ const struct ResolvedInstructionPtr& get_function_at_addr(const char *compDir, u
 	return it->second;
 } 
 
-// find .bss and .data sections
-int readSections(uint64_t& bssStart, uint64_t& bssSize, uint64_t& dataStart, uint64_t& dataSize) {
-	asection *bsSection, *dataSection;
+// find in ELF_SECTIONS specified sections in the kernel
+void readSections(map<string, pair<uint64_t, uint64_t>>& dataSections) {
+	asection *curSection;
+	vector<string> sections = ELF_SECTIONS;
 
-	bsSection = bfd_get_section_by_name(kernelBfd,".bss");
-	if (bsSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
-		bfd_close(kernelBfd);
-		return 1;
+	for (const string section : sections) {
+		curSection = bfd_get_section_by_name(kernelBfd, section.c_str());
+		if (curSection == NULL) {
+			cout << "Cannot find section '" << section << "'. Ignoring." << endl;
+		} else {
+			dataSections[bfd_section_name(curSection)] = make_pair(
+				bfd_section_vma(curSection),
+				bfd_section_size(curSection));
+
+			cout << bfd_section_name(curSection) << ": " << dataSections[bfd_section_name(curSection)].second << " bytes @ " << hex << showbase << dataSections[bfd_section_name(curSection)].first << dec << noshowbase << endl;
+		}
 	}
-	bssStart = bfd_section_vma(bsSection);
-	bssSize = bfd_section_size(bsSection);
-	cout << bfd_section_name(bsSection) << ": " << bssSize << " bytes @ " << hex << showbase << bssStart << dec << noshowbase << endl;
-
-	dataSection = bfd_get_section_by_name(kernelBfd,".data");
-	if (bsSection == NULL) {
-		bfd_perror("Cannot find section '.bss'");
-		bfd_close(kernelBfd);
-		return 1;
-	}
-	dataStart = bfd_section_vma(dataSection);
-	dataSize = bfd_section_size(dataSection);
-	cout << bfd_section_name(dataSection) << ": " << dataSize << " bytes @ " << hex << showbase << dataStart << dec << noshowbase << endl;
-
-	return 0;
 }
 
 
