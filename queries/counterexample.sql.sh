@@ -61,12 +61,12 @@ if [ "$SANITYCHECK" != : ]; then
 fi
 
 LOCKNAME_FORMAT="(CASE WHEN lock_sc.name IS NULL THEN lock_dt.name ELSE CONCAT(lock_dt.name, ':', lock_sc.name) END)"
-EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(', ${LOCKNAME_FORMAT}, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
+EMBOTHER_SQL="ELSE CONCAT('EMB:', l.id, '(', ${LOCKNAME_FORMAT}, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_file, ':', lh.last_line) -- embedded in other"
 if [ -n "${USE_EMBOTHER}" ];
 then
 	if [ ${USE_EMBOTHER} -gt 0 ];
 	then
-		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(', ${LOCKNAME_FORMAT}, '.',  (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in other"
+		EMBOTHER_SQL="ELSE CONCAT('EMBOTHER', '(', ${LOCKNAME_FORMAT}, '.',  (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_file, ':', lh.last_line) -- embedded in other"
 	fi
 fi
 
@@ -78,18 +78,18 @@ SELECT data_type, member, accesstype, stacktrace,
 FROM
 (
 	SELECT '${COMBINED_DATATYPE}' AS data_type, '${MEMBER}' AS member, '${ACCESSTYPE}' AS accesstype, COUNT(*) AS occurrences, 
-			stacktrace_id, stacktrace, (CASE WHEN (locks_held IS NULL OR locks_held = '([])@@:') THEN 'nolocks' ELSE locks_held END) AS locks_held
+			stacktrace_id, stacktrace, (CASE WHEN (locks_held IS NULL OR locks_held = '([])@:') THEN 'nolocks' ELSE locks_held END) AS locks_held
 	FROM
 	(
 		SELECT stacktrace_id, stacktrace,
 		string_agg(
 			CASE
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NULL
-				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
+				THEN CONCAT(l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* no name available)
 			WHEN l.embedded_in IS NULL AND l.lock_var_name IS NOT NULL
-				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
+				THEN CONCAT(l.lock_var_name, ':', l.id, '(', l.lock_type_name, '[', l.sub_lock, '])', '@', lh.last_file, ':', lh.last_line) -- global (or embedded in unknown allocation *and* a name is available)
 			WHEN l.embedded_in IS NOT NULL AND l.embedded_in = alloc_id
-				THEN CONCAT('EMBSAME(', ${LOCKNAME_FORMAT}, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_fn, '@', lh.last_file, ':', lh.last_line) -- embedded in same
+				THEN CONCAT('EMBSAME(', ${LOCKNAME_FORMAT}, '.', (CASE WHEN l.address - lock_a.base_address = lock_member.byte_offset THEN lock_member_name.name ELSE CONCAT(lock_member_name.name, '?') END), '[', l.sub_lock, '])', '@', lh.last_file, ':', lh.last_line) -- embedded in same
 				${EMBOTHER_SQL}
 			END,
 		',' ORDER BY lh.start) AS locks_held

@@ -43,15 +43,9 @@ enum LOCK_OP {
 	V_WRITE
 };
 
-enum IRQ_SYNC {
-	LOCK_NONE = 0,
-	LOCK_IRQ,
-	LOCK_IRQ_NESTED,  /* aka irqsave and irqrestore */
-	LOCK_BH
-};
-
 struct log_action {
-	char action;
+	enum LOCKDOC_OP action;
+	int32_t ctx;
 	uint32_t lock_op;
 	uint32_t ptr;
 	uint32_t size;
@@ -59,9 +53,6 @@ struct log_action {
 	char lock_member[LOG_CHAR_BUFFER_LEN];
 	char file[LOG_CHAR_BUFFER_LEN];
 	int32_t line;
-	char function[LOG_CHAR_BUFFER_LEN]; 
-	int32_t preempt_count;
-	int32_t irq_sync;
 	int32_t flags;
 }__attribute__((packed));
 

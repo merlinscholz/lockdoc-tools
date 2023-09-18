@@ -40,14 +40,11 @@ struct RLock : public RWLock {
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx) {
-		RWLock::readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
+		RWLock::readTransition(lockOP, ts, file, line, lockMember, flags, kernelDir, ctx);
 	}
 };
 

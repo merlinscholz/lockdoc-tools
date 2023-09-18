@@ -138,29 +138,7 @@ bool LockManager::finishTXN(RWLock *lock, unsigned long long ts, enum SUB_LOCK s
 					m_locksHeldOFile << dec << this->getActiveTXN(ctx).id << delimiter << lockID << delimiter;
 					m_locksHeldOFile << tempLockPos.start << delimiter;
 					m_locksHeldOFile << tempLockPos.lastFile << delimiter;
-					m_locksHeldOFile << tempLockPos.lastLine << delimiter << tempLockPos.lastFn << delimiter;
-					m_locksHeldOFile << tempLockPos.lastPreemptCount << delimiter;
-					switch (tempLockPos.lastIRQSync) {
-						case LOCK_NONE:
-							m_locksHeldOFile << "LOCK_NONE";
-							break;
-
-						case LOCK_IRQ:
-							m_locksHeldOFile << "LOCK_IRQ";
-							break;
-
-						case LOCK_IRQ_NESTED:
-							m_locksHeldOFile << "LOCK_IRQ_NESTED";
-							break;
-
-						case LOCK_BH:
-							m_locksHeldOFile << "LOCK_BH";
-							break;
-
-						default:
-							return EXIT_FAILURE;
-					}
-					m_locksHeldOFile << "\n";
+					m_locksHeldOFile << tempLockPos.lastLine << "\n";
 				} else {
 					PRINT_ERROR(tempLock->toString(thisTXN.subLock) << ",ts=" << dec << ts, "TXN: Internal error, lock is part of the TXN hierarchy but not held?");
 				}

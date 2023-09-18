@@ -202,11 +202,8 @@ static void handlePV(
 	unsigned long long lockAddress,
 	string const& file,
 	unsigned long long line,
-	string const& fn,
 	string const& lockMember,
 	string const& lockType,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	bool includeAllLocks,
 	unsigned long long pseudoAllocID,
@@ -239,9 +236,7 @@ static void handlePV(
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found static lock.");
 				// Try to resolve what the name of this lock is
 				// This also catches cases where the lock resides inside another data structure.
-				if (lockMember.compare("static") != 0) {
-					lockVarName = getGlobalLockVar(lockAddress);
-				}
+				lockVarName = getGlobalLockVar(lockAddress);
 			} else if (includeAllLocks) {
 				// non-static lock, but we don't known the allocation it belongs to
 				PRINT_DEBUG("ts=" << dec << ts << ",lockAddress=" << hex << showbase << lockAddress, "Found non-static lock belonging to unknown allocation, assigning to pseudo allocation.");
@@ -261,7 +256,7 @@ static void handlePV(
 		// Write the lock to disk (aka locks.csv)
 		tempLock->writeLock(locksOFile, delimiter);
 	}
-	tempLock->transition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelBaseDir, ctx);
+	tempLock->transition(lockOP, ts, file, line, lockMember, flags, kernelBaseDir, ctx);
 }
 
 static void writeMemAccesses(char pAction, unsigned long long pAddress, ofstream *pMemAccessOFile, vector<MemAccess> *pMemAccesses) {
@@ -432,14 +427,13 @@ static int isGZIPFile(const char *filename) {
 
 int main(int argc, char *argv[]) {
 	stringstream ss;
-	string inputLine, token, typeStr, file, fn, lockType, stacktrace, lockMember;
+	string inputLine, token, typeStr, file, lockType, stacktrace, lockMember;
 	vector<string> lineElems; // input CSV columns
 	map<unsigned long long,Allocation>::iterator itAlloc;
-	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
+	unsigned long long ts = 0, address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, flags = 0x4712;
 	int lineCounter, isGZ, param;
 	char action = '.', *vmlinuxName = NULL, *fnBlacklistName = nullptr, *memberBlacklistName = nullptr, *datatypesName = nullptr;
 	bool processSeqlock = false, includeAllLocks = false;
-	enum IRQ_SYNC irqSync = LOCK_NONE;
 	enum LOCK_OP lockOP = P_WRITE;
 	long ctx = 0;
 	unsigned long long pseudoAllocID = 0; // allocID for locks belonging to unknown allocation
@@ -596,8 +590,7 @@ int main(int argc, char *argv[]) {
 
 	locksHeldOFile << "txn_id" << delimiter << "lock_id" << delimiter;
 	locksHeldOFile << "start" << delimiter;
-	locksHeldOFile << "last_file" << delimiter << "last_line" << delimiter << "last_fn" << delimiter;
-	locksHeldOFile << "last_preempt_count" << delimiter << "last_irq_sync" << endl;
+	locksHeldOFile << "last_file" << delimiter << "last_line" << endl;
 
 	txnsOFile << "id" << delimiter << "start_ts" << delimiter;
 	txnsOFile << "start_ctx" << delimiter << "end_ts" << delimiter;
@@ -668,8 +661,8 @@ int main(int argc, char *argv[]) {
 			cerr << "Line (ts=" << ts << ") contains " << lineElems.size() << " elements. Expected " << MAX_COLUMNS << "." << endl;
 			return EXIT_FAILURE;
 		}
-		address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, preemptCount = 0xaa, flags = 0x4712;
-		lockType = file = stacktrace = fn = "empty";
+		address = 0x1337, size = 4711, line = 1337, baseAddress = 0x4711, instrPtr = 0xc0ffee, flags = 0x4712;
+		lockType = file = stacktrace = "empty";
 		try {
 			action = lineElems.at(1).at(0);
 			switch (action) {
@@ -684,40 +677,16 @@ int main(int argc, char *argv[]) {
 			case LOCKDOC_LOCK_OP:
 				{
 					int temp;
-					lockMember = lineElems.at(7);
 					address = std::stoull(lineElems.at(3),NULL,16);
+					lockMember = lineElems.at(7);
 					file = lineElems.at(8);
 					line = std::stoull(lineElems.at(9));
-					fn = lineElems.at(10);
 					lockType = lineElems.at(6);
-					preemptCount = std::stoull(lineElems.at(12),NULL,16);
-					temp = std::stoi(lineElems.at(13),NULL,10);
-					flags = std::stoi(lineElems.at(15),NULL,10);
+					flags = std::stoi(lineElems.at(12),NULL,10);
 					if (ctxTracing) {
-						ctx = std::stoul(lineElems.at(16),NULL,10);
+						ctx = std::stoul(lineElems.at(13),NULL,10);
 					} else {
 						ctx = DUMMY_EXECUTION_CONTEXT;
-					}
-					switch(temp) {
-						case LOCK_NONE:
-							irqSync = LOCK_NONE;
-							break;
-
-						case LOCK_IRQ:
-							irqSync = LOCK_IRQ;
-							break;
-
-						case LOCK_IRQ_NESTED:
-							irqSync = LOCK_IRQ_NESTED;
-							break;
-
-						case LOCK_BH:
-							irqSync = LOCK_BH;
-							break;
-
-						default:
-							cerr << "Line (ts=" << ts << ") contains invalid value for irq_sync" << endl;
-							return EXIT_FAILURE;
 					}
 					temp = std::stoi(lineElems.at(2),NULL,10);
 					switch(temp) {
@@ -749,10 +718,9 @@ int main(int argc, char *argv[]) {
 					address = std::stoull(lineElems.at(3),NULL,16);
 					size = std::stoull(lineElems.at(4));
 					baseAddress = std::stoull(lineElems.at(5),NULL,16);
-					instrPtr = std::stoull(lineElems.at(11),NULL,16);
-					stacktrace = lineElems.at(14);
-					preemptCount = -1;
-					ctx = std::stoul(lineElems.at(16),NULL,10);
+					instrPtr = std::stoull(lineElems.at(10),NULL,16);
+					stacktrace = lineElems.at(11);
+					ctx = std::stoul(lineElems.at(13),NULL,10);
 					break;
 				}
 			}
@@ -854,8 +822,8 @@ int main(int argc, char *argv[]) {
 				break;
 				}
 		case LOCKDOC_LOCK_OP:
-			handlePV(lockOP, ts, address, file, line, fn, lockMember, lockType,
-				preemptCount, irqSync, flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir, ctx);
+			handlePV(lockOP, ts, address, file, line, lockMember, lockType,
+				flags, includeAllLocks, pseudoAllocID, locksOFile, txnsOFile, locksHeldOFile, kernelBaseDir, ctx);
 			break;
 		case LOCKDOC_READ:
 		case LOCKDOC_WRITE:

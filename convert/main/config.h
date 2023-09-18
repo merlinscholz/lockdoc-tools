@@ -4,7 +4,7 @@
 #define ELF_SECTIONS {".bss", ".data", ".data.cacheline_aligned"}
 #define DELIMITER_CHAR ';'
 #define DELIMITER_BLACKLISTS ';'
-#define MAX_COLUMNS 17
+#define MAX_COLUMNS 14
 #define LOOK_BEHIND_WINDOW 2
 #define SKIP_EMPTY_TXNS 1
 //#define VERBOSE
