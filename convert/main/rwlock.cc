@@ -13,10 +13,7 @@ void RWLock::writeTransition(
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx) {
@@ -62,7 +59,7 @@ void RWLock::writeTransition(
 					}
 				} else if (this->writer_count > 0 && this->reader_count > 0) {
 					stringstream ss;
-					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", lockMember=" << lockMember << ", ts=" << ts << "): ";
+					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", ts=" << ts << "): ";
 					ss << "this->writer_count == 0 && this->reader_count > 0";
 					throw logic_error(ss.str());
 				} else if (this->writer_count == 0 && this->reader_count == 0) {
@@ -83,9 +80,6 @@ void RWLock::writeTransition(
 				} else {
 					tempLockPos.lastFile = file;
 				}
-				tempLockPos.lastFn = fn;
-				tempLockPos.lastPreemptCount = preemptCount;
-				tempLockPos.lastIRQSync = irqSync;
 
 				PRINT_DEBUG(this->toString(WRITER_LOCK, lockOP, ts), "P_WRITE in ctx " << ctx);
 				// a P() suspends the current TXN and creates a new one
@@ -130,7 +124,7 @@ void RWLock::writeTransition(
 		case V_READ:
 			{
 				stringstream ss;
-				ss << "Invalid op on writer lock (" << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << dec << ts << endl;
+				ss << "Invalid op on writer lock (" << hex << showbase << this->lockAddress << noshowbase << ") at ts " << dec << ts << endl;
 				throw logic_error(ss.str());
 				break;
 			}
@@ -145,10 +139,7 @@ void RWLock::readTransition(
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx) {
@@ -160,7 +151,7 @@ void RWLock::readTransition(
 		case V_WRITE:
 			{
 				stringstream ss;
-				ss << "Invalid op on reader lock (" << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << dec << ts << endl;
+				ss << "Invalid op on reader lock (" << hex << showbase << this->lockAddress << noshowbase << ") at ts " << dec << ts << endl;
 				throw logic_error(ss.str());
 				break;
 			}
@@ -189,7 +180,7 @@ void RWLock::readTransition(
 					}
 				} else if (this->writer_count > 0 && this->reader_count > 0) {
 					stringstream ss;
-					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", lockMember=" << lockMember << ", ts=" << ts << "): ";
+					ss << "Invalid state on reader-writer lock (op=" << lockOP << ",addr=" << hex << showbase << this->lockAddress << noshowbase << ", ts=" << ts << "): ";
 					ss << "this->writer_count == 0 && this->reader_count > 0";
 					throw logic_error(ss.str());
 				} else if (this->writer_count == 0 && this->reader_count == 0) {
@@ -210,9 +201,6 @@ void RWLock::readTransition(
 				} else {
 					tempLockPos.lastFile = file;
 				}
-				tempLockPos.lastFn = fn;
-				tempLockPos.lastPreemptCount = preemptCount;
-				tempLockPos.lastIRQSync = irqSync;
 				PRINT_DEBUG(this->toString(READER_LOCK, lockOP, ts), "P_READ in ctx " << ctx);
 
 				// a P() suspends the current TXN and creates a new one

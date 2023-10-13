@@ -63,16 +63,12 @@ CREATE TABLE locks (
 CREATE INDEX embedded_in ON locks (embedded_in);
 
 
-CREATE TYPE irq_sync_type AS enum('LOCK_NONE', 'LOCK_IRQ', 'LOCK_IRQ_NESTED', 'LOCK_BH');
 CREATE TABLE locks_held (			-- Normally, there are several entries for one TXN. That means those locks were held during this TXN.
   txn_id int CHECK (txn_id > 0) NOT NULL,		-- References the TXN
   lock_id int CHECK (lock_id > 0) NOT NULL,		-- References a lock which was held during the access
   start bigint DEFAULT NULL,		-- The timestamp when the lock was acquired
   last_file varchar(255) DEFAULT NULL,		-- Last file
   last_line int CHECK (last_line > 0) DEFAULT NULL,	-- Last line 
-  last_fn varchar(255) DEFAULT NULL,		-- Last function where the lock has been acquired from
-  last_preempt_count bigint CHECK (last_preempt_count >= 0) DEFAULT NULL,	-- Value of preemptcount() after the lock has been acquired
-  last_irq_sync irq_sync_type NOT NULL,		-- Denotes the irq synchronization used
   PRIMARY KEY (lock_id,txn_id)
 ) 
 ;

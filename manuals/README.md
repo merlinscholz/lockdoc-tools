@@ -49,33 +49,17 @@ The following benchmarks are available:
 ## Building FAIL*
 
 * For a detailed guide on how to build FAIL*, please look at the respective manual (doc/how-to-build.txt) in the FAIL* repository. It should be sufficient to follow the instructions below.
-* FAIL* requires an ag++ to be installed. First, check if it is already present. Otherwise, try either the current version 2.3 or the nightly build. Both are available at http://aspectc.org/Download.php
 * Checkout the FAIL* repo from our project, and use branch lockdoc
-* Building FAIL* on your host manually:
-	```sh
-	mkdir build
-	cd build
-	cmake ..
-	ccmake .
-		# Select: BUILD_BOCHS, BUILD_DUMP_TRACE
-		# Set EXPERIMENTS_ACTIVATED to lockdoc
-		# Set PLUGINS_ACTIVATED to tracing
-		# Press c
-		# Press g
-	make -j$(nproc)
-* Since the build process can be error prone (especially on modern Linux systems), you can find a Makefile (which requires Docker) here in the fail folder:
-	```sh
-	cd fail
-	make
-	```
+* Building FAIL*: See `files-host/helper-scripts/build-fail.sh`. That script has to be run from the root of the FAIL* repository. It also (re)downloads the required [ag++](http://aspectc.org/Download.php) and installes required packages via `sudo apt`. You may want to comment out these parts.
 
 ## Running FAIL*
-* A sample BOCHSRC is located in this directory. You may want to change:
+* Sample BOCHSRCs are located in the respective directories belonging to the supported OSs. You may want to change:
 	* `display_library`: Enabling a GUI makes the process easier to debug in case anything goes wrong
 	* `ata0-master`: To point to the correct, prepared OS disk image
 	* `ata0-slave`:  To point to the correct LTP disk image
+	For the correct ata0 settings, see below
 * Create a temporary directory where you can run the fail client
-* Copy all files from manuals/bochs/* and your modified BOCHSRC to that directory
+* Copy all files from manuals/files-host/bochs/* and your modified BOCHSRC to that directory
 * Run the test:
 	* Linux: `/path/to/fail-client -Wf,--os=linux -Wf,--benchmark=<benchmark> -Wf,--port=4711 -Wf,--vmlinux=/path/to/vmlinux -q -f BOCHSRC 2>&1 | tee out.txt`
 	* FreeBSD: `/path/to/fail-client -Wf,--os=freebsd -Wf,--benchmark=<benchmark> -Wf,--port=4711 -Wf,--vmlinux=/path/to/kernel.debug -q -f BOCHSRC 2>&1 | tee out.txt`
@@ -96,8 +80,10 @@ The following benchmarks are available:
 * Compile the hypothesizer (`cd hypothesizer && make`)
 * For the PostgreSQL cmdline tool to work properly, create the `.pgpass`-file in your home directory:
 	```sh
-	echo "host_ip:5432:*:username:password" >> ~/.pgpass && chmod 0600 ~/.pgpass
+	echo "host_ip:5432:*:username:password" >> ~/.pgpass
+	chmod 0600 ~/.pgpass
 	```
+	
 * Do not forget to create the database, and grant your user the proper permissions. The recommended naming scheme is described in the Database section
 * Create a directory for the results of the post processing
 * In there, create the config file 'convert.conf':
@@ -146,11 +132,12 @@ The following benchmarks are available:
 
 
 # How it works
+
 * FAIL* runs our experiment called lockdoc. The source code for it is located in `fail/src/experiments/lockdoc/`.
 * FAIL* uses BOCHS for running an emulated VM. Hence, it has access to the guest memory.
 * FAIL* experiment and guest exchange information via a shared buffer in the guest memory.
 * The experiment reads the address of the buffer (called `la_buffer`) on expertiment startup from the vmlinux/kernel.debug. It uses the embedded ELF information for that.
-* Instead of starting the OS-specific init program, it launches our script: `/lockdoc/run-bench.sh` (found in `manuals/vm-linux-32/scripts/run-bench.sh`)
+* Instead of starting the OS-specific init program, it launches our script: `/lockdoc/run-bench.sh` (found in `manuals/files-vm/run-bench.sh`)
 * First, it asks the running kernel for its version string. On linux: `/proc/version-git`, on FreeBSD: `/dev/lockdoc/version`. The version string is sent to the experiment via the first serial console. The experiments intercepts the serial console by listening to the respective IO port(s). See `handleIOConsole()` in `fail/src/experiments/lockdoc/experiment.cc` for more details.
 * The script asks the experiment via the first serial console for the benchmark to run.
 * The experiment responds via the second serial console (TCP socket in `serialSentThreadWork()` in `fail/src/experiments/lockdoc/experiment.cc)`.
@@ -166,29 +153,6 @@ The following benchmarks are available:
 	* Finally, it logs the event to the output file.
 * The experiment yields, and the guest OS resumes.
 
-# Code Coverage in Linux
+# Code coverage
 
-⚠️ This part of the documentation is outdated since GCOV has been replaced with KCOV. It is kept here unchanged (apart from formatting).
-
-* Checkout the kernel tree again in a separate directory, e.g., linux-32-gcov. For now, please stick to branch lockdebugging-4-10.
-* `cp config-lockdebugging .config`
-* `make menuconfig`
-	* Uncheck "Enable ESS lock analysis facility"
-	* "General Setup" --> "Local version - append to kernel release" --> Enter "gcov"
-	* "General Setup" --> "GCOV-based kernel profiling" --> "Enable gcov-based kernel profiling" |
-							    --> "Specify GCOV format" --> "Autodetect"
-* "Exit" --> "Save config"
-* `make -j$(nproc)`
-* `make install`
-* On reboot, select the GCOV kernel. The GRUB entry should end with "-gcov".
-* Ensure the debugfs is mounted. Otherwise, run as root: `mount -t debugfs none /sys/kernel/debug`
-* Copy `processing/gcov-trace.sh` to your VM
-* Gather profiling information using gcov-trace.sh
-	* Become root, e.g., sudo u
-	* `./gcov-trace.sh PATH_TO_YOUR_KERNEL_TREE OUTPUT_FILE COMMAND ARGS`
-	* Example for profiling "`sleep 5`": `./gcov-trace.sh /opt/kernel/linux-32-gcov test.trace sleep 5`
-* Copy the output to your host
-* To retrieve the code coverage from the output file, use processing/gcov-summary.py
-	* `./gcov-summary.py --kernel-directory PATH_TO_YOUR_KERNEL_TREE_IN_VM --per-directory [--filter 'REGEX']`
-	* Example: Summarize code coverage for each directory containing fs, expect fs/proc
-		* `gcov-summary.py --kernel-directory /opt/kernel/linux-32-gcov/ --per-directory --filter '^fs(?!/proc)' test.trace`
+See the manuals of the respecive OSs

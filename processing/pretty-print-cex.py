@@ -150,11 +150,10 @@ def genLockCombTable(displayMode, lockCombinations, hypothesisID):
 			# Example: EMBSAME(j_barrier)@jbd2_journal_lock_updates@fs/jbd2/transaction.c:746
 			for lockHeld in locksHeld:
 				# Index 0: the lock
-				# Index 1: the function where the lock was acquired
-				# Index 2: the file and line where the lock was acquired
+				# Index 1: the file and line where the lock was acquired
 				elems = lockHeld.split('@')
-				lockFile = elems[2].split(':')[0]
-				lockLine = elems[2].split(':')[1]
+				lockFile = elems[1].split(':')[0]
+				lockLine = elems[1].split(':')[1]
 				output = output + '{:02d}: <a class="lock" target="_blank" href="{}/source/{}#L{}" title="{}@{}:{}">{}</a>'.format(k + 1,
 						crossRefURL, lockFile, lockLine, elems[1], lockFile, lockLine, elems[0])
 				if k < (locksHeldLen - 1):

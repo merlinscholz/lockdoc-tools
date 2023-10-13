@@ -24,10 +24,6 @@ struct LockPos {
 	unsigned long long start;									// Timestamp when the lock has been acquired
 	int lastLine;												// Position within the file where the lock has been acquired for the last time
 	std::string lastFile;											// Last file from where the lock has been acquired
-	std::string lastFn;												// Last caller
-//	string lastLockFn;											// Lock function used the last time
-	unsigned long long lastPreemptCount;						// Value of preemptcount() after the lock has been acquired
-	enum IRQ_SYNC lastIRQSync;									// IRQ synchronization used
 };
 
 
@@ -226,17 +222,14 @@ struct RWLock {
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx) {
 		if (lockOP == P_WRITE || lockOP == V_WRITE) {
-			writeTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
+			writeTransition(lockOP, ts, file, line, lockMember, flags, kernelDir, ctx);
 		} else if (lockOP == P_READ || lockOP == V_READ) {
-			readTransition(lockOP, ts, file, line, fn, lockMember, preemptCount, irqSync, flags, kernelDir, ctx);
+			readTransition(lockOP, ts, file, line, lockMember, flags, kernelDir, ctx);
 		} else {
 			stringstream ss;
 			ss << "Invalid op(" << lockOP << "," << hex << showbase << this->lockAddress << noshowbase << "," << lockMember << ") at ts " << ts << endl;
@@ -255,10 +248,7 @@ struct RWLock {
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx);
@@ -273,10 +263,7 @@ struct RWLock {
 	unsigned long long ts,
 	std::string const& file,
 	unsigned long long line,
-	std::string const& fn,
 	string const& lockMember,
-	unsigned long long preemptCount,
-	enum IRQ_SYNC irqSync,
 	unsigned flags,
 	const char *kernelDir,
 	long ctx);
