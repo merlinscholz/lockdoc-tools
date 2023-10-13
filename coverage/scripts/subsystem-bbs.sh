@@ -13,7 +13,7 @@ while read LINE; do
 		LASTADDR=${LINE#0x} # strip leading "0x"
 	else
 		LINE=`echo "$LINE" | sed -e "s%$1%%g"`
-		if [[ $LINE =~ $3 && $LASTADDR != NONE ]]; then
+		if [[ $LINE =~ $4 && $LASTADDR != NONE ]]; then
 			echo $LASTADDR
 			# make sure we output each address only once
 			LASTADDR=NONE
