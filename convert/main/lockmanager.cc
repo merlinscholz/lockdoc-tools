@@ -222,7 +222,8 @@ RWLock* LockManager::allocLock(unsigned long long lockAddress, unsigned allocID,
 		lockType.compare("semaphore") == 0 ||
 		lockType.compare("bit_spin_lock") == 0 ||
 		lockType.compare("sleep mutex") == 0 ||
-		lockType.compare("spin mutex") == 0) {
+		lockType.compare("spin mutex") == 0 ||
+		lockType.compare("kmutex_t") == 0) {	// NetBSD Kernel mutex
 		ret = new WLock(lockAddress, allocID, lockType, lockVarName, flags, this);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");
@@ -242,7 +243,8 @@ RWLock* LockManager::allocLock(unsigned long long lockAddress, unsigned allocID,
 			   lockType.compare("rw") == 0 ||
 			   lockType.compare("sleepable rm") == 0 ||
 			   lockType.compare("rm") == 0 ||
-			   lockType.compare("lockmgr") == 0) {
+			   lockType.compare("lockmgr") == 0 ||
+			   lockType.compare("krwlock_t") == 0) {	// NetBSD Kernel RW lock
 		ret = new RWLock(lockAddress, allocID, lockType, lockVarName, flags, this);
 		if (!ret) {
 			PRINT_ERROR("lockAddress=" << showbase << hex << lockAddress << noshowbase, "Cannot allocate WLock.");

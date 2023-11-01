@@ -1,0 +1,6 @@
+datatype;datatype_member
+vnode_impl;v_interlock
+vnode_impl;vi_lock
+vnode_impl;vi_nc_lock
+vnode_impl;vi_nc_listlock
+buf;b_cflags
